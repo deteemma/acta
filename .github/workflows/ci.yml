@@ -1,0 +1,28 @@
+# Lint et vérification des types à chaque push et pull request (ADR-0009).
+name: Vérifications
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Construction de shared (utilisé par api, web et mobile)
+        run: pnpm --filter @app/shared build
+      - name: Lint
+        run: pnpm lint
+      - name: Vérification des types
+        run: pnpm typecheck
+      - name: Tests des règles partagées
+        run: pnpm --filter @app/shared test

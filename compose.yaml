@@ -1,0 +1,73 @@
+# Module applicatif (ADR-0007) : rejoint le réseau externe « socle ».
+# Le module ne connaît le socle que par les variables du fichier .env.
+# Mêmes fichiers sur le PC et en production (ADR-0011).
+
+name: ${APP_NAME:?APP_NAME manquant dans .env}
+
+x-image: &image
+  image: ${IMAGE:-ghcr.io/deteemma/modele-application}:${VERSION:-local}
+
+services:
+  migrations:
+    <<: *image
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    command: ["node", "api/dist/migrations/run.js"]
+    restart: "no"
+    mem_limit: ${MIGRATIONS_MEM_LIMIT:-256m}
+    environment:
+      MIGRATIONS_DATABASE_URL: ${MIGRATIONS_DATABASE_URL:?MIGRATIONS_DATABASE_URL manquant}
+    networks:
+      - socle
+
+  api:
+    <<: *image
+    restart: unless-stopped
+    mem_limit: ${API_MEM_LIMIT:-384m}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL manquant}
+      PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL manquant}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:?OIDC_ISSUER_URL manquant}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:-}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-api}
+      COMPOSE_PROFILES: ${COMPOSE_PROFILES:-}
+      NODE_OPTIONS: --max-old-space-size=256
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      socle:
+        # Nom sous lequel Caddy (socle) joint l'API.
+        aliases: ["${APP_NAME}-api"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  powersync:
+    image: journeyapps/powersync-service:1.27.1
+    profiles: ["mobile-hors-ligne"]
+    restart: unless-stopped
+    mem_limit: ${POWERSYNC_MEM_LIMIT:-512m}
+    command: ["start", "-r", "unified"]
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/powersync.yaml
+      PS_DATABASE_URL: ${POWERSYNC_DATABASE_URL:-}
+      PS_STORAGE_URL: ${POWERSYNC_STORAGE_URL:-}
+      PS_JWKS_URL: ${OIDC_JWKS_URL:-}
+      PS_AUDIENCE: ${OIDC_AUDIENCE:-api}
+      NODE_OPTIONS: --max-old-space-size=384
+    volumes:
+      - ./powersync:/config:ro
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      socle:
+        aliases: ["${APP_NAME}-powersync"]
+
+networks:
+  socle:
+    external: true

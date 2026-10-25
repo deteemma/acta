@@ -1,0 +1,35 @@
+# PowerSync Open Edition (profil mobile-hors-ligne, ADR-0004).
+# Réplique PostgreSQL (wal_level=logical) ; stockage interne sur PostgreSQL.
+replication:
+  connections:
+    - type: postgresql
+      uri: !env PS_DATABASE_URL
+      sslmode: disable
+
+storage:
+  type: postgresql
+  uri: !env PS_STORAGE_URL
+  sslmode: disable
+
+port: 8080
+
+# Même jeton OIDC que l'API (ADR-0005).
+client_auth:
+  jwks_uri: !env PS_JWKS_URL
+  audience: [!env PS_AUDIENCE]
+  # Keycloak est joint par le réseau Docker interne.
+  block_local_jwks: false
+
+# Sous-ensemble présent sur le téléphone : les projets dont je suis membre.
+# À adapter au démarrage de chaque application (6ᵉ information du skill).
+sync_rules:
+  content: |
+    bucket_definitions:
+      my_projects:
+        parameters: SELECT project_id FROM project_member WHERE user_id = request.user_id()
+        data:
+          - SELECT id, name, created_by, created_at FROM project WHERE id = bucket.project_id
+          - SELECT project_id || ':' || user_id AS id, project_id, user_id, role FROM project_member WHERE project_id = bucket.project_id
+
+telemetry:
+  disable_telemetry_sharing: true

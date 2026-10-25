@@ -1,0 +1,9 @@
+packages:
+  - api
+  - web
+  - mobile
+  - shared
+
+onlyBuiltDependencies:
+  - "@swc/core"
+  - esbuild

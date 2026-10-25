@@ -1,0 +1,63 @@
+{
+  "realm": "$(env:APP_NAME)",
+  "users": [
+    {
+      "username": "alice",
+      "email": "alice@exemple.test",
+      "firstName": "Alice",
+      "lastName": "Propriétaire",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Test1234!", "temporary": false }]
+    },
+    {
+      "username": "bruno",
+      "email": "bruno@exemple.test",
+      "firstName": "Bruno",
+      "lastName": "Contributeur",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Test1234!", "temporary": false }]
+    },
+    {
+      "username": "chloe",
+      "email": "chloe@exemple.test",
+      "firstName": "Chloé",
+      "lastName": "Lectrice",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Test1234!", "temporary": false }]
+    },
+    {
+      "username": "admin",
+      "email": "admin@exemple.test",
+      "firstName": "Admin",
+      "lastName": "Application",
+      "enabled": true,
+      "emailVerified": true,
+      "realmRoles": ["administrateur"],
+      "credentials": [{ "type": "password", "value": "Test1234!", "temporary": false }]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "tests",
+      "name": "Tests automatisés (local uniquement)",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "audience-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ]
+}
