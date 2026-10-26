@@ -1,4 +1,4 @@
-import type { CreateInitiativeInput, InitiativeDto, MeDto, UpdateMeInput } from '@app/shared';
+import type { CreateInitiativeInput, InitiativeDto, InitiativeMemberDto, MeDto, UpdateMeInput } from '@app/shared';
 import { accessToken } from './auth';
 
 export class ApiError extends Error {
@@ -25,6 +25,8 @@ export const api = {
   me: () => request<MeDto>('/me'),
   updateMe: (input: UpdateMeInput) => request<MeDto>('/me', { method: 'PATCH', body: JSON.stringify(input) }),
   listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
+  getInitiative: (id: string) => request<InitiativeDto>(`/initiatives/${id}`),
+  listMembers: (id: string) => request<InitiativeMemberDto[]>(`/initiatives/${id}/members`),
   createInitiative: (input: CreateInitiativeInput) =>
     request<InitiativeDto>('/initiatives', { method: 'POST', body: JSON.stringify(input) }),
 };

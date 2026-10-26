@@ -1,9 +1,13 @@
-import { createInitiativeSchema, type InitiativeDto, type MessageKey } from '@app/shared';
+import type { InitiativeDto } from '@app/shared';
 import type { User } from 'oidc-client-ts';
-import { type FormEvent, useEffect, useState } from 'react';
-import { api, ApiError } from './api';
+import { useEffect, useState } from 'react';
+import { api } from './api';
 import { login, logout } from './auth';
+import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
+import { CreateInitiativePanel, InitiativePanel, MemberPanel } from './initiative-panels';
+import { IS_MAC, Palette, usePaletteShortcut } from './palette';
+import { PanelHost, PanelsProvider, usePanels } from './panels';
 
 export function App({ user }: { user: User | null }) {
   return (
@@ -30,81 +34,77 @@ function SignedOut() {
 }
 
 function SignedIn({ user }: { user: User }) {
-  const { t } = useI18n();
   return (
-    <main>
-      <header>
-        <h1>{t('initiatives.title')}</h1>
-        <span>
-          {user.profile.name ?? user.profile.preferred_username} <LanguageSelector />{' '}
-          <button onClick={() => void logout()}>{t('auth.logout')}</button>
-        </span>
-      </header>
-      <Initiatives />
-    </main>
+    <PanelsProvider>
+      <Shell user={user} />
+    </PanelsProvider>
   );
 }
 
-/** Erreur à afficher : gardée sous forme de clé pour suivre un changement de langue. */
-type UiError = { key: MessageKey; params?: Record<string, string | number> } | { raw: string };
-
-function toUiError(error: unknown): UiError {
-  if (error instanceof ApiError) {
-    return error.status === 409 ? { key: 'initiatives.codeTaken' } : { key: 'error.http', params: { status: error.status } };
-  }
-  return { raw: String(error) };
-}
-
-function Initiatives() {
+/** Coque de navigation : liste, palette (Ctrl+K), bouton « + » et panneaux. */
+function Shell({ user }: { user: User }) {
   const { t } = useI18n();
+  const { open } = usePanels();
   const [initiatives, setInitiatives] = useState<InitiativeDto[]>([]);
-  const [code, setCode] = useState('');
-  const [name, setName] = useState('');
   const [error, setError] = useState<UiError | null>(null);
+  usePaletteShortcut();
 
   useEffect(() => {
     api.listInitiatives().then(setInitiatives, (e: unknown) => setError(toUiError(e)));
   }, []);
 
-  async function create(event: FormEvent) {
-    event.preventDefault();
-    // Même schéma de validation que l'API (@app/shared).
-    const parsed = createInitiativeSchema.safeParse({ code, name });
-    if (!parsed.success) {
-      setError({ key: 'initiatives.invalid' });
-      return;
-    }
-    try {
-      const initiative = await api.createInitiative(parsed.data);
-      setInitiatives((list) => [initiative, ...list]);
-      setCode('');
-      setName('');
-      setError(null);
-    } catch (e) {
-      setError(toUiError(e));
-    }
-  }
-
   return (
     <>
-      <form onSubmit={(e) => void create(e)}>
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder={t('initiatives.codePlaceholder')}
-        />
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('initiatives.namePlaceholder')} />
-        <button type="submit">{t('initiatives.create')}</button>
-      </form>
-      {error && <p className="error">{'raw' in error ? error.raw : t(error.key, error.params)}</p>}
-      <ul>
-        {initiatives.map((i) => (
-          <li key={i.id}>
-            <strong>{i.code}</strong> {i.name} <small>{t(`role.${i.myRole}`)}</small>
-          </li>
-        ))}
-      </ul>
-      {initiatives.length === 0 && <p>{t('initiatives.empty')}</p>}
+      <main>
+        <header>
+          <h1>{t('initiatives.title')}</h1>
+          <span>
+            <button type="button" onClick={() => open({ kind: 'palette' })}>
+              {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
+            </button>{' '}
+            {user.profile.name ?? user.profile.preferred_username} <LanguageSelector />{' '}
+            <button onClick={() => void logout()}>{t('auth.logout')}</button>
+          </span>
+        </header>
+        <ErrorMessage error={error} />
+        <ul className="links">
+          {initiatives.map((i) => (
+            <li key={i.id}>
+              <button type="button" className="link" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>
+                <strong>{i.code}</strong> {i.name}
+              </button>{' '}
+              <small>{t(`role.${i.myRole}`)}</small>
+            </li>
+          ))}
+        </ul>
+        {initiatives.length === 0 && <p>{t('initiatives.empty')}</p>}
+      </main>
+      {/* Deviendra « + Action » au ticket 07. */}
+      <button
+        type="button"
+        className="fab"
+        aria-label={t('initiatives.new')}
+        title={t('initiatives.new')}
+        onClick={() => open({ kind: 'createInitiative' })}
+      >
+        +
+      </button>
+      <PanelHost
+        render={(content, close) => {
+          switch (content.kind) {
+            case 'palette':
+              return <Palette initiatives={initiatives} onClose={close} />;
+            case 'createInitiative':
+              return (
+                <CreateInitiativePanel onCreated={(i) => setInitiatives((list) => [i, ...list])} onClose={close} />
+              );
+            case 'initiative':
+              return <InitiativePanel initiativeId={content.initiativeId} onClose={close} />;
+            case 'member':
+              return <MemberPanel member={content.member} onClose={close} />;
+          }
+        }}
+      />
     </>
   );
 }
