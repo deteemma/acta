@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Interface bilingue
 
-**Status:** done (à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 26.10.2026)
 
 - [x] Un clic sur une initiative de la liste ouvre sa fiche dans un panneau à droite, la liste restant visible.
 - [x] Un clic sur un objet lié dans un panneau ouvre un second panneau par-dessus ; Échap referme le dernier panneau ouvert.
