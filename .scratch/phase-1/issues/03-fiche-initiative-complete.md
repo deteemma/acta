@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Coque de navigation
 
-**Status:** done (à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 26.10.2026)
 
 - [x] La fiche affiche et permet de modifier : nom, description, approche d'analyse, date de début et date de fin prévue (facultatives).
 - [x] L'approche d'analyse vaut prédictive ou adaptative (tâche BABOK 3.1) ; en français, son libellé anglais est visible en info-bulle.
