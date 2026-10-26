@@ -1,4 +1,4 @@
-import type { CreateProjectInput, ProjectDto, UpdateProjectInput } from '@app/shared';
+import type { CreateInitiativeInput, InitiativeDto, UpdateInitiativeInput } from '@app/shared';
 import { API_URL } from './config';
 
 export class ApiError extends Error {
@@ -25,12 +25,12 @@ export function createApi(getToken: () => string) {
   }
 
   return {
-    listProjects: () => request<ProjectDto[]>('/projects'),
-    createProject: (input: CreateProjectInput) =>
-      request<ProjectDto>('/projects', { method: 'POST', body: JSON.stringify(input) }),
-    updateProject: (id: string, input: UpdateProjectInput) =>
-      request<ProjectDto>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
-    deleteProject: (id: string) => request<void>(`/projects/${id}`, { method: 'DELETE' }),
+    listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
+    createInitiative: (input: CreateInitiativeInput) =>
+      request<InitiativeDto>('/initiatives', { method: 'POST', body: JSON.stringify(input) }),
+    updateInitiative: (id: string, input: UpdateInitiativeInput) =>
+      request<InitiativeDto>(`/initiatives/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+    deleteInitiative: (id: string) => request<void>(`/initiatives/${id}`, { method: 'DELETE' }),
   };
 }
 

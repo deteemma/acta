@@ -1,11 +1,11 @@
-import type { ProjectRole } from '@app/shared';
+import type { InitiativeRole } from '@app/shared';
 import { PowerSyncContext, useQuery } from '@powersync/react-native';
 import { randomUUID } from 'expo-crypto';
 import { useEffect, useState } from 'react';
 import { FlatList, Text } from 'react-native';
 import type { Api } from './api';
 import { Connector, db } from './powersync';
-import { ProjectForm, ROLE_LABELS, styles } from './ProjectForm';
+import { InitiativeForm, ROLE_LABELS, styles } from './InitiativeForm';
 
 interface Props {
   endpoint: string;
@@ -14,7 +14,7 @@ interface Props {
 }
 
 /** Mode hors ligne : la liste vient de la réplique locale, synchronisée par PowerSync. */
-export default function OfflineProjects({ endpoint, getToken, api }: Props) {
+export default function OfflineInitiatives({ endpoint, getToken, api }: Props) {
   const [rejection, setRejection] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,22 +25,23 @@ export default function OfflineProjects({ endpoint, getToken, api }: Props) {
   return (
     <PowerSyncContext.Provider value={db}>
       {rejection && <Text style={styles.error}>{rejection}</Text>}
-      <LocalProjects />
+      <LocalInitiatives />
     </PowerSyncContext.Provider>
   );
 }
 
-function LocalProjects() {
-  // Le rôle n'est connu qu'après synchronisation de la ligne project_member.
-  const { data: projects } = useQuery<{ id: string; name: string; role: ProjectRole | null }>(
-    `SELECT p.id, p.name, m.role
-       FROM project p LEFT JOIN project_member m ON m.project_id = p.id
+function LocalInitiatives() {
+  // Le rôle n'est connu qu'après synchronisation de la ligne initiative_member.
+  const { data: initiatives } = useQuery<{ id: string; code: string; name: string; role: InitiativeRole | null }>(
+    `SELECT p.id, p.code, p.name, m.role
+       FROM initiative p LEFT JOIN initiative_member m ON m.initiative_id = p.id
       ORDER BY p.created_at DESC`,
   );
 
-  async function create(name: string) {
-    await db.execute('INSERT INTO project (id, name, created_at) VALUES (?, ?, ?)', [
+  async function create(code: string, name: string) {
+    await db.execute('INSERT INTO initiative (id, code, name, created_at) VALUES (?, ?, ?, ?)', [
       randomUUID(),
+      code,
       name,
       new Date().toISOString(),
     ]);
@@ -48,17 +49,17 @@ function LocalProjects() {
 
   return (
     <>
-      <ProjectForm onCreate={create} />
+      <InitiativeForm onCreate={create} />
       <FlatList
-        data={projects}
+        data={initiatives}
         keyExtractor={(p) => p.id}
         renderItem={({ item }) => (
           <Text style={styles.item}>
-            {item.name}{' '}
+            {item.code} {item.name}{' '}
             <Text style={styles.role}>{item.role ? ROLE_LABELS[item.role] : 'en attente de synchronisation'}</Text>
           </Text>
         )}
-        ListEmptyComponent={<Text>Aucun projet pour l'instant.</Text>}
+        ListEmptyComponent={<Text>Aucune initiative pour l'instant.</Text>}
       />
     </>
   );

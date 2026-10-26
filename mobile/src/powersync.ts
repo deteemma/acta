@@ -13,8 +13,13 @@ import {
 import { type Api, ApiError } from './api';
 
 export const AppSchema = new Schema({
-  project: new Table({ name: column.text, created_by: column.text, created_at: column.text }),
-  project_member: new Table({ project_id: column.text, user_id: column.text, role: column.text }),
+  initiative: new Table({ code: column.text, name: column.text, created_by: column.text, created_at: column.text }),
+  initiative_member: new Table({
+    initiative_id: column.text,
+    user_id: column.text,
+    role: column.text,
+    is_team_ba: column.integer,
+  }),
 });
 
 export const db = new PowerSyncDatabase({
@@ -57,11 +62,11 @@ export class Connector implements PowerSyncBackendConnector {
   }
 
   private async apply(table: string, op: UpdateType, id: string, data: Record<string, unknown>) {
-    if (table !== 'project') {
+    if (table !== 'initiative') {
       throw new ApiError(400, `Écriture non prise en charge sur ${table}`);
     }
-    if (op === UpdateType.PUT) await this.api.createProject({ id, name: String(data.name) });
-    if (op === UpdateType.PATCH) await this.api.updateProject(id, { name: String(data.name) });
-    if (op === UpdateType.DELETE) await this.api.deleteProject(id);
+    if (op === UpdateType.PUT) await this.api.createInitiative({ id, code: String(data.code), name: String(data.name) });
+    if (op === UpdateType.PATCH) await this.api.updateInitiative(id, { name: String(data.name) });
+    if (op === UpdateType.DELETE) await this.api.deleteInitiative(id);
   }
 }

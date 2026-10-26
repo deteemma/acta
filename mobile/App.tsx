@@ -5,12 +5,12 @@ import { ActivityIndicator, Button, SafeAreaView, StyleSheet, Text, View } from 
 import { createApi } from './src/api';
 import { useLogin } from './src/auth';
 import { fetchPublicConfig, OFFLINE_MODE } from './src/config';
-import { OnlineProjects } from './src/OnlineProjects';
+import { OnlineInitiatives } from './src/OnlineInitiatives';
 import { getAccessToken } from './src/session';
 
 // Chargé seulement en mode hors ligne : PowerSync repose sur un module natif
 // absent d'Expo Go.
-const OfflineProjects = lazy(() => import('./src/OfflineProjects'));
+const OfflineInitiatives = lazy(() => import('./src/OfflineInitiatives'));
 
 export default function App() {
   const [config, setConfig] = useState<PublicConfigDto | null>(null);
@@ -37,7 +37,7 @@ function Main({ config }: { config: PublicConfigDto }) {
   if (!auth.session) {
     return (
       <View style={styles.center}>
-        <Text style={styles.title}>Modèle d'application</Text>
+        <Text style={styles.title}>ACTA</Text>
         <Button title="Se connecter" disabled={!auth.ready} onPress={() => void auth.login()} />
         {auth.error && <Text style={styles.error}>{auth.error}</Text>}
       </View>
@@ -47,15 +47,15 @@ function Main({ config }: { config: PublicConfigDto }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Mes projets</Text>
+        <Text style={styles.title}>Mes initiatives</Text>
         <Button title="Se déconnecter" onPress={auth.logout} />
       </View>
       {OFFLINE_MODE && config.powersyncUrl ? (
         <Suspense fallback={<ActivityIndicator />}>
-          <OfflineProjects endpoint={config.powersyncUrl} getToken={getAccessToken} api={api} />
+          <OfflineInitiatives endpoint={config.powersyncUrl} getToken={getAccessToken} api={api} />
         </Suspense>
       ) : (
-        <OnlineProjects api={api} />
+        <OnlineInitiatives api={api} />
       )}
     </View>
   );

@@ -1,6 +1,6 @@
 // Types Kysely des tables (voir api/migrations). À tenir à jour avec les migrations.
 import type { ColumnType, Generated } from 'kysely';
-import type { ProjectRole } from '@app/shared';
+import type { InitiativeRole } from '@app/shared';
 
 type Timestamp = ColumnType<Date, Date | string | undefined, Date | string>;
 
@@ -12,23 +12,25 @@ export interface AppUserTable {
   updated_at: Timestamp;
 }
 
-export interface ProjectTable {
+export interface InitiativeTable {
   id: string;
+  code: string;
   name: string;
   created_by: Generated<string>;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
 
-export interface ProjectMemberTable {
-  project_id: string;
+export interface InitiativeMemberTable {
+  initiative_id: string;
   user_id: string;
-  role: ProjectRole;
+  role: InitiativeRole;
+  is_team_ba: Generated<boolean>;
   created_at: Timestamp;
 }
 
 export interface Database {
   app_user: AppUserTable;
-  project: ProjectTable;
-  project_member: ProjectMemberTable;
+  initiative: InitiativeTable;
+  initiative_member: InitiativeMemberTable;
 }

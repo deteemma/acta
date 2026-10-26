@@ -5,7 +5,7 @@
 name: ${APP_NAME:?APP_NAME manquant dans .env}
 
 x-image: &image
-  image: ${IMAGE:-ghcr.io/deteemma/modele-application}:${VERSION:-local}
+  image: ${IMAGE:-ghcr.io/deteemma/acta}:${VERSION:-local}
 
 services:
   migrations:

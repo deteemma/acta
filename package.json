@@ -1,5 +1,5 @@
 {
-  "name": "modele-application",
+  "name": "acta",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.8",

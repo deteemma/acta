@@ -20,16 +20,16 @@ client_auth:
   # Keycloak est joint par le réseau Docker interne.
   block_local_jwks: false
 
-# Sous-ensemble présent sur le téléphone : les projets dont je suis membre.
+# Sous-ensemble présent sur le téléphone : les initiatives dont je suis membre.
 # À adapter au démarrage de chaque application (6ᵉ information du skill).
 sync_rules:
   content: |
     bucket_definitions:
-      my_projects:
-        parameters: SELECT project_id FROM project_member WHERE user_id = request.user_id()
+      my_initiatives:
+        parameters: SELECT initiative_id FROM initiative_member WHERE user_id = request.user_id()
         data:
-          - SELECT id, name, created_by, created_at FROM project WHERE id = bucket.project_id
-          - SELECT project_id || ':' || user_id AS id, project_id, user_id, role FROM project_member WHERE project_id = bucket.project_id
+          - SELECT id, code, name, created_by, created_at FROM initiative WHERE id = bucket.initiative_id
+          - SELECT initiative_id || ':' || user_id AS id, initiative_id, user_id, role, is_team_ba FROM initiative_member WHERE initiative_id = bucket.initiative_id
 
 telemetry:
   disable_telemetry_sharing: true

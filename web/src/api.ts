@@ -1,4 +1,4 @@
-import type { CreateProjectInput, ProjectDto } from '@app/shared';
+import type { CreateInitiativeInput, InitiativeDto } from '@app/shared';
 import { accessToken } from './auth';
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -16,7 +16,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  listProjects: () => request<ProjectDto[]>('/projects'),
-  createProject: (input: CreateProjectInput) =>
-    request<ProjectDto>('/projects', { method: 'POST', body: JSON.stringify(input) }),
+  listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
+  createInitiative: (input: CreateInitiativeInput) =>
+    request<InitiativeDto>('/initiatives', { method: 'POST', body: JSON.stringify(input) }),
 };
