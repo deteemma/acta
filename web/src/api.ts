@@ -1,5 +1,11 @@
-import type { CreateInitiativeInput, InitiativeDto } from '@app/shared';
+import type { CreateInitiativeInput, InitiativeDto, MeDto, UpdateMeInput } from '@app/shared';
 import { accessToken } from './auth';
+
+export class ApiError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+  }
+}
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api${path}`, {
@@ -11,11 +17,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers,
     },
   });
-  if (!response.ok) throw new Error(`Erreur ${response.status}`);
+  if (!response.ok) throw new ApiError(response.status);
   return (response.status === 204 ? undefined : await response.json()) as T;
 }
 
 export const api = {
+  me: () => request<MeDto>('/me'),
+  updateMe: (input: UpdateMeInput) => request<MeDto>('/me', { method: 'PATCH', body: JSON.stringify(input) }),
   listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
   createInitiative: (input: CreateInitiativeInput) =>
     request<InitiativeDto>('/initiatives', { method: 'POST', body: JSON.stringify(input) }),

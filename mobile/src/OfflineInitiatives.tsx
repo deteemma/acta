@@ -4,8 +4,9 @@ import { randomUUID } from 'expo-crypto';
 import { useEffect, useState } from 'react';
 import { FlatList, Text } from 'react-native';
 import type { Api } from './api';
+import { useI18n } from './i18n';
 import { Connector, db } from './powersync';
-import { InitiativeForm, ROLE_LABELS, styles } from './InitiativeForm';
+import { InitiativeForm, styles } from './InitiativeForm';
 
 interface Props {
   endpoint: string;
@@ -15,7 +16,8 @@ interface Props {
 
 /** Mode hors ligne : la liste vient de la réplique locale, synchronisée par PowerSync. */
 export default function OfflineInitiatives({ endpoint, getToken, api }: Props) {
-  const [rejection, setRejection] = useState<string | null>(null);
+  const { t } = useI18n();
+  const [rejection, setRejection] = useState<number | null>(null);
 
   useEffect(() => {
     void db.connect(new Connector(endpoint, getToken, api, setRejection));
@@ -24,13 +26,14 @@ export default function OfflineInitiatives({ endpoint, getToken, api }: Props) {
 
   return (
     <PowerSyncContext.Provider value={db}>
-      {rejection && <Text style={styles.error}>{rejection}</Text>}
+      {rejection != null && <Text style={styles.error}>{t('sync.rejected', { status: rejection })}</Text>}
       <LocalInitiatives />
     </PowerSyncContext.Provider>
   );
 }
 
 function LocalInitiatives() {
+  const { t } = useI18n();
   // Le rôle n'est connu qu'après synchronisation de la ligne initiative_member.
   const { data: initiatives } = useQuery<{ id: string; code: string; name: string; role: InitiativeRole | null }>(
     `SELECT p.id, p.code, p.name, m.role
@@ -56,10 +59,10 @@ function LocalInitiatives() {
         renderItem={({ item }) => (
           <Text style={styles.item}>
             {item.code} {item.name}{' '}
-            <Text style={styles.role}>{item.role ? ROLE_LABELS[item.role] : 'en attente de synchronisation'}</Text>
+            <Text style={styles.role}>{item.role ? t(`role.${item.role}`) : t('initiatives.pendingSync')}</Text>
           </Text>
         )}
-        ListEmptyComponent={<Text>Aucune initiative pour l'instant.</Text>}
+        ListEmptyComponent={<Text>{t('initiatives.empty')}</Text>}
       />
     </>
   );

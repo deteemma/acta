@@ -1,7 +1,9 @@
+import { translate } from '@app/shared';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { currentUser, initAuth } from './auth';
+import { browserLocale } from './i18n';
 import './styles.css';
 
 const root = createRoot(document.getElementById('root')!);
@@ -16,5 +18,5 @@ initAuth()
     );
   })
   .catch((error: unknown) => {
-    root.render(<p className="error">Impossible de démarrer : {String(error)}</p>);
+    root.render(<p className="error">{translate(browserLocale(), 'app.startFailed', { error: String(error) })}</p>);
   });

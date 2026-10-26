@@ -1,14 +1,8 @@
-import type { CreateInitiativeInput, InitiativeDto, UpdateInitiativeInput } from '@app/shared';
+import type { CreateInitiativeInput, InitiativeDto, MeDto, UpdateInitiativeInput, UpdateMeInput } from '@app/shared';
+import { ApiError } from './api-error';
 import { API_URL } from './config';
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export { ApiError };
 
 export function createApi(getToken: () => string) {
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -25,6 +19,8 @@ export function createApi(getToken: () => string) {
   }
 
   return {
+    me: () => request<MeDto>('/me'),
+    updateMe: (input: UpdateMeInput) => request<MeDto>('/me', { method: 'PATCH', body: JSON.stringify(input) }),
     listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
     createInitiative: (input: CreateInitiativeInput) =>
       request<InitiativeDto>('/initiatives', { method: 'POST', body: JSON.stringify(input) }),

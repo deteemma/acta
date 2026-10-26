@@ -1,34 +1,29 @@
-import { createInitiativeSchema, type InitiativeRole } from '@app/shared';
+import { createInitiativeSchema } from '@app/shared';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
-
-export const ROLE_LABELS: Record<InitiativeRole, string> = {
-  owner: 'Propriétaire',
-  contributor: 'Contributeur',
-  reader: 'Lecteur',
-};
+import { describeError, useI18n } from './i18n';
 
 /** Saisie d'une nouvelle initiative, validée avec le schéma partagé (@app/shared). */
 export function InitiativeForm({ onCreate }: { onCreate: (code: string, name: string) => Promise<void> }) {
+  const { t } = useI18n();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  // Erreur gardée telle quelle pour suivre un changement de langue.
+  const [failure, setFailure] = useState<unknown>(null);
 
   async function submit() {
     const parsed = createInitiativeSchema.safeParse({ code, name });
     if (!parsed.success) {
-      setError(
-        'Le code fait 2 à 10 lettres majuscules ou chiffres et commence par une lettre ; le nom est obligatoire (120 caractères au plus).',
-      );
+      setFailure({ invalid: true });
       return;
     }
     try {
       await onCreate(parsed.data.code, parsed.data.name);
       setCode('');
       setName('');
-      setError(null);
+      setFailure(null);
     } catch (e) {
-      setError(String(e));
+      setFailure(e);
     }
   }
 
@@ -40,15 +35,21 @@ export function InitiativeForm({ onCreate }: { onCreate: (code: string, name: st
           value={code}
           onChangeText={(text) => setCode(text.toUpperCase())}
           autoCapitalize="characters"
-          placeholder="Code"
+          placeholder={t('initiatives.codeShortPlaceholder')}
         />
-        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Nom de l’initiative" />
-        <Button title="Créer" onPress={() => void submit()} />
+        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={t('initiatives.namePlaceholder')} />
+        <Button title={t('initiatives.create')} onPress={() => void submit()} />
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
+      {failure != null && (
+        <Text style={styles.error}>
+          {isInvalid(failure) ? t('initiatives.invalid') : describeError(t, failure)}
+        </Text>
+      )}
     </View>
   );
 }
+
+const isInvalid = (failure: unknown) => (failure as { invalid?: boolean }).invalid === true;
 
 export const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 8, marginVertical: 12 },

@@ -31,7 +31,10 @@ export async function currentUser(): Promise<User | null> {
   return user && !user.expired ? user : null;
 }
 
-export const login = () => manager?.signinRedirect();
+export async function login(): Promise<void> {
+  if (!manager) throw new Error('initAuth() non appelé');
+  await manager.signinRedirect();
+}
 export const logout = () => manager?.signoutRedirect();
 
 export async function accessToken(): Promise<string> {

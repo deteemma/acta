@@ -27,8 +27,8 @@ export const db = new PowerSyncDatabase({
   database: { dbFilename: 'application.sqlite' },
 });
 
-/** Écritures refusées par le serveur, à signaler à l'utilisateur. */
-export type RejectionListener = (message: string) => void;
+/** Écritures refusées par le serveur (statut HTTP), à signaler à l'utilisateur. */
+export type RejectionListener = (status: number) => void;
 
 export class Connector implements PowerSyncBackendConnector {
   constructor(
@@ -52,7 +52,7 @@ export class Connector implements PowerSyncBackendConnector {
         // Refus métier (4xx) : l'écriture est abandonnée et signalée ; la
         // synchronisation rétablit ensuite la version du serveur.
         if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-          this.onRejected(`Modification refusée par le serveur (${error.status}).`);
+          this.onRejected(error.status);
           continue;
         }
         throw error; // Erreur réseau : nouvelle tentative plus tard.

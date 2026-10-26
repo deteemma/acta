@@ -1,5 +1,6 @@
 // Schémas de validation partagés par l'API, le web et le mobile.
 import { z } from 'zod';
+import { LOCALES } from './i18n.js';
 import { INITIATIVE_ROLES } from './roles.js';
 
 export const initiativeRoleSchema = z.enum(INITIATIVE_ROLES);
@@ -46,6 +47,21 @@ export interface InitiativeMemberDto {
   role: z.infer<typeof initiativeRoleSchema>;
   /** Membre de l'équipe BA de l'initiative (ADR-0015). */
   isTeamBa: boolean;
+}
+
+export const localeSchema = z.enum(LOCALES);
+
+export const updateMeSchema = z.object({
+  locale: localeSchema,
+});
+export type UpdateMeInput = z.infer<typeof updateMeSchema>;
+
+/** Utilisateur courant ; `locale` vaut null tant qu'il n'a pas choisi sa langue. */
+export interface MeDto {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  locale: z.infer<typeof localeSchema> | null;
 }
 
 /** Configuration publique servie par l'API à /api/config (web et mobile). */

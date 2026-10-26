@@ -8,10 +8,11 @@ import { HealthController } from './health/health.controller.js';
 import { InitiativesController } from './initiatives/initiatives.controller.js';
 import { InitiativeRoleGuard } from './initiatives/initiative-role.guard.js';
 import { InitiativesService } from './initiatives/initiatives.service.js';
+import { MeController } from './users/me.controller.js';
 import { UsersService } from './users/users.service.js';
 
 @Module({
-  controllers: [HealthController, InitiativesController],
+  controllers: [HealthController, InitiativesController, MeController],
   providers: [
     { provide: AppConfig, useFactory: () => new AppConfig() },
     DatabaseService,

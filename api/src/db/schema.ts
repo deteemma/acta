@@ -1,6 +1,6 @@
 // Types Kysely des tables (voir api/migrations). À tenir à jour avec les migrations.
 import type { ColumnType, Generated } from 'kysely';
-import type { InitiativeRole } from '@app/shared';
+import type { InitiativeRole, Locale } from '@app/shared';
 
 type Timestamp = ColumnType<Date, Date | string | undefined, Date | string>;
 
@@ -8,6 +8,7 @@ export interface AppUserTable {
   id: string;
   email: string | null;
   display_name: string | null;
+  locale: Generated<Locale | null>;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

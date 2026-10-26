@@ -122,6 +122,13 @@ await check('admin (non-membre) ne voit pas l’initiative : 404', async () => {
   const list = await call(admin, 'GET', '/initiatives');
   assert.ok(!list.body.some((p) => p.id === initiativeId));
 });
+await check('langue du compte : enregistrée puis relue (ADR-0013)', async () => {
+  assert.equal((await call(chloe, 'PATCH', '/me', { locale: 'en' })).status, 200);
+  assert.equal((await call(chloe, 'GET', '/me')).body.locale, 'en');
+});
+await check('langue non disponible refusée (schéma partagé) : 400', async () => {
+  assert.equal((await call(chloe, 'PATCH', '/me', { locale: 'de' })).status, 400);
+});
 
 console.log('\nBarrière 2 : base de données (RLS, compte applicatif)');
 await check('chloé (lectrice) : UPDATE sans effet', async () => {
@@ -143,6 +150,10 @@ await check('un lecteur ne peut pas être BA de l’équipe (contrainte en base)
     asUserInDb(alice.sub, `UPDATE initiative_member SET is_team_ba = true WHERE initiative_id = $1 AND user_id = $2`, [initiativeId, chloe.sub]),
     /check constraint/,
   );
+});
+await check('bruno ne modifie pas la langue de chloé', async () => {
+  const r = await asUserInDb(bruno.sub, `UPDATE app_user SET locale = 'fr' WHERE id = $1`, [chloe.sub]);
+  assert.equal(r.rowCount, 0);
 });
 await check('admin (non-membre) : aucune ligne visible', async () => {
   const r = await asUserInDb(admin.sub, `SELECT * FROM initiative WHERE id = $1`, [initiativeId]);
