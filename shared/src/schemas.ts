@@ -20,9 +20,42 @@ export const createInitiativeSchema = z.object({
 });
 export type CreateInitiativeInput = z.infer<typeof createInitiativeSchema>;
 
-export const updateInitiativeSchema = z.object({
-  name: initiativeNameSchema,
-});
+/** Approche d'analyse d'une initiative (tâche BABOK 3.1). */
+export const ANALYSIS_APPROACHES = ['predictive', 'adaptive'] as const;
+export type AnalysisApproach = (typeof ANALYSIS_APPROACHES)[number];
+export const analysisApproachSchema = z.enum(ANALYSIS_APPROACHES);
+
+/** Texte libre facultatif, sans mise en forme ; vide = pas de description. */
+export const INITIATIVE_DESCRIPTION_MAX_LENGTH = 4000;
+export const initiativeDescriptionSchema = z
+  .string()
+  .trim()
+  .max(INITIATIVE_DESCRIPTION_MAX_LENGTH)
+  .transform((text) => text || null)
+  .nullable();
+
+/** Date sans heure, au format AAAA-MM-JJ. */
+const optionalDateSchema = z.iso.date().nullable();
+
+/**
+ * Modification de la fiche : seuls les champs fournis changent (le mobile hors
+ * ligne n'envoie que le nom). Le code n'est modifiable que par le propriétaire.
+ */
+export const updateInitiativeSchema = z
+  .object({
+    code: initiativeCodeSchema,
+    name: initiativeNameSchema,
+    description: initiativeDescriptionSchema,
+    analysisApproach: analysisApproachSchema.nullable(),
+    startDate: optionalDateSchema,
+    plannedEndDate: optionalDateSchema,
+  })
+  .partial()
+  // Si les deux dates sont fournies, la fin prévue ne précède pas le début ;
+  // la base vérifie aussi le cas où une seule des deux change.
+  .refine((i) => !i.startDate || !i.plannedEndDate || i.plannedEndDate >= i.startDate, {
+    path: ['plannedEndDate'],
+  });
 export type UpdateInitiativeInput = z.infer<typeof updateInitiativeSchema>;
 
 export const addMemberSchema = z.object({
@@ -36,6 +69,14 @@ export interface InitiativeDto {
   id: string;
   code: string;
   name: string;
+  description: string | null;
+  analysisApproach: AnalysisApproach | null;
+  /** AAAA-MM-JJ */
+  startDate: string | null;
+  /** AAAA-MM-JJ */
+  plannedEndDate: string | null;
+  /** Date d'archivage ; null pour une initiative active. */
+  archivedAt: string | null;
   createdAt: string;
   myRole: z.infer<typeof initiativeRoleSchema>;
 }

@@ -19,12 +19,23 @@ export function hasAtLeast(role: InitiativeRole | null | undefined, required: In
 export const INITIATIVE_PERMISSIONS = {
   view: 'reader',
   edit: 'contributor',
+  editCode: 'owner',
+  /** Archiver et désarchiver. */
+  archive: 'owner',
   manageMembers: 'owner',
   delete: 'owner',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;
 
-export function can(role: InitiativeRole | null | undefined, action: InitiativeAction): boolean {
+/** Une initiative archivée est en lecture seule : on peut seulement la désarchiver ou la supprimer. */
+const ALLOWED_WHEN_ARCHIVED: readonly InitiativeAction[] = ['view', 'archive', 'delete'];
+
+export function can(
+  role: InitiativeRole | null | undefined,
+  action: InitiativeAction,
+  initiative: { archived: boolean } = { archived: false },
+): boolean {
+  if (initiative.archived && !ALLOWED_WHEN_ARCHIVED.includes(action)) return false;
   return hasAtLeast(role, INITIATIVE_PERMISSIONS[action]);
 }

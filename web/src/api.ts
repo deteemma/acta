@@ -1,4 +1,11 @@
-import type { CreateInitiativeInput, InitiativeDto, InitiativeMemberDto, MeDto, UpdateMeInput } from '@app/shared';
+import type {
+  CreateInitiativeInput,
+  InitiativeDto,
+  InitiativeMemberDto,
+  MeDto,
+  UpdateInitiativeInput,
+  UpdateMeInput,
+} from '@app/shared';
 import { accessToken } from './auth';
 
 export class ApiError extends Error {
@@ -29,4 +36,9 @@ export const api = {
   listMembers: (id: string) => request<InitiativeMemberDto[]>(`/initiatives/${id}/members`),
   createInitiative: (input: CreateInitiativeInput) =>
     request<InitiativeDto>('/initiatives', { method: 'POST', body: JSON.stringify(input) }),
+  updateInitiative: (id: string, input: UpdateInitiativeInput) =>
+    request<InitiativeDto>(`/initiatives/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  archiveInitiative: (id: string) => request<InitiativeDto>(`/initiatives/${id}/archive`, { method: 'PUT' }),
+  unarchiveInitiative: (id: string) => request<InitiativeDto>(`/initiatives/${id}/archive`, { method: 'DELETE' }),
+  deleteInitiative: (id: string) => request<void>(`/initiatives/${id}`, { method: 'DELETE' }),
 };

@@ -73,6 +73,7 @@ export function Palette({ initiatives, onClose }: { initiatives: InitiativeDto[]
             onClick={() => openInitiative(initiative)}
           >
             <strong>{initiative.code}</strong> {initiative.name}
+            {initiative.archivedAt && <small> · {t('initiative.archived')}</small>}
           </li>
         ))}
       </ul>

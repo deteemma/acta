@@ -20,3 +20,26 @@ test('le propriétaire a tous les droits', () => {
 test('un non-membre n’a aucun droit', () => {
   assert.equal(hasAtLeast(null, 'reader'), false);
 });
+
+test('seul le propriétaire modifie le code et archive l’initiative', () => {
+  assert.equal(can('contributor', 'editCode'), false);
+  assert.equal(can('contributor', 'archive'), false);
+  assert.equal(can('owner', 'editCode'), true);
+  assert.equal(can('owner', 'archive'), true);
+});
+
+test('une initiative archivée est en lecture seule pour tous ses membres', () => {
+  const archived = { archived: true };
+  assert.equal(can('reader', 'view', archived), true);
+  assert.equal(can('contributor', 'edit', archived), false);
+  assert.equal(can('owner', 'edit', archived), false);
+  assert.equal(can('owner', 'editCode', archived), false);
+  assert.equal(can('owner', 'manageMembers', archived), false);
+});
+
+test('le propriétaire peut encore désarchiver ou supprimer une initiative archivée', () => {
+  const archived = { archived: true };
+  assert.equal(can('owner', 'archive', archived), true);
+  assert.equal(can('owner', 'delete', archived), true);
+  assert.equal(can('contributor', 'archive', archived), false);
+});

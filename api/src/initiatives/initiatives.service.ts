@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  AddMemberInput,
-  CreateInitiativeInput,
-  InitiativeDto,
-  InitiativeMemberDto,
-  UpdateInitiativeInput,
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  can,
+  type AddMemberInput,
+  type CreateInitiativeInput,
+  type InitiativeDto,
+  type InitiativeMemberDto,
+  type InitiativeRole,
+  type UpdateInitiativeInput,
 } from '@app/shared';
 import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
@@ -24,9 +26,7 @@ export class InitiativesService {
 
   get(userId: string, initiativeId: string): Promise<InitiativeDto> {
     return this.database.asUser(userId, async (tx) => {
-      const row = await this.selectInitiatives(tx, userId).where('i.id', '=', initiativeId).executeTakeFirst();
-      if (!row) throw new NotFoundException();
-      return toDto(row);
+      return toDto(await this.loadInitiative(tx, userId, initiativeId));
     });
   }
 
@@ -43,21 +43,63 @@ export class InitiativesService {
         if (isUniqueViolation(error)) throw new ConflictException('Ce code d’initiative est déjà utilisé');
         throw error;
       }
-      const row = await this.selectInitiatives(tx, userId).where('i.id', '=', id).executeTakeFirstOrThrow();
-      return toDto(row);
+      return toDto(await this.loadInitiative(tx, userId, id));
     });
   }
 
-  update(userId: string, initiativeId: string, input: UpdateInitiativeInput): Promise<InitiativeDto> {
+  /** Seuls les champs fournis changent. */
+  update(
+    userId: string,
+    role: InitiativeRole,
+    initiativeId: string,
+    input: UpdateInitiativeInput,
+  ): Promise<InitiativeDto> {
+    return this.database.asUser(userId, async (tx) => {
+      const current = await this.loadInitiative(tx, userId, initiativeId);
+      if (input.code !== undefined && input.code !== current.code && !can(role, 'editCode')) {
+        throw new ForbiddenException();
+      }
+      // Ticket 09 : refuser aussi le changement de code dès qu'une référence existe.
+      try {
+        await tx
+          .updateTable('initiative')
+          .set({
+            code: input.code,
+            name: input.name,
+            description: input.description,
+            analysis_approach: input.analysisApproach,
+            start_date: input.startDate,
+            planned_end_date: input.plannedEndDate,
+            updated_at: sql`now()`,
+          })
+          .where('id', '=', initiativeId)
+          .execute();
+      } catch (error) {
+        if (isUniqueViolation(error)) throw new ConflictException('Ce code d’initiative est déjà utilisé');
+        // Fin prévue avant le début, une fois combinée avec la date déjà enregistrée.
+        if (isConstraintViolation(error, 'initiative_dates_order')) {
+          throw new BadRequestException('La fin prévue précède le début');
+        }
+        throw error;
+      }
+      return toDto(await this.loadInitiative(tx, userId, initiativeId));
+    });
+  }
+
+  /** Archiver (lecture seule pour tous) ou désarchiver ; sans effet si c'est déjà le cas. */
+  setArchived(userId: string, initiativeId: string, archived: boolean): Promise<InitiativeDto> {
     return this.database.asUser(userId, async (tx) => {
       await tx
         .updateTable('initiative')
-        .set({ name: input.name, updated_at: sql`now()` })
+        .set(
+          archived
+            ? { archived_at: sql`now()`, archived_by: userId, updated_at: sql`now()` }
+            : { archived_at: null, archived_by: null, updated_at: sql`now()` },
+        )
         .where('id', '=', initiativeId)
+        .where('archived_at', archived ? 'is' : 'is not', null)
         .execute();
-      const row = await this.selectInitiatives(tx, userId).where('i.id', '=', initiativeId).executeTakeFirst();
-      if (!row) throw new NotFoundException();
-      return toDto(row);
+      return toDto(await this.loadInitiative(tx, userId, initiativeId));
     });
   }
 
@@ -104,13 +146,32 @@ export class InitiativesService {
     });
   }
 
+  /** Initiative visible par l'utilisateur, avec son rôle ; 404 sinon. */
+  private async loadInitiative(tx: Tx, userId: string, initiativeId: string) {
+    const row = await this.selectInitiatives(tx, userId).where('i.id', '=', initiativeId).executeTakeFirst();
+    if (!row) throw new NotFoundException();
+    return row;
+  }
+
   private selectInitiatives(tx: Tx, userId: string) {
     return tx
       .selectFrom('initiative as i')
       .innerJoin('initiative_member as m', (join) =>
         join.onRef('m.initiative_id', '=', 'i.id').on('m.user_id', '=', userId),
       )
-      .select(['i.id', 'i.code', 'i.name', 'i.created_at', 'm.role']);
+      .select([
+        'i.id',
+        'i.code',
+        'i.name',
+        'i.description',
+        'i.analysis_approach',
+        // Sans conversion, pg renverrait un Date à minuit local (décalage de fuseau).
+        sql<string | null>`i.start_date::text`.as('start_date'),
+        sql<string | null>`i.planned_end_date::text`.as('planned_end_date'),
+        'i.archived_at',
+        'i.created_at',
+        'm.role',
+      ]);
   }
 }
 
@@ -118,12 +179,29 @@ function toDto(row: {
   id: string;
   code: string;
   name: string;
+  description: string | null;
+  analysis_approach: InitiativeDto['analysisApproach'];
+  start_date: string | null;
+  planned_end_date: string | null;
+  archived_at: Date | null;
   created_at: Date;
   role: InitiativeDto['myRole'];
 }): InitiativeDto {
-  return { id: row.id, code: row.code, name: row.name, createdAt: row.created_at.toISOString(), myRole: row.role };
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    description: row.description,
+    analysisApproach: row.analysis_approach,
+    startDate: row.start_date,
+    plannedEndDate: row.planned_end_date,
+    archivedAt: row.archived_at?.toISOString() ?? null,
+    createdAt: row.created_at.toISOString(),
+    myRole: row.role,
+  };
 }
 
-function isUniqueViolation(error: unknown): boolean {
-  return (error as { code?: unknown } | null)?.code === '23505';
-}
+const pgErrorCode = (error: unknown) => (error as { code?: unknown } | null)?.code;
+const isUniqueViolation = (error: unknown) => pgErrorCode(error) === '23505';
+const isConstraintViolation = (error: unknown, constraint: string) =>
+  (error as { constraint?: unknown } | null)?.constraint === constraint;

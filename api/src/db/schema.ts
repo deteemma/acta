@@ -1,8 +1,10 @@
 // Types Kysely des tables (voir api/migrations). À tenir à jour avec les migrations.
 import type { ColumnType, Generated } from 'kysely';
-import type { InitiativeRole, Locale } from '@app/shared';
+import type { AnalysisApproach, InitiativeRole, Locale } from '@app/shared';
 
 type Timestamp = ColumnType<Date, Date | string | undefined, Date | string>;
+/** Colonne facultative : absente à l'insertion. */
+type Optional<T> = ColumnType<T | null, T | null | undefined, T | null>;
 
 export interface AppUserTable {
   id: string;
@@ -17,6 +19,13 @@ export interface InitiativeTable {
   id: string;
   code: string;
   name: string;
+  description: Optional<string>;
+  analysis_approach: Optional<AnalysisApproach>;
+  /** Colonnes « date » : lues en texte AAAA-MM-JJ (voir InitiativesService). */
+  start_date: Optional<string>;
+  planned_end_date: Optional<string>;
+  archived_at: ColumnType<Date | null, undefined, Date | string | null>;
+  archived_by: Optional<string>;
   created_by: Generated<string>;
   created_at: Timestamp;
   updated_at: Timestamp;

@@ -53,6 +53,9 @@ function Shell({ user }: { user: User }) {
     api.listInitiatives().then(setInitiatives, (e: unknown) => setError(toUiError(e)));
   }, []);
 
+  const active = initiatives.filter((i) => !i.archivedAt);
+  const archived = initiatives.filter((i) => i.archivedAt);
+
   return (
     <>
       <main>
@@ -67,17 +70,14 @@ function Shell({ user }: { user: User }) {
           </span>
         </header>
         <ErrorMessage error={error} />
-        <ul className="links">
-          {initiatives.map((i) => (
-            <li key={i.id}>
-              <button type="button" className="link" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>
-                <strong>{i.code}</strong> {i.name}
-              </button>{' '}
-              <small>{t(`role.${i.myRole}`)}</small>
-            </li>
-          ))}
-        </ul>
+        <InitiativeList initiatives={active} />
         {initiatives.length === 0 && <p>{t('initiatives.empty')}</p>}
+        {archived.length > 0 && (
+          <details className="archived">
+            <summary>{t('initiatives.archivedSection', { count: archived.length })}</summary>
+            <InitiativeList initiatives={archived} />
+          </details>
+        )}
       </main>
       {/* Deviendra « + Action » au ticket 07. */}
       <button
@@ -93,18 +93,43 @@ function Shell({ user }: { user: User }) {
         render={(content, close) => {
           switch (content.kind) {
             case 'palette':
-              return <Palette initiatives={initiatives} onClose={close} />;
+              // Les archivées après les actives.
+              return <Palette initiatives={[...active, ...archived]} onClose={close} />;
             case 'createInitiative':
               return (
                 <CreateInitiativePanel onCreated={(i) => setInitiatives((list) => [i, ...list])} onClose={close} />
               );
             case 'initiative':
-              return <InitiativePanel initiativeId={content.initiativeId} onClose={close} />;
+              return (
+                <InitiativePanel
+                  initiativeId={content.initiativeId}
+                  onChanged={(changed) => setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)))}
+                  onDeleted={(id) => setInitiatives((list) => list.filter((i) => i.id !== id))}
+                  onClose={close}
+                />
+              );
             case 'member':
               return <MemberPanel member={content.member} onClose={close} />;
           }
         }}
       />
     </>
+  );
+}
+
+function InitiativeList({ initiatives }: { initiatives: InitiativeDto[] }) {
+  const { t } = useI18n();
+  const { open } = usePanels();
+  return (
+    <ul className="links">
+      {initiatives.map((i) => (
+        <li key={i.id}>
+          <button type="button" className="link" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>
+            <strong>{i.code}</strong> {i.name}
+          </button>{' '}
+          <small>{t(`role.${i.myRole}`)}</small>
+        </li>
+      ))}
+    </ul>
   );
 }
