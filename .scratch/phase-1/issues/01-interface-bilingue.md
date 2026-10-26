@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** done (à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 26.10.2026)
 
 - [x] Un sélecteur de langue est accessible à tout moment ; le changement s'applique immédiatement.
 - [x] La langue choisie est enregistrée sur le compte de l'utilisateur et appliquée à sa prochaine connexion, y compris sur un autre appareil.
