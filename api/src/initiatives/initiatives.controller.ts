@@ -4,11 +4,14 @@ import {
   addMemberSchema,
   createInitiativeSchema,
   updateInitiativeSchema,
+  updateMemberSchema,
   type AddMemberInput,
   type CreateInitiativeInput,
   type InitiativeDto,
   type InitiativeMemberDto,
+  type OwnerDesignationDto,
   type UpdateInitiativeInput,
+  type UpdateMemberInput,
 } from '@app/shared';
 import { type AuthenticatedUser, CurrentUser } from '../auth/authenticated-user.js';
 import { ZodValidationPipe } from '../zod-validation.pipe.js';
@@ -98,5 +101,38 @@ export class InitiativesController {
     @Body(new ZodValidationPipe(addMemberSchema)) body: AddMemberInput,
   ): Promise<void> {
     return this.initiatives.addMember(user.id, initiativeId, body);
+  }
+
+  @Patch(':initiativeId/members/:userId')
+  @HttpCode(204)
+  @RequireInitiativeRole('changeTeam')
+  updateMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('userId') memberId: string,
+    @Body(new ZodValidationPipe(updateMemberSchema)) body: UpdateMemberInput,
+  ): Promise<void> {
+    return this.initiatives.updateMember(user.id, initiativeId, memberId, body);
+  }
+
+  /** Retirer un membre, ou quitter l'initiative si `userId` est l'utilisateur courant. */
+  @Delete(':initiativeId/members/:userId')
+  @HttpCode(204)
+  @RequireInitiativeRole('changeTeam')
+  removeMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('userId') memberId: string,
+  ): Promise<void> {
+    return this.initiatives.removeMember(user.id, initiativeId, memberId);
+  }
+
+  @Get(':initiativeId/owner-designations')
+  @RequireInitiativeRole('view')
+  listOwnerDesignations(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+  ): Promise<OwnerDesignationDto[]> {
+    return this.initiatives.listOwnerDesignations(user.id, initiativeId);
   }
 }

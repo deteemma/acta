@@ -270,3 +270,36 @@ details.archived .links {
     animation: none;
   }
 }
+/* Équipe de l'initiative (ticket 04) */
+.team-members li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+.team-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin-inline-start: auto;
+}
+.team-controls label.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.badge {
+  padding: 0 0.4rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.75rem;
+}
+form.invite {
+  margin-top: 1rem;
+}
+form.invite h4 {
+  margin: 0;
+}
+.owner-history {
+  padding-inline-start: 1.25rem;
+}

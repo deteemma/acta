@@ -9,6 +9,7 @@ import {
   type InitiativeMemberDto,
   INITIATIVE_DESCRIPTION_MAX_LENGTH,
   type Locale,
+  type OwnerDesignationDto,
   updateInitiativeSchema,
 } from '@app/shared';
 import { type FormEvent, useEffect, useState } from 'react';
@@ -16,6 +17,7 @@ import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { Panel, usePanels } from './panels';
+import { memberName, TeamSection } from './team-section';
 
 /** Date AAAA-MM-JJ ou horodatage, affiché dans la langue de l'interface. */
 export function formatDate(locale: Locale, date: string): string {
@@ -36,16 +38,26 @@ export function InitiativePanel({
   onClose: () => void;
 }) {
   const { t, locale } = useI18n();
-  const { open } = usePanels();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
+  const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
-  useEffect(() => {
-    Promise.all([api.getInitiative(initiativeId), api.listMembers(initiativeId)]).then(([i, m]) => {
-      setInitiative(i);
+  // Rechargée après chaque changement de l'équipe : il peut changer mon rôle.
+  const load = () =>
+    Promise.all([
+      api.getInitiative(initiativeId),
+      api.listMembers(initiativeId),
+      api.listOwnerDesignations(initiativeId),
+    ]).then(([i, m, d]) => {
+      changed(i);
       setMembers(m);
+      setDesignations(d);
     }, (e: unknown) => setError(toUiError(e)));
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initiativeId]);
 
   function changed(next: InitiativeDto) {
@@ -72,17 +84,17 @@ export function InitiativePanel({
             <dt>{t('initiative.myRole')}</dt>
             <dd>{t(`role.${initiative.myRole}`)}</dd>
           </dl>
-          <h3>{t('initiative.members')}</h3>
-          <ul className="links">
-            {members.map((member) => (
-              <li key={member.userId}>
-                <button type="button" className="link" onClick={() => open({ kind: 'member', member })}>
-                  {memberName(member)}
-                </button>{' '}
-                <small>{t(`role.${member.role}`)}</small>
-              </li>
-            ))}
-          </ul>
+          <TeamSection
+            initiative={initiative}
+            members={members}
+            designations={designations}
+            onChanged={() => void load()}
+            onLeft={() => {
+              // L'initiative quitte la liste, comme une suppression.
+              onDeleted(initiative.id);
+              onClose();
+            }}
+          />
           {can(initiative.myRole, 'archive', state) && (
             <OwnerActions
               initiative={initiative}
@@ -295,8 +307,6 @@ function OwnerActions({
     </section>
   );
 }
-
-const memberName = (member: InitiativeMemberDto) => member.displayName ?? member.email ?? member.userId;
 
 export function MemberPanel({ member, onClose }: { member: InitiativeMemberDto; onClose: () => void }) {
   const { t } = useI18n();

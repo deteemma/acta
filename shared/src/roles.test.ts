@@ -43,3 +43,10 @@ test('le propriétaire peut encore désarchiver ou supprimer une initiative arch
   assert.equal(can('owner', 'delete', archived), true);
   assert.equal(can('contributor', 'archive', archived), false);
 });
+
+test('tout membre peut demander un changement de l’équipe, sauf sur une initiative archivée', () => {
+  // Le détail (qui peut faire quoi) est vérifié par checkTeamChange (team.ts).
+  assert.equal(can('reader', 'changeTeam'), true);
+  assert.equal(can(null, 'changeTeam'), false);
+  assert.equal(can('owner', 'changeTeam', { archived: true }), false);
+});

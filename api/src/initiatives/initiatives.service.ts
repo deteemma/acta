@@ -2,12 +2,17 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   can,
+  checkTeamChange,
   type AddMemberInput,
   type CreateInitiativeInput,
   type InitiativeDto,
   type InitiativeMemberDto,
   type InitiativeRole,
+  type OwnerDesignationDto,
+  type TeamChange,
+  type TeamChangeRefusal,
   type UpdateInitiativeInput,
+  type UpdateMemberInput,
 } from '@app/shared';
 import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
@@ -124,6 +129,7 @@ export class InitiativesService {
         displayName: r.display_name,
         role: r.role,
         isTeamBa: r.is_team_ba,
+        isMe: r.user_id === userId,
       }));
     });
   }
@@ -134,16 +140,109 @@ export class InitiativesService {
         SELECT find_user_id_by_email(${input.email}) AS id`.execute(tx);
       const memberId = rows[0]?.id;
       // L'invité doit s'être connecté au moins une fois à l'application.
-      if (!memberId) throw new NotFoundException('Aucun utilisateur avec cet e-mail');
-      const inserted = await tx
-        .insertInto('initiative_member')
-        .values({ initiative_id: initiativeId, user_id: memberId, role: input.role })
-        .onConflict((oc) => oc.columns(['initiative_id', 'user_id']).doNothing())
-        .executeTakeFirst();
-      if (inserted.numInsertedOrUpdatedRows === 0n) {
-        throw new ConflictException('Cet utilisateur est déjà membre de l’initiative');
-      }
+      if (!memberId) throw new NotFoundException({ statusCode: 404, refusal: 'userNotFound' });
+      const invite = { kind: 'invite', userId: memberId, role: input.role, isTeamBa: input.isTeamBa } as const;
+      await this.changeTeam(tx, userId, initiativeId, invite, () =>
+        tx
+          .insertInto('initiative_member')
+          .values({ initiative_id: initiativeId, user_id: memberId, role: input.role, is_team_ba: input.isTeamBa })
+          .execute(),
+      );
     });
+  }
+
+  /** Change le rôle ou l'indication « BA de l'équipe » d'un membre (règles : team.ts). */
+  updateMember(userId: string, initiativeId: string, memberId: string, input: UpdateMemberInput): Promise<void> {
+    return this.database.asUser(userId, async (tx) => {
+      await this.changeTeam(
+        tx,
+        userId,
+        initiativeId,
+        'role' in input
+          ? { kind: 'setRole', userId: memberId, role: input.role }
+          : { kind: 'setTeamBa', userId: memberId, isTeamBa: input.isTeamBa },
+        () =>
+          tx
+            .updateTable('initiative_member')
+            .set('role' in input ? { role: input.role } : { is_team_ba: input.isTeamBa })
+            .where('initiative_id', '=', initiativeId)
+            .where('user_id', '=', memberId)
+            .execute(),
+      );
+    });
+  }
+
+  /** Retire un membre, ou l'utilisateur quitte l'initiative (`memberId` = lui-même). */
+  removeMember(userId: string, initiativeId: string, memberId: string): Promise<void> {
+    return this.database.asUser(userId, async (tx) => {
+      await this.changeTeam(tx, userId, initiativeId, { kind: 'remove', userId: memberId }, () =>
+        tx
+          .deleteFrom('initiative_member')
+          .where('initiative_id', '=', initiativeId)
+          .where('user_id', '=', memberId)
+          .execute(),
+      );
+    });
+  }
+
+  /** Désignations de propriétaire, de la plus récente à la plus ancienne. */
+  listOwnerDesignations(userId: string, initiativeId: string): Promise<OwnerDesignationDto[]> {
+    return this.database.asUser(userId, async (tx) => {
+      const rows = await tx
+        .selectFrom('owner_designation as d')
+        .leftJoin('app_user as u', 'u.id', 'd.user_id')
+        .leftJoin('app_user as b', 'b.id', 'd.designated_by')
+        .select([
+          'd.user_id',
+          'u.email',
+          'u.display_name',
+          'd.designated_by',
+          'b.email as by_email',
+          'b.display_name as by_display_name',
+          'd.designated_at',
+        ])
+        .where('d.initiative_id', '=', initiativeId)
+        .orderBy('d.designated_at', 'desc')
+        .orderBy('d.id', 'desc')
+        .execute();
+      return rows.map((r) => ({
+        user: { userId: r.user_id, email: r.email, displayName: r.display_name },
+        designatedBy: r.designated_by
+          ? { userId: r.designated_by, email: r.by_email, displayName: r.by_display_name }
+          : null,
+        designatedAt: r.designated_at.toISOString(),
+      }));
+    });
+  }
+
+  /**
+   * Applique les règles d'équipe de @app/shared (première barrière) ; la base les
+   * vérifie de nouveau (seconde barrière), puis `write` enregistre le changement.
+   * Refus : 403, 404 ou 409 avec `refusal`.
+   */
+  private async changeTeam(
+    tx: Tx,
+    userId: string,
+    initiativeId: string,
+    change: TeamChange,
+    write: () => Promise<unknown>,
+  ): Promise<void> {
+    const team = await tx
+      .selectFrom('initiative_member')
+      .select(['user_id as userId', 'role', 'is_team_ba as isTeamBa'])
+      .where('initiative_id', '=', initiativeId)
+      .execute();
+    const refusal = checkTeamChange(team, userId, change);
+    if (refusal) throw teamRefusal(refusal);
+    try {
+      await write();
+    } catch (error) {
+      // Changement concurrent de l'équipe, refusé par la base.
+      if (isConstraintViolation(error, 'initiative_keeps_owner')) throw teamRefusal('lastOwner');
+      if (isConstraintViolation(error, 'initiative_keeps_team_ba')) throw teamRefusal('lastTeamBa');
+      if (isUniqueViolation(error)) throw teamRefusal('alreadyMember');
+      throw error;
+    }
   }
 
   /** Initiative visible par l'utilisateur, avec son rôle ; 404 sinon. */
@@ -199,6 +298,17 @@ function toDto(row: {
     createdAt: row.created_at.toISOString(),
     myRole: row.role,
   };
+}
+
+function teamRefusal(refusal: TeamChangeRefusal) {
+  switch (refusal) {
+    case 'forbidden':
+      return new ForbiddenException({ statusCode: 403, refusal });
+    case 'notMember':
+      return new NotFoundException({ statusCode: 404, refusal });
+    default:
+      return new ConflictException({ statusCode: 409, refusal });
+  }
 }
 
 const pgErrorCode = (error: unknown) => (error as { code?: unknown } | null)?.code;

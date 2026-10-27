@@ -39,8 +39,18 @@ export interface InitiativeMemberTable {
   created_at: Timestamp;
 }
 
+/** Écrite seulement par un déclencheur (migration 0005). */
+export interface OwnerDesignationTable {
+  id: Generated<string>;
+  initiative_id: string;
+  user_id: string;
+  designated_by: string | null;
+  designated_at: Timestamp;
+}
+
 export interface Database {
   app_user: AppUserTable;
   initiative: InitiativeTable;
   initiative_member: InitiativeMemberTable;
+  owner_designation: OwnerDesignationTable;
 }

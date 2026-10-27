@@ -58,11 +58,20 @@ export const updateInitiativeSchema = z
   });
 export type UpdateInitiativeInput = z.infer<typeof updateInitiativeSchema>;
 
+/** Invitation d'un utilisateur connecté au moins une fois (règles d'équipe : team.ts). */
 export const addMemberSchema = z.object({
   email: z.email(),
   role: initiativeRoleSchema,
+  isTeamBa: z.boolean().default(false),
 });
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
+
+/** Une modification de membre change soit son rôle, soit son indication « BA de l'équipe ». */
+export const updateMemberSchema = z.union([
+  z.strictObject({ role: initiativeRoleSchema }),
+  z.strictObject({ isTeamBa: z.boolean() }),
+]);
+export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
 
 /** Initiative telle que renvoyée par l'API, avec le rôle de l'utilisateur courant. */
 export interface InitiativeDto {
@@ -88,6 +97,24 @@ export interface InitiativeMemberDto {
   role: z.infer<typeof initiativeRoleSchema>;
   /** Membre de l'équipe BA de l'initiative (ADR-0015). */
   isTeamBa: boolean;
+  /** Vrai pour l'utilisateur courant. */
+  isMe: boolean;
+}
+
+/** Désignation d'un propriétaire, tracée à chaque passage au rôle de propriétaire (ADR-0015). */
+export interface OwnerDesignationDto {
+  /** Nouveau propriétaire. */
+  user: MemberNameDto;
+  /** Auteur de la désignation ; null si faite hors de l'application. */
+  designatedBy: MemberNameDto | null;
+  designatedAt: string;
+}
+
+/** Nom d'un utilisateur, qu'il soit encore membre ou non. */
+export interface MemberNameDto {
+  userId: string;
+  email: string | null;
+  displayName: string | null;
 }
 
 export const localeSchema = z.enum(LOCALES);

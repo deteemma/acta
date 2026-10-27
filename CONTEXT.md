@@ -26,6 +26,7 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 | Initiative archivée | `archived_at` | Initiative mise en lecture seule par son propriétaire, pour tous ses membres : plus aucune modification de la fiche ni des membres. Seul le propriétaire peut la désarchiver ou la supprimer. |
 | Membre | `initiative_member` | Lien entre un utilisateur et une initiative, avec un rôle. L'ensemble des membres BA forme l'équipe de l'initiative. |
 | BA de l'équipe | `is_team_ba` | Indication portée par un membre propriétaire ou contributeur, en plus de son rôle : il fait partie de l'équipe BA de l'initiative. Un BA de l'équipe peut désigner un nouveau propriétaire et attribuer ou retirer cette indication. Une initiative a toujours au moins un BA de l'équipe. |
+| Désignation de propriétaire | `owner_designation` | Trace de chaque passage d'un membre au rôle de propriétaire (création de l'initiative, invitation, changement de rôle, désignation par un BA de l'équipe) : qui, quand, au profit de qui. Consultable par tous les membres. |
 | Propriétaire | `owner` | Peut tout faire sur l'initiative, y compris gérer les membres et la supprimer. Une initiative a toujours au moins un propriétaire. |
 | Contributeur | `contributor` | Peut consulter et modifier l'initiative. |
 | Lecteur | `reader` | Peut seulement consulter l'initiative. |

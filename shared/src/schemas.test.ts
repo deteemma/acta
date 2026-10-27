@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { updateInitiativeSchema } from './schemas.js';
+import { addMemberSchema, updateInitiativeSchema, updateMemberSchema } from './schemas.js';
 
 const valid = (input: unknown) => updateInitiativeSchema.safeParse(input).success;
 
@@ -47,4 +47,21 @@ test('la fin prévue ne précède pas le début', () => {
 
 test('le code suit la règle du code d’initiative', () => {
   assert.equal(valid({ code: '1AB' }), false);
+});
+
+test('l’invitation porte un courriel, un rôle et, au choix, l’indication « BA de l’équipe »', () => {
+  assert.deepEqual(addMemberSchema.parse({ email: 'eve@exemple.test', role: 'reader' }), {
+    email: 'eve@exemple.test',
+    role: 'reader',
+    isTeamBa: false,
+  });
+  assert.equal(addMemberSchema.parse({ email: 'eve@exemple.test', role: 'owner', isTeamBa: true }).isTeamBa, true);
+});
+
+test('une modification de membre porte soit le rôle, soit l’indication « BA de l’équipe »', () => {
+  assert.equal(updateMemberSchema.safeParse({ role: 'owner' }).success, true);
+  assert.equal(updateMemberSchema.safeParse({ isTeamBa: false }).success, true);
+  assert.equal(updateMemberSchema.safeParse({ role: 'owner', isTeamBa: true }).success, false);
+  assert.equal(updateMemberSchema.safeParse({}).success, false);
+  assert.equal(updateMemberSchema.safeParse({ role: 'admin' }).success, false);
 });

@@ -22,7 +22,13 @@ export const INITIATIVE_PERMISSIONS = {
   editCode: 'owner',
   /** Archiver et désarchiver. */
   archive: 'owner',
+  /** Inviter un membre. */
   manageMembers: 'owner',
+  /**
+   * Changer le rôle ou l'indication « BA de l'équipe » d'un membre, retirer un
+   * membre ou quitter l'initiative : le détail est vérifié par checkTeamChange (team.ts).
+   */
+  changeTeam: 'reader',
   delete: 'owner',
 } as const satisfies Record<string, InitiativeRole>;
 
