@@ -21,10 +21,11 @@ Précisions de la responsable fonctionnelle (29.10.2026) :
 - Nouveau propriétaire désigné par l'administrateur : tout membre au compte actif (contributeur ou lecteur).
 - ACTA pilote Keycloak par un compte technique (client `api-admin`) : l'administrateur n'a pas de droits dans la console Keycloak, la suppression d'un compte n'est donc possible nulle part.
 
+Précisions de la responsable fonctionnelle (29.10.2026, après revue) :
+- L'application garde toujours au moins un administrateur actif. L'auteur d'un changement doit être encore administrateur actif dans Keycloak, même si son jeton est plus ancien.
+- Un compte désactivé ne peut pas être invité dans une initiative.
+- Le mot de passe temporaire fait au moins 6 caractères.
+- Acceptés tels quels : délai de 5 minutes au plus pour la désactivation et le changement de rôle ; droit `manage-users` du compte technique `api-admin`.
+
 Points en suspens :
 - Le socle génère le secret du compte technique (`socle/scripts/appliquer-realm.sh`) : modification à reporter dans le dépôt du socle (et dans `modele-application` si utile).
-- Invitation d'un membre (ticket 04) : un compte désactivé reste invitable. À trancher si besoin.
-- Désactivation : les sessions Keycloak sont fermées ; un jeton déjà émis reste accepté par l'API jusqu'à son expiration (5 minutes au plus).
-- Rôle administrateur : donné ou retiré, il prend effet au prochain jeton de la personne (5 minutes au plus).
-- Seul le changement sur soi-même est bloqué : deux administrateurs peuvent se retirer mutuellement le rôle et ne laisser aucun administrateur. Règle « au moins un administrateur » à décider si besoin.
-- Le compte technique `api-admin` a le droit Keycloak `manage-users`, qui inclut techniquement la suppression : seule ACTA (qui n'en offre pas le moyen) détient son secret, dans `.env`.

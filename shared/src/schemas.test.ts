@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addMemberSchema, updateInitiativeSchema, updateMemberSchema } from './schemas.js';
+import { addMemberSchema, createAccountSchema, updateInitiativeSchema, updateMemberSchema } from './schemas.js';
 
 const valid = (input: unknown) => updateInitiativeSchema.safeParse(input).success;
 
@@ -64,4 +64,10 @@ test('une modification de membre porte soit le rôle, soit l’indication « BA 
   assert.equal(updateMemberSchema.safeParse({ role: 'owner', isTeamBa: true }).success, false);
   assert.equal(updateMemberSchema.safeParse({}).success, false);
   assert.equal(updateMemberSchema.safeParse({ role: 'admin' }).success, false);
+});
+
+test('le mot de passe temporaire d’un nouveau compte fait au moins 6 caractères', () => {
+  const account = { username: 'dora', email: 'dora@exemple.test', firstName: 'Dora', lastName: 'Nouvelle' };
+  assert.equal(createAccountSchema.safeParse({ ...account, temporaryPassword: '12345' }).success, false);
+  assert.equal(createAccountSchema.safeParse({ ...account, temporaryPassword: '123456' }).success, true);
 });

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   can,
+  checkInvitee,
   checkTeamChange,
   type AddMemberInput,
   type CreateInitiativeInput,
@@ -137,11 +138,13 @@ export class InitiativesService {
 
   addMember(userId: string, initiativeId: string, input: AddMemberInput): Promise<void> {
     return this.database.asUser(userId, async (tx) => {
-      const { rows } = await sql<{ id: string | null }>`
-        SELECT find_user_id_by_email(${input.email}) AS id`.execute(tx);
-      const memberId = rows[0]?.id;
-      // L'invité doit s'être connecté au moins une fois à l'application.
-      if (!memberId) throw teamRefusal('userNotFound');
+      const { rows } = await sql<{ id: string; active: boolean }>`
+        SELECT * FROM find_user_by_email(${input.email})`.execute(tx);
+      const invitee = rows[0] ? { userId: rows[0].id, active: rows[0].active } : null;
+      // L'invité s'est connecté au moins une fois et son compte n'est pas désactivé.
+      const inviteeRefusal = checkInvitee(invitee);
+      if (inviteeRefusal || !invitee) throw teamRefusal(inviteeRefusal ?? 'userNotFound');
+      const memberId = invitee.userId;
       const invite = { kind: 'invite', userId: memberId, role: input.role, isTeamBa: input.isTeamBa } as const;
       await this.changeTeam(tx, userId, initiativeId, invite, () =>
         tx
@@ -243,6 +246,7 @@ export class InitiativesService {
       // Changement concurrent de l'équipe, refusé par la base.
       if (isConstraintViolation(error, 'initiative_keeps_owner')) throw teamRefusal('lastOwner');
       if (isConstraintViolation(error, 'initiative_keeps_team_ba')) throw teamRefusal('lastTeamBa');
+      if (isConstraintViolation(error, 'initiative_member_active_account')) throw teamRefusal('inactiveAccount');
       if (isUniqueViolation(error)) throw teamRefusal('alreadyMember');
       throw error;
     }

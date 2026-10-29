@@ -4,14 +4,34 @@ import type { InitiativeRole } from './roles.js';
 import type { UpdateAccountInput } from './schemas.js';
 
 /** Motifs de refus de l'administration, renvoyés par l'API (champ `refusal`) et traduits (`admin.refusal.*`). */
-export const ADMIN_REFUSALS = ['self', 'hasActiveOwner', 'notMember', 'inactiveAccount', 'accountExists'] as const;
+export const ADMIN_REFUSALS = ['forbidden', 'self', 'hasActiveOwner', 'notMember', 'inactiveAccount', 'accountExists'] as const;
 export type AdminRefusal = (typeof ADMIN_REFUSALS)[number];
 
 export const isAdminRefusal = (value: unknown): value is AdminRefusal => ADMIN_REFUSALS.some((r) => r === value);
 
-/** Vérifie un changement du compte `targetId` demandé par l'administrateur `actorId` ; null s'il est permis. */
-export function checkAccountChange(actorId: string, targetId: string, change: UpdateAccountInput): AdminRefusal | null {
-  // Ni se désactiver, ni se retirer le rôle : l'application garde un administrateur.
+/** État actuel d'un compte dans Keycloak. */
+export interface AccountState {
+  id: string;
+  enabled: boolean;
+  isAdmin: boolean;
+}
+
+/**
+ * Vérifie un changement du compte `targetId` demandé par `actorId`, d'après
+ * l'état actuel des comptes ; null s'il est permis.
+ *
+ * L'application garde toujours au moins un administrateur actif : l'auteur doit
+ * l'être encore (son jeton peut dater d'avant le retrait de son rôle) et ne peut
+ * ni se désactiver, ni se retirer le rôle. Il reste donc lui-même après le changement.
+ */
+export function checkAccountChange(
+  accounts: readonly AccountState[],
+  actorId: string,
+  targetId: string,
+  change: UpdateAccountInput,
+): AdminRefusal | null {
+  const actor = accounts.find((a) => a.id === actorId);
+  if (!actor?.enabled || !actor.isAdmin) return 'forbidden';
   const removesOwnAccess = 'enabled' in change ? !change.enabled : !change.isAdmin;
   return actorId === targetId && removesOwnAccess ? 'self' : null;
 }

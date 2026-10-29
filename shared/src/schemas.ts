@@ -138,12 +138,13 @@ export interface MeDto {
  * Création d'un compte par l'administrateur (ticket 05). Le mot de passe est
  * temporaire : la personne le change à sa première connexion.
  */
+export const TEMPORARY_PASSWORD_MIN_LENGTH = 6;
 export const createAccountSchema = z.object({
   username: z.string().trim().min(1).max(255),
   email: z.email(),
   firstName: z.string().trim().min(1).max(255),
   lastName: z.string().trim().min(1).max(255),
-  temporaryPassword: z.string().min(1),
+  temporaryPassword: z.string().min(TEMPORARY_PASSWORD_MIN_LENGTH),
 });
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 

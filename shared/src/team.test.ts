@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canCarryTeamBa, checkTeamChange, teamControls, type TeamMember } from './team.js';
+import { canCarryTeamBa, checkInvitee, checkTeamChange, teamControls, type TeamMember } from './team.js';
 
 // Équipe type : alice propriétaire et BA, bruno contributeur, chloé lectrice.
 const alice: TeamMember = { userId: 'alice', role: 'owner', isTeamBa: true };
@@ -180,4 +180,10 @@ test('aucun contrôle pour un contributeur non BA sur les autres ; initiative ar
   const archived = { archived: true };
   assert.deepEqual(teamControls([alice, bruno, chloe], 'alice', 'bruno', archived), none);
   assert.deepEqual(teamControls([alice, bruno, chloe], 'chloe', 'chloe', archived), { ...none, remove: true });
+});
+
+test('on n’invite qu’un utilisateur connu au compte actif', () => {
+  assert.equal(checkInvitee(null), 'userNotFound');
+  assert.equal(checkInvitee({ userId: 'dora', active: false }), 'inactiveAccount');
+  assert.equal(checkInvitee({ userId: 'dora', active: true }), null);
 });

@@ -6,6 +6,7 @@ import {
   checkAccountChange,
   checkAdminOwnerDesignation,
   createAccountSchema,
+  isAdminRefusal,
   type OrphanInitiativeDto,
   type UpdateAccountInput,
 } from '@app/shared';
@@ -16,9 +17,17 @@ import { useI18n } from './i18n';
 import { Panel } from './panels';
 import { memberName } from './team-section';
 
-/** Erreur de l'administration : 503 = connexion à Keycloak non configurée. */
-const adminError = (error: unknown): UiError =>
-  error instanceof ApiError && error.status === 503 ? { key: 'admin.unavailable' } : toUiError(error);
+/**
+ * Erreur de l'administration : ses refus d'abord (certains portent le même nom
+ * qu'un refus de l'équipe) ; 503 = connexion à Keycloak non configurée.
+ */
+function adminError(error: unknown): UiError {
+  if (error instanceof ApiError) {
+    if (isAdminRefusal(error.refusal)) return adminRefusalError(error.refusal);
+    if (error.status === 503) return { key: 'admin.unavailable' };
+  }
+  return toUiError(error);
+}
 
 const accountName = (account: AccountDto) =>
   [account.firstName, account.lastName].filter(Boolean).join(' ') || account.username;
@@ -45,7 +54,7 @@ function AccountsSection({ myId }: { myId: string }) {
   const replaced = (next: AccountDto) => setAccounts((list) => list?.map((a) => (a.id === next.id ? next : a)) ?? null);
 
   async function change(account: AccountDto, change: UpdateAccountInput) {
-    const refusal = checkAccountChange(myId, account.id, change);
+    const refusal = checkAccountChange(accounts ?? [], myId, account.id, change);
     if (refusal) {
       setError(adminRefusalError(refusal));
       return;
@@ -85,13 +94,13 @@ function AccountsSection({ myId }: { myId: string }) {
                     <input
                       type="checkbox"
                       checked={account.isAdmin}
-                      disabled={checkAccountChange(myId, account.id, adminToggle) !== null}
+                      disabled={checkAccountChange(accounts, myId, account.id, adminToggle) !== null}
                       aria-label={t('admin.account.isAdmin', { name })}
                       onChange={() => void change(account, adminToggle)}
                     />
                     {t('admin.account.admin')}
                   </label>
-                  {checkAccountChange(myId, account.id, toggle) === null && (
+                  {checkAccountChange(accounts, myId, account.id, toggle) === null && (
                     <button
                       type="button"
                       className={account.enabled ? 'danger' : undefined}

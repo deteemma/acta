@@ -31,6 +31,8 @@ interface OrphanMemberRow {
  */
 @Injectable()
 export class AdminService {
+  private accountChanges: Promise<unknown> = Promise.resolve();
+
   constructor(
     private readonly database: DatabaseService,
     private readonly keycloak: KeycloakAdmin,
@@ -44,8 +46,19 @@ export class AdminService {
     return this.keycloak.getAccount(await this.keycloak.createAccount(input));
   }
 
-  async updateAccount(adminId: string, accountId: string, input: UpdateAccountInput): Promise<AccountDto> {
-    const refusal = checkAccountChange(adminId, accountId, input);
+  /**
+   * Les changements de compte passent l'un après l'autre (une seule instance de
+   * l'API) : deux administrateurs ne peuvent pas se retirer le rôle en même temps.
+   */
+  updateAccount(adminId: string, accountId: string, input: UpdateAccountInput): Promise<AccountDto> {
+    const next = this.accountChanges.then(() => this.applyAccountChange(adminId, accountId, input));
+    this.accountChanges = next.catch(() => undefined);
+    return next;
+  }
+
+  private async applyAccountChange(adminId: string, accountId: string, input: UpdateAccountInput): Promise<AccountDto> {
+    // État actuel dans Keycloak : le jeton de l'auteur peut dater d'avant le retrait de son rôle.
+    const refusal = checkAccountChange(await this.keycloak.listAccounts(), adminId, accountId, input);
     if (refusal) throw adminRefusal(refusal);
     if ('enabled' in input) {
       // Miroir en base d'abord : si Keycloak échoue, la transaction est annulée.
@@ -108,6 +121,7 @@ async function orphanMembers(tx: Tx): Promise<OrphanMemberRow[]> {
 
 function adminRefusal(refusal: AdminRefusal) {
   switch (refusal) {
+    case 'forbidden':
     case 'self':
       return new ForbiddenException({ statusCode: 403, refusal });
     case 'notMember':

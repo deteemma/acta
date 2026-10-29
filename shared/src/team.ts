@@ -27,9 +27,18 @@ export const TEAM_CHANGE_REFUSALS = [
 ] as const;
 export type TeamChangeRefusal = (typeof TEAM_CHANGE_REFUSALS)[number];
 
-/** Tous les refus de l'équipe : ceux de checkTeamChange, plus l'invitation d'un inconnu. */
-export const TEAM_REFUSALS = [...TEAM_CHANGE_REFUSALS, 'userNotFound'] as const;
+/** Tous les refus de l'équipe : ceux de checkTeamChange, plus ceux de checkInvitee. */
+export const TEAM_REFUSALS = [...TEAM_CHANGE_REFUSALS, 'userNotFound', 'inactiveAccount'] as const;
 export type TeamRefusal = (typeof TEAM_REFUSALS)[number];
+
+/**
+ * Vérifie la personne invitée, trouvée par son courriel (null si inconnue) :
+ * elle s'est connectée au moins une fois et son compte n'est pas désactivé.
+ */
+export function checkInvitee(invitee: { userId: string; active: boolean } | null): 'userNotFound' | 'inactiveAccount' | null {
+  if (!invitee) return 'userNotFound';
+  return invitee.active ? null : 'inactiveAccount';
+}
 
 export const isTeamRefusal = (value: unknown): value is TeamRefusal => TEAM_REFUSALS.some((r) => r === value);
 

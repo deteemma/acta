@@ -541,6 +541,9 @@ await check('admin crée le compte dora (mot de passe temporaire)', async () => 
 await check('création sans mot de passe temporaire refusée (schéma partagé) : 400', async () => {
   assert.equal((await call(admin, 'POST', accounts, { username: 'eve', email: 'eve@exemple.test', firstName: 'Eve', lastName: 'X' })).status, 400);
 });
+await check('mot de passe temporaire de moins de 6 caractères refusé (schéma partagé) : 400', async () => {
+  assert.equal((await call(admin, 'POST', accounts, { username: 'eve', email: 'eve@exemple.test', firstName: 'Eve', lastName: 'X', temporaryPassword: '12345' })).status, 400);
+});
 await check('admin donne puis retire le rôle administrateur à dora', async () => {
   assert.equal((await call(admin, 'PATCH', `${accounts}/${dora.id}`, { isAdmin: true })).body.isAdmin, true);
   assert.equal((await call(admin, 'PATCH', `${accounts}/${dora.id}`, { isAdmin: false })).body.isAdmin, false);
@@ -550,6 +553,15 @@ await check('admin ne se désactive pas et ne se retire pas le rôle : 403', asy
   assert.equal(disable.status, 403);
   assert.equal(disable.body.refusal, 'self');
   assert.equal((await call(admin, 'PATCH', account(admin), { isAdmin: false })).body.refusal, 'self');
+});
+await check('rôle retiré : bruno, avec son ancien jeton d’administrateur, est refusé : 403', async () => {
+  assert.equal((await call(admin, 'PATCH', account(bruno), { isAdmin: true })).body.isAdmin, true);
+  const staleBruno = await login('bruno');
+  assert.equal((await call(admin, 'PATCH', account(bruno), { isAdmin: false })).body.isAdmin, false);
+  const r = await call(staleBruno, 'PATCH', account(admin), { isAdmin: false });
+  assert.equal(r.status, 403);
+  assert.equal(r.body.refusal, 'forbidden');
+  assert.equal((await call(admin, 'GET', '/me')).body.isAdmin, true);
 });
 await check('aucune route de suppression de compte : 404', async () => {
   assert.equal((await call(admin, 'DELETE', `${accounts}/${dora.id}`)).status, 404);
@@ -589,6 +601,17 @@ await check('admin ne désigne pas un membre au compte désactivé : 409', async
 });
 await check('admin ne désigne pas un non-membre : 404', async () => {
   assert.equal((await designate(orphanId, admin)).status, 404);
+});
+await check('compte désactivé : bruno (propriétaire) n’invite pas alice : 409', async () => {
+  const r = await call(bruno, 'POST', `/initiatives/${otherInitiativeId}/members`, { email: 'alice@exemple.test', role: 'reader' });
+  assert.equal(r.status, 409);
+  assert.equal(r.body.refusal, 'inactiveAccount');
+});
+await check('compte désactivé : invitation d’alice refusée en base', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `INSERT INTO initiative_member (initiative_id, user_id, role) VALUES ($1, $2, 'reader')`, [otherInitiativeId, alice.sub]),
+    /compte désactivé/,
+  );
 });
 
 console.log('\nAdministration — barrière 2 : base de données (fonctions admin_*, RLS)');
