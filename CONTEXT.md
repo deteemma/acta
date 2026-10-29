@@ -39,10 +39,10 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 
 | Français | Code (anglais) | Définition |
 |---|---|---|
-| Référentiel BABOK | `babok_reference` | Catalogue en lecture seule des éléments du BABOK v3 : noms officiels FR/EN, résumé rédigé pour ACTA, renvoi de section. Ne reproduit pas le texte de l'IIBA. |
-| Domaine de connaissance | `knowledge_area` | L'un des six regroupements de tâches du BABOK (*Knowledge Area*). |
+| Référentiel BABOK | `babok` | Catalogue en lecture seule des éléments du BABOK v3 : identifiant stable (numéro de section du BABOK v3, ex. `3.1`), noms officiels FR/EN, résumé rédigé pour ACTA, renvoi de section. Ne reproduit pas le texte de l'IIBA. |
+| Domaine de connaissance | `babok_knowledge_area` | L'un des six regroupements de tâches du BABOK (*Knowledge Area*). |
 | Tâche BABOK | `babok_task` | L'une des 30 tâches du BABOK, rattachée à un domaine de connaissance. _À éviter_ : activité. |
-| Technique | `technique` | L'une des 50 techniques du BABOK, utilisables dans plusieurs tâches. |
+| Technique | `babok_technique` | L'une des 50 techniques du BABOK, utilisables dans plusieurs tâches. |
 | Approche d'analyse | `analysis_approach` | Manière de conduire l'analyse sur une initiative : **prédictive** ou **adaptative** (tâche BABOK 3.1). |
 | Changement | `change` | Concept du BACCM : transformation en réponse à un besoin. Dans ACTA, il est porté par l'initiative. |
 

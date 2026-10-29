@@ -50,8 +50,36 @@ export interface OwnerDesignationTable {
   designated_at: Timestamp;
 }
 
+/** Référentiel BABOK (migration 0009) : lecture seule, aucune écriture possible. */
+interface BabokElementColumns {
+  id: string;
+  section: string;
+  position: number;
+  name_en: string;
+  name_fr: string;
+  summary_en: string;
+  summary_fr: string;
+}
+
+export type BabokKnowledgeAreaTable = BabokElementColumns;
+
+export interface BabokTaskTable extends BabokElementColumns {
+  knowledge_area_id: string;
+}
+
+export type BabokTechniqueTable = BabokElementColumns;
+
+export interface BabokTaskTechniqueTable {
+  task_id: string;
+  technique_id: string;
+}
+
 export interface Database {
   app_user: AppUserTable;
+  babok_knowledge_area: BabokKnowledgeAreaTable;
+  babok_task: BabokTaskTable;
+  babok_task_technique: BabokTaskTechniqueTable;
+  babok_technique: BabokTechniqueTable;
   initiative: InitiativeTable;
   initiative_member: InitiativeMemberTable;
   owner_designation: OwnerDesignationTable;

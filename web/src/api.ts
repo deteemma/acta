@@ -1,6 +1,7 @@
 import type {
   AccountDto,
   AddMemberInput,
+  BabokDto,
   CreateAccountInput,
   CreateInitiativeInput,
   InitiativeDto,
@@ -45,6 +46,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   me: () => request<MeDto>('/me'),
   updateMe: (input: UpdateMeInput) => request<MeDto>('/me', { method: 'PATCH', body: JSON.stringify(input) }),
+  babok: () => request<BabokDto>('/babok'),
   listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
   getInitiative: (id: string) => request<InitiativeDto>(`/initiatives/${id}`),
   listMembers: (id: string) => request<InitiativeMemberDto[]>(`/initiatives/${id}/members`),

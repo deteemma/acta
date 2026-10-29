@@ -21,7 +21,9 @@ export type PanelContent =
   | { kind: 'createInitiative' }
   | { kind: 'initiative'; initiativeId: string }
   | { kind: 'member'; member: InitiativeMemberDto }
-  | { kind: 'admin' };
+  | { kind: 'admin' }
+  | { kind: 'babok' }
+  | { kind: 'babokElement'; elementId: string };
 
 interface Entry {
   id: number;
@@ -97,11 +99,14 @@ const NARROW_SCREEN = '(max-width: 40rem)';
 
 export function Panel({
   title,
+  titleTooltip,
   variant = 'side',
   onClose,
   children,
 }: {
   title: string;
+  /** Info-bulle du titre (ex. nom anglais d'un élément du BABOK). */
+  titleTooltip?: string;
   variant?: 'side' | 'palette';
   onClose: () => void;
   children: ReactNode;
@@ -164,7 +169,9 @@ export function Panel({
         onPointerCancel={endDrag}
       >
         <span className="panel-handle" aria-hidden="true" />
-        <h2 id={titleId}>{title}</h2>
+        <h2 id={titleId} title={titleTooltip}>
+          {title}
+        </h2>
         <button type="button" className="panel-close" aria-label={t('panel.close')} onClick={onClose}>
           ×
         </button>

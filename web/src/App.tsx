@@ -1,8 +1,9 @@
-import type { InitiativeDto, MeDto } from '@app/shared';
+import { type BabokDto, findBabokElement, type InitiativeDto, type MeDto } from '@app/shared';
 import type { User } from 'oidc-client-ts';
 import { useEffect, useState } from 'react';
 import { AdminPanel } from './admin-panel';
 import { api } from './api';
+import { BabokElementPanel, BabokPanel } from './babok-panels';
 import { login, logout } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
@@ -48,6 +49,7 @@ function Shell({ user }: { user: User }) {
   const { open } = usePanels();
   const [initiatives, setInitiatives] = useState<InitiativeDto[]>([]);
   const [me, setMe] = useState<MeDto | null>(null);
+  const [babok, setBabok] = useState<BabokDto | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   usePaletteShortcut();
 
@@ -55,6 +57,7 @@ function Shell({ user }: { user: User }) {
     api.listInitiatives().then(setInitiatives, (e: unknown) => setError(toUiError(e)));
     // Sans réponse, pas d'accès à l'administration : l'API la refuse de toute façon.
     api.me().then(setMe, () => undefined);
+    api.babok().then(setBabok, (e: unknown) => setError(toUiError(e)));
   }, []);
 
   const active = initiatives.filter((i) => !i.archivedAt);
@@ -68,6 +71,9 @@ function Shell({ user }: { user: User }) {
           <span>
             <button type="button" onClick={() => open({ kind: 'palette' })}>
               {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
+            </button>{' '}
+            <button type="button" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
+              {t('babok.open')}
             </button>{' '}
             {me?.isAdmin && (
               <>
@@ -105,7 +111,7 @@ function Shell({ user }: { user: User }) {
           switch (content.kind) {
             case 'palette':
               // Les archivées après les actives.
-              return <Palette initiatives={[...active, ...archived]} onClose={close} />;
+              return <Palette initiatives={[...active, ...archived]} babok={babok} onClose={close} />;
             case 'createInitiative':
               return (
                 <CreateInitiativePanel onCreated={(i) => setInitiatives((list) => [i, ...list])} onClose={close} />
@@ -123,6 +129,12 @@ function Shell({ user }: { user: User }) {
               return <MemberPanel member={content.member} onClose={close} />;
             case 'admin':
               return me && <AdminPanel myId={me.id} onClose={close} />;
+            case 'babok':
+              return babok && <BabokPanel babok={babok} onClose={close} />;
+            case 'babokElement': {
+              const element = babok && findBabokElement(babok, content.elementId);
+              return element && <BabokElementPanel babok={babok} element={element} onClose={close} />;
+            }
           }
         }}
       />

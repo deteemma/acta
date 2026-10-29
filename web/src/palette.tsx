@@ -1,8 +1,12 @@
-// Palette de commandes (Ctrl+K / Cmd+K) : accès direct à la fiche d'une initiative.
-import { type InitiativeDto, searchInitiatives } from '@app/shared';
+// Palette de commandes (Ctrl+K / Cmd+K) : accès direct à la fiche d'une
+// initiative ou d'un élément du référentiel BABOK.
+import { type BabokDto, type BabokElementDto, type InitiativeDto, searchBabok, searchInitiatives } from '@app/shared';
 import { type KeyboardEvent, useEffect, useState } from 'react';
+import { BabokName } from './babok-panels';
 import { useI18n } from './i18n';
-import { Panel, usePanels } from './panels';
+import { Panel, type PanelContent, usePanels } from './panels';
+
+type Result = { kind: 'initiative'; item: InitiativeDto } | { kind: 'babok'; item: BabokElementDto };
 
 export const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 
@@ -23,15 +27,33 @@ export function usePaletteShortcut() {
   }, [open, paletteOpen]);
 }
 
-export function Palette({ initiatives, onClose }: { initiatives: InitiativeDto[]; onClose: () => void }) {
+export function Palette({
+  initiatives,
+  babok,
+  onClose,
+}: {
+  initiatives: InitiativeDto[];
+  /** Absent tant que le référentiel n'est pas chargé. */
+  babok: BabokDto | null;
+  onClose: () => void;
+}) {
   const { t } = useI18n();
   const { replace } = usePanels();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  const results = searchInitiatives(initiatives, query);
+  // Les initiatives d'abord, puis le référentiel.
+  const results: Result[] = [
+    ...searchInitiatives(initiatives, query).map((item) => ({ kind: 'initiative' as const, item })),
+    ...(babok ? searchBabok(babok, query) : []).map((item) => ({ kind: 'babok' as const, item })),
+  ];
   const current = Math.min(active, results.length - 1);
 
-  const openInitiative = (initiative: InitiativeDto) => replace({ kind: 'initiative', initiativeId: initiative.id });
+  const target = (result: Result): PanelContent =>
+    result.kind === 'initiative'
+      ? { kind: 'initiative', initiativeId: result.item.id }
+      : { kind: 'babokElement', elementId: result.item.id };
+  const optionId = (result: Result) => `palette-${result.kind}-${result.item.id}`;
+  const select = (result: Result) => replace(target(result));
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -40,7 +62,7 @@ export function Palette({ initiatives, onClose }: { initiatives: InitiativeDto[]
       setActive((current + step + results.length) % Math.max(results.length, 1));
     } else if (event.key === 'Enter' && results[current]) {
       event.preventDefault();
-      openInitiative(results[current]);
+      select(results[current]);
     }
   }
 
@@ -52,7 +74,7 @@ export function Palette({ initiatives, onClose }: { initiatives: InitiativeDto[]
         aria-expanded="true"
         aria-controls="palette-results"
         aria-autocomplete="list"
-        aria-activedescendant={results[current] ? `palette-${results[current].id}` : undefined}
+        aria-activedescendant={results[current] ? optionId(results[current]) : undefined}
         aria-label={t('palette.placeholder')}
         placeholder={t('palette.placeholder')}
         value={query}
@@ -63,17 +85,26 @@ export function Palette({ initiatives, onClose }: { initiatives: InitiativeDto[]
         onKeyDown={onKeyDown}
       />
       <ul id="palette-results" role="listbox" aria-label={t('palette.label')} className="palette-results">
-        {results.map((initiative, index) => (
+        {results.map((result, index) => (
           <li
-            key={initiative.id}
-            id={`palette-${initiative.id}`}
+            key={optionId(result)}
+            id={optionId(result)}
             role="option"
             aria-selected={index === current}
             onMouseMove={() => setActive(index)}
-            onClick={() => openInitiative(initiative)}
+            onClick={() => select(result)}
           >
-            <strong>{initiative.code}</strong> {initiative.name}
-            {initiative.archivedAt && <small> · {t('initiative.archived')}</small>}
+            {result.kind === 'initiative' ? (
+              <>
+                <strong>{result.item.code}</strong> {result.item.name}
+                {result.item.archivedAt && <small> · {t('initiative.archived')}</small>}
+              </>
+            ) : (
+              <>
+                <strong>{result.item.section}</strong> <BabokName element={result.item} />{' '}
+                <small>· {t(`babok.${result.item.kind}`)}</small>
+              </>
+            )}
           </li>
         ))}
       </ul>
