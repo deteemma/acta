@@ -4,6 +4,7 @@
 import {
   addMemberSchema,
   can,
+  canCarryTeamBa,
   checkTeamChange,
   INITIATIVE_ROLES,
   type InitiativeDto,
@@ -13,6 +14,7 @@ import {
   type MemberNameDto,
   type OwnerDesignationDto,
   type TeamChange,
+  teamControls,
 } from '@app/shared';
 import { type FormEvent, useState } from 'react';
 import { api } from './api';
@@ -48,13 +50,12 @@ export function TeamSection({
 
   const state = { archived: initiative.archivedAt != null };
   const me = members.find((m) => m.isMe);
-  const editable = me != null && can(initiative.myRole, 'changeTeam', state);
-  // Contrôle proposé si l'utilisateur en a le droit ; les autres refus s'affichent à l'usage.
-  const permitted = (change: TeamChange) =>
-    editable && checkTeamChange(members, me.userId, change) !== 'forbidden';
+  const noControls = { setRole: false, designateOwner: false, toggleTeamBa: false, remove: false };
+  const controlsFor = (member: InitiativeMemberDto) =>
+    me ? teamControls(members, me.userId, member.userId, state) : noControls;
 
   async function apply(change: TeamChange, call: () => Promise<void>, then = onChanged) {
-    const refusal = me ? checkTeamChange(members, me.userId, change) : 'forbidden';
+    const refusal = me ? checkTeamChange(members, me.userId, change, state) : 'forbidden';
     if (refusal) {
       setError(teamRefusalError(refusal));
       return;
@@ -105,14 +106,7 @@ export function TeamSection({
       <ul className="links team-members">
         {members.map((member) => {
           const name = memberName(member);
-          const canSetRole = me?.role === 'owner' && permitted({ kind: 'setRole', userId: member.userId, role: 'reader' });
-          const canDesignate =
-            !canSetRole && member.role !== 'owner' && permitted({ kind: 'setRole', userId: member.userId, role: 'owner' });
-          // Un lecteur ne porte pas l'indication ; sur soi-même, elle se retire seulement.
-          const canToggleBa =
-            member.role !== 'reader' &&
-            permitted({ kind: 'setTeamBa', userId: member.userId, isTeamBa: !member.isTeamBa });
-          const canRemove = permitted({ kind: 'remove', userId: member.userId });
+          const controls = controlsFor(member);
           return (
             <li key={member.userId}>
               <button type="button" className="link" onClick={() => open({ kind: 'member', member })}>
@@ -120,7 +114,7 @@ export function TeamSection({
               </button>
               {member.isMe && <small> ({t('member.you')})</small>}
               <span className="team-controls">
-                {canSetRole ? (
+                {controls.setRole ? (
                   <select
                     aria-label={t('team.role', { name })}
                     value={member.role}
@@ -131,7 +125,7 @@ export function TeamSection({
                 ) : (
                   <small>{t(`role.${member.role}`)}</small>
                 )}
-                {canToggleBa ? (
+                {controls.toggleTeamBa ? (
                   <label className="inline">
                     <input
                       type="checkbox"
@@ -144,12 +138,12 @@ export function TeamSection({
                 ) : (
                   member.isTeamBa && <small className="badge">{t('member.teamBa')}</small>
                 )}
-                {canDesignate && (
+                {controls.designateOwner && (
                   <button type="button" onClick={() => void setRole(member, 'owner')}>
                     {t(member.isMe ? 'team.designateMeOwner' : 'team.designateOwner')}
                   </button>
                 )}
-                {canRemove && (
+                {controls.remove && (
                   <button type="button" className="danger" onClick={() => setConfirmingRemoval(member)}>
                     {t(member.isMe ? 'team.leave' : 'team.remove')}
                   </button>
@@ -207,7 +201,7 @@ function InviteForm({ initiativeId, onInvited }: { initiativeId: string; onInvit
   async function invite(event: FormEvent) {
     event.preventDefault();
     // Même schéma de validation que l'API (@app/shared).
-    const parsed = addMemberSchema.safeParse({ email: email.trim(), role, isTeamBa: role !== 'reader' && isTeamBa });
+    const parsed = addMemberSchema.safeParse({ email: email.trim(), role, isTeamBa: canCarryTeamBa(role) && isTeamBa });
     if (!parsed.success) {
       setError({ key: 'team.inviteInvalid' });
       return;
@@ -240,8 +234,8 @@ function InviteForm({ initiativeId, onInvited }: { initiativeId: string; onInvit
       <label className="inline">
         <input
           type="checkbox"
-          checked={role !== 'reader' && isTeamBa}
-          disabled={role === 'reader'}
+          checked={canCarryTeamBa(role) && isTeamBa}
+          disabled={!canCarryTeamBa(role)}
           onChange={(e) => setIsTeamBa(e.target.checked)}
         />
         {t('member.teamBa')}

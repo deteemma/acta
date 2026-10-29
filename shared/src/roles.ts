@@ -34,8 +34,11 @@ export const INITIATIVE_PERMISSIONS = {
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;
 
-/** Une initiative archivée est en lecture seule : on peut seulement la désarchiver ou la supprimer. */
-const ALLOWED_WHEN_ARCHIVED: readonly InitiativeAction[] = ['view', 'archive', 'delete'];
+/**
+ * Une initiative archivée est en lecture seule : on peut seulement la désarchiver,
+ * la supprimer ou la quitter (changeTeam, restreint au départ par checkTeamChange).
+ */
+const ALLOWED_WHEN_ARCHIVED: readonly InitiativeAction[] = ['view', 'archive', 'delete', 'changeTeam'];
 
 export function can(
   role: InitiativeRole | null | undefined,

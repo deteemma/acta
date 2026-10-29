@@ -22,6 +22,7 @@ Précisions de la responsable fonctionnelle (26.10.2026) :
 - Indication « BA de l'équipe » sur soi-même : un BA peut se la retirer (sauf le dernier) ; un propriétaire ne peut pas se l'attribuer lui-même.
 - Trace : tout passage au rôle de propriétaire est tracé (invitation comme propriétaire, changement de rôle, désignation par un BA), y compris la création de l'initiative. Les initiatives existantes reçoivent la trace de leur création.
 - Invitation : e-mail, rôle et, au choix, l'indication « BA de l'équipe » (pas pour un lecteur).
+- Initiative archivée (29.10.2026, après revue) : tout membre peut encore la quitter (mêmes limites : dernier propriétaire, dernier BA). Exception à la lecture seule du ticket 03 ; aucun autre changement de l'équipe.
 
 Points en suspens :
 - Désignation par l'administrateur quand aucun propriétaire actif ne reste : ticket 05 (la trace la prendra en compte automatiquement).

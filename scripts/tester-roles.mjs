@@ -470,13 +470,37 @@ await check('bruno (propriétaire) invite admin en contributeur BA de l’équip
 await check('bruno (propriétaire) retire admin : 204', async () => {
   assert.equal((await call(bruno, 'DELETE', member(admin))).status, 204);
 });
-await check('chloé (lectrice) quitte l’initiative : 204', async () => {
+
+console.log('\nÉquipe — initiative archivée : on peut seulement la quitter');
+await check('bruno (propriétaire) archive l’initiative : 200', async () => {
+  assert.equal((await call(bruno, 'PUT', `/initiatives/${initiativeId}/archive`)).status, 200);
+});
+await check('archivée : bruno (propriétaire) ne retire pas chloé : 403', async () => {
+  const r = await call(bruno, 'DELETE', member(chloe));
+  assert.equal(r.status, 403);
+  assert.equal(r.body.refusal, 'archived');
+});
+await check('archivée : bruno (propriétaire) ne change pas un rôle : 403', async () => {
+  assert.equal((await call(bruno, 'PATCH', member(chloe), { role: 'contributor' })).status, 403);
+});
+await check('archivée : bruno (propriétaire) : retrait de chloé sans effet en base', async () => {
+  const r = await asUserInDb(bruno.sub, `DELETE FROM initiative_member ${memberSql}`, [initiativeId, chloe.sub]);
+  assert.equal(r.rowCount, 0);
+});
+await check('archivée : chloé (lectrice) : quitter accepté en base', async () => {
+  const r = await asUserInDb(chloe.sub, `DELETE FROM initiative_member ${memberSql}`, [initiativeId, chloe.sub]);
+  assert.equal(r.rowCount, 1);
+});
+await check('archivée : bruno (dernier propriétaire) ne quitte pas : 409', async () => {
+  assert.equal((await call(bruno, 'DELETE', member(bruno))).body.refusal, 'lastOwner');
+});
+await check('archivée : chloé (lectrice) quitte l’initiative : 204', async () => {
   assert.equal((await call(chloe, 'DELETE', member(chloe))).status, 204);
   assert.equal((await call(chloe, 'GET', `/initiatives/${initiativeId}`)).status, 404);
 });
 
 console.log('\nNettoyage');
-await check('bruno (propriétaire) supprime l’initiative : 204', async () => {
+await check('bruno (propriétaire) supprime l’initiative archivée : 204', async () => {
   assert.equal((await call(bruno, 'DELETE', `/initiatives/${initiativeId}`)).status, 204);
   assert.equal((await call(bruno, 'GET', `/initiatives/${initiativeId}`)).status, 404);
 });

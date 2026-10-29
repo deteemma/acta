@@ -1,4 +1,4 @@
-import { type MessageKey, TEAM_CHANGE_REFUSALS, type TeamChangeRefusal } from '@app/shared';
+import { isTeamRefusal, type MessageKey, type TeamRefusal } from '@app/shared';
 import { ApiError } from './api';
 import { useI18n } from './i18n';
 
@@ -7,18 +7,14 @@ export type UiError = { key: MessageKey; params?: Record<string, string | number
 
 export function toUiError(error: unknown): UiError {
   if (error instanceof ApiError) {
-    if (error.refusal === 'userNotFound') return { key: 'team.userNotFound' };
-    if (isTeamChangeRefusal(error.refusal)) return teamRefusalError(error.refusal);
+    if (isTeamRefusal(error.refusal)) return teamRefusalError(error.refusal);
     return error.status === 409 ? { key: 'initiatives.codeTaken' } : { key: 'error.http', params: { status: error.status } };
   }
   return { raw: String(error) };
 }
 
 /** Refus d'un changement de l'équipe (règles d'équipe de @app/shared). */
-export const teamRefusalError = (refusal: TeamChangeRefusal): UiError => ({ key: `team.refusal.${refusal}` });
-
-const isTeamChangeRefusal = (value: string | undefined): value is TeamChangeRefusal =>
-  TEAM_CHANGE_REFUSALS.some((r) => r === value);
+export const teamRefusalError = (refusal: TeamRefusal): UiError => ({ key: `team.refusal.${refusal}` });
 
 export function ErrorMessage({ error }: { error: UiError | null }) {
   const { t } = useI18n();

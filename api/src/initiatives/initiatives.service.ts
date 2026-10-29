@@ -10,7 +10,7 @@ import {
   type InitiativeRole,
   type OwnerDesignationDto,
   type TeamChange,
-  type TeamChangeRefusal,
+  type TeamRefusal,
   type UpdateInitiativeInput,
   type UpdateMemberInput,
 } from '@app/shared';
@@ -140,7 +140,7 @@ export class InitiativesService {
         SELECT find_user_id_by_email(${input.email}) AS id`.execute(tx);
       const memberId = rows[0]?.id;
       // L'invité doit s'être connecté au moins une fois à l'application.
-      if (!memberId) throw new NotFoundException({ statusCode: 404, refusal: 'userNotFound' });
+      if (!memberId) throw teamRefusal('userNotFound');
       const invite = { kind: 'invite', userId: memberId, role: input.role, isTeamBa: input.isTeamBa } as const;
       await this.changeTeam(tx, userId, initiativeId, invite, () =>
         tx
@@ -232,7 +232,9 @@ export class InitiativesService {
       .select(['user_id as userId', 'role', 'is_team_ba as isTeamBa'])
       .where('initiative_id', '=', initiativeId)
       .execute();
-    const refusal = checkTeamChange(team, userId, change);
+    const { rows } = await sql<{ archived: boolean }>`
+      SELECT initiative_is_archived(${initiativeId}::uuid) AS archived`.execute(tx);
+    const refusal = checkTeamChange(team, userId, change, { archived: rows[0]?.archived ?? false });
     if (refusal) throw teamRefusal(refusal);
     try {
       await write();
@@ -300,11 +302,13 @@ function toDto(row: {
   };
 }
 
-function teamRefusal(refusal: TeamChangeRefusal) {
+function teamRefusal(refusal: TeamRefusal) {
   switch (refusal) {
     case 'forbidden':
+    case 'archived':
       return new ForbiddenException({ statusCode: 403, refusal });
     case 'notMember':
+    case 'userNotFound':
       return new NotFoundException({ statusCode: 404, refusal });
     default:
       return new ConflictException({ statusCode: 409, refusal });

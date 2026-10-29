@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkTeamChange, type TeamMember } from './team.js';
+import { canCarryTeamBa, checkTeamChange, teamControls, type TeamMember } from './team.js';
 
 // Équipe type : alice propriétaire et BA, bruno contributeur, chloé lectrice.
 const alice: TeamMember = { userId: 'alice', role: 'owner', isTeamBa: true };
@@ -118,4 +118,66 @@ test('on n’invite pas un membre deux fois, on ne modifie pas un non-membre', (
   );
   assert.equal(checkTeamChange([alice], 'alice', { kind: 'remove', userId: 'eve' }), 'notMember');
   assert.equal(checkTeamChange([alice], 'alice', { kind: 'setRole', userId: 'eve', role: 'owner' }), 'notMember');
+});
+
+test('initiative archivée : on peut seulement la quitter', () => {
+  const archived = { archived: true };
+  const brunoBa: TeamMember = { ...bruno, isTeamBa: true };
+  const team = [alice, dan, brunoBa, chloe];
+  assert.equal(checkTeamChange(team, 'chloe', { kind: 'remove', userId: 'chloe' }, archived), null);
+  assert.equal(checkTeamChange(team, 'alice', { kind: 'remove', userId: 'alice' }, archived), null);
+  assert.equal(checkTeamChange(team, 'alice', { kind: 'remove', userId: 'chloe' }, archived), 'archived');
+  assert.equal(checkTeamChange(team, 'alice', { kind: 'setRole', userId: 'bruno', role: 'owner' }, archived), 'archived');
+  assert.equal(checkTeamChange(team, 'bruno', { kind: 'setTeamBa', userId: 'alice', isTeamBa: false }, archived), 'archived');
+  assert.equal(
+    checkTeamChange(team, 'alice', { kind: 'invite', userId: 'eve', role: 'reader', isTeamBa: false }, archived),
+    'archived',
+  );
+  // Les dernier propriétaire et dernier BA restent protégés.
+  assert.equal(checkTeamChange([alice, chloe], 'alice', { kind: 'remove', userId: 'alice' }, archived), 'lastOwner');
+});
+
+test('seuls les propriétaires et les contributeurs peuvent porter l’indication « BA de l’équipe »', () => {
+  assert.equal(canCarryTeamBa('owner'), true);
+  assert.equal(canCarryTeamBa('contributor'), true);
+  assert.equal(canCarryTeamBa('reader'), false);
+});
+
+test('contrôles proposés au propriétaire', () => {
+  const team = [alice, dan, bruno, chloe];
+  assert.deepEqual(teamControls(team, 'alice', 'bruno'), {
+    setRole: true,
+    designateOwner: false,
+    toggleTeamBa: true,
+    remove: true,
+  });
+  // Un lecteur ne porte pas l'indication ; un propriétaire non BA ne se l'attribue pas.
+  assert.equal(teamControls(team, 'alice', 'chloe').toggleTeamBa, false);
+  assert.equal(teamControls(team, 'dan', 'dan').toggleTeamBa, false);
+});
+
+test('contrôles proposés à un BA de l’équipe non propriétaire', () => {
+  const brunoBa: TeamMember = { ...bruno, isTeamBa: true };
+  const team = [alice, brunoBa, chloe];
+  assert.deepEqual(teamControls(team, 'bruno', 'chloe'), {
+    setRole: false,
+    designateOwner: true,
+    toggleTeamBa: false,
+    remove: false,
+  });
+  assert.deepEqual(teamControls(team, 'bruno', 'bruno'), {
+    setRole: false,
+    designateOwner: true,
+    toggleTeamBa: true,
+    remove: true,
+  });
+  assert.equal(teamControls(team, 'bruno', 'alice').designateOwner, false);
+});
+
+test('aucun contrôle pour un contributeur non BA sur les autres ; initiative archivée : quitter seulement', () => {
+  const none = { setRole: false, designateOwner: false, toggleTeamBa: false, remove: false };
+  assert.deepEqual(teamControls([alice, bruno], 'bruno', 'alice'), none);
+  const archived = { archived: true };
+  assert.deepEqual(teamControls([alice, bruno, chloe], 'alice', 'bruno', archived), none);
+  assert.deepEqual(teamControls([alice, bruno, chloe], 'chloe', 'chloe', archived), { ...none, remove: true });
 });
