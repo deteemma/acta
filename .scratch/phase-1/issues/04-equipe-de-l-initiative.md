@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Coque de navigation
 
-**Status:** done (à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 29.10.2026)
 
 - [x] Le propriétaire invite un utilisateur (connecté au moins une fois) par son e-mail, avec un rôle ; il change le rôle d'un membre et retire un membre.
 - [x] Tout propriétaire et tout BA de l'équipe peut attribuer ou retirer l'indication « BA de l'équipe » à un autre membre propriétaire ou contributeur ; un lecteur ne peut pas la porter.
