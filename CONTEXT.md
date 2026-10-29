@@ -31,6 +31,8 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 | Contributeur | `contributor` | Peut consulter et modifier l'initiative. |
 | Lecteur | `reader` | Peut seulement consulter l'initiative. |
 | Administrateur | `administrateur` (rôle Keycloak) | Rôle global de l'application : gestion des comptes et des paramètres (statuts, types de tickets, acronymes, modèles de page). N'a pas accès au contenu des initiatives dont il n'est pas membre ; peut seulement y désigner un nouveau propriétaire quand aucun propriétaire actif ne reste. |
+| Compte désactivé | `deactivated_at` | Compte bloqué par l'administrateur : la personne ne peut plus se connecter. Un compte n'est jamais supprimé, pour garder la trace des auteurs ; il peut être réactivé. |
+| Initiative sans propriétaire actif | `orphan_initiative` | Initiative dont tous les propriétaires ont un compte désactivé. L'administrateur en voit seulement le nom, le code et les membres, et peut y désigner un propriétaire parmi les membres au compte actif, même si elle est archivée. |
 | Utilisateur | `app_user` | Personne connectée au moins une fois ; identifiant = `sub` du jeton Keycloak. |
 
 ### Référentiel BABOK

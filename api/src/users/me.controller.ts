@@ -11,7 +11,7 @@ export class MeController {
 
   @Get()
   get(@CurrentUser() user: AuthenticatedUser): Promise<MeDto> {
-    return this.users.me(user.id);
+    return this.users.me(user);
   }
 
   @Patch()
@@ -19,6 +19,6 @@ export class MeController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(updateMeSchema)) body: UpdateMeInput,
   ): Promise<MeDto> {
-    return this.users.updateMe(user.id, body);
+    return this.users.updateMe(user, body);
   }
 }

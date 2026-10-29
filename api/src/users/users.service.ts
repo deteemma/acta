@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { MeDto, UpdateMeInput } from '@app/shared';
+import { APP_ADMIN_ROLE, type MeDto, type UpdateMeInput } from '@app/shared';
 import { sql } from 'kysely';
 import type { AuthenticatedUser } from '../auth/authenticated-user.js';
 import { DatabaseService, type Tx } from '../db/database.service.js';
@@ -33,28 +33,34 @@ export class UsersService {
     this.lastSeen.set(user.id, Date.now());
   }
 
-  me(userId: string): Promise<MeDto> {
-    return this.database.asUser(userId, (tx) => this.selectMe(tx, userId));
+  me(user: AuthenticatedUser): Promise<MeDto> {
+    return this.database.asUser(user.id, (tx) => this.selectMe(tx, user));
   }
 
-  updateMe(userId: string, input: UpdateMeInput): Promise<MeDto> {
-    return this.database.asUser(userId, async (tx) => {
+  updateMe(user: AuthenticatedUser, input: UpdateMeInput): Promise<MeDto> {
+    return this.database.asUser(user.id, async (tx) => {
       await tx
         .updateTable('app_user')
         .set({ locale: input.locale, updated_at: sql`now()` })
-        .where('id', '=', userId)
+        .where('id', '=', user.id)
         .execute();
-      return this.selectMe(tx, userId);
+      return this.selectMe(tx, user);
     });
   }
 
-  private async selectMe(tx: Tx, userId: string): Promise<MeDto> {
+  private async selectMe(tx: Tx, user: AuthenticatedUser): Promise<MeDto> {
     const row = await tx
       .selectFrom('app_user')
       .select(['id', 'email', 'display_name', 'locale'])
-      .where('id', '=', userId)
+      .where('id', '=', user.id)
       .executeTakeFirst();
     if (!row) throw new NotFoundException();
-    return { id: row.id, email: row.email, displayName: row.display_name, locale: row.locale };
+    return {
+      id: row.id,
+      email: row.email,
+      displayName: row.display_name,
+      locale: row.locale,
+      isAdmin: user.appRoles.includes(APP_ADMIN_ROLE),
+    };
   }
 }

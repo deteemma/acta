@@ -1,6 +1,7 @@
-import type { InitiativeDto } from '@app/shared';
+import type { InitiativeDto, MeDto } from '@app/shared';
 import type { User } from 'oidc-client-ts';
 import { useEffect, useState } from 'react';
+import { AdminPanel } from './admin-panel';
 import { api } from './api';
 import { login, logout } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
@@ -46,11 +47,14 @@ function Shell({ user }: { user: User }) {
   const { t } = useI18n();
   const { open } = usePanels();
   const [initiatives, setInitiatives] = useState<InitiativeDto[]>([]);
+  const [me, setMe] = useState<MeDto | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   usePaletteShortcut();
 
   useEffect(() => {
     api.listInitiatives().then(setInitiatives, (e: unknown) => setError(toUiError(e)));
+    // Sans réponse, pas d'accès à l'administration : l'API la refuse de toute façon.
+    api.me().then(setMe, () => undefined);
   }, []);
 
   const active = initiatives.filter((i) => !i.archivedAt);
@@ -65,6 +69,13 @@ function Shell({ user }: { user: User }) {
             <button type="button" onClick={() => open({ kind: 'palette' })}>
               {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
             </button>{' '}
+            {me?.isAdmin && (
+              <>
+                <button type="button" onClick={() => open({ kind: 'admin' })}>
+                  {t('admin.open')}
+                </button>{' '}
+              </>
+            )}
             {user.profile.name ?? user.profile.preferred_username} <LanguageSelector />{' '}
             <button onClick={() => void logout()}>{t('auth.logout')}</button>
           </span>
@@ -110,6 +121,8 @@ function Shell({ user }: { user: User }) {
               );
             case 'member':
               return <MemberPanel member={content.member} onClose={close} />;
+            case 'admin':
+              return me && <AdminPanel myId={me.id} onClose={close} />;
           }
         }}
       />

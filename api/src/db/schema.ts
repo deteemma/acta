@@ -11,6 +11,8 @@ export interface AppUserTable {
   email: string | null;
   display_name: string | null;
   locale: Generated<Locale | null>;
+  /** Compte désactivé dans Keycloak ; écrit par admin_set_user_deactivated (migration 0007). */
+  deactivated_at: ColumnType<Date | null, undefined, never>;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

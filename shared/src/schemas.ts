@@ -130,7 +130,61 @@ export interface MeDto {
   email: string | null;
   displayName: string | null;
   locale: z.infer<typeof localeSchema> | null;
+  /** Porte le rôle administrateur de l'application (ADR-0005). */
+  isAdmin: boolean;
 }
+
+/**
+ * Création d'un compte par l'administrateur (ticket 05). Le mot de passe est
+ * temporaire : la personne le change à sa première connexion.
+ */
+export const createAccountSchema = z.object({
+  username: z.string().trim().min(1).max(255),
+  email: z.email(),
+  firstName: z.string().trim().min(1).max(255),
+  lastName: z.string().trim().min(1).max(255),
+  temporaryPassword: z.string().min(1),
+});
+export type CreateAccountInput = z.infer<typeof createAccountSchema>;
+
+/** Une modification de compte l'active ou le désactive, ou donne ou retire le rôle administrateur. */
+export const updateAccountSchema = z.union([
+  z.strictObject({ enabled: z.boolean() }),
+  z.strictObject({ isAdmin: z.boolean() }),
+]);
+export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
+
+/** Compte de l'application, tel que Keycloak le connaît. Jamais supprimé, seulement désactivé. */
+export interface AccountDto {
+  id: string;
+  username: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  enabled: boolean;
+  isAdmin: boolean;
+  createdAt: string | null;
+}
+
+/**
+ * Initiative sans propriétaire actif, vue par l'administrateur : son nom, son
+ * code et ses membres, rien d'autre de son contenu.
+ */
+export interface OrphanInitiativeDto {
+  id: string;
+  code: string;
+  name: string;
+  members: OrphanInitiativeMemberDto[];
+}
+
+export interface OrphanInitiativeMemberDto extends MemberNameDto {
+  role: z.infer<typeof initiativeRoleSchema>;
+  /** Compte non désactivé. */
+  active: boolean;
+}
+
+export const designateOwnerSchema = z.object({ userId: z.string().min(1) });
+export type DesignateOwnerInput = z.infer<typeof designateOwnerSchema>;
 
 /** Configuration publique servie par l'API à /api/config (web et mobile). */
 export interface PublicConfigDto {

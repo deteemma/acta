@@ -1,4 +1,4 @@
-import { isTeamRefusal, type MessageKey, type TeamRefusal } from '@app/shared';
+import { type AdminRefusal, isAdminRefusal, isTeamRefusal, type MessageKey, type TeamRefusal } from '@app/shared';
 import { ApiError } from './api';
 import { useI18n } from './i18n';
 
@@ -8,6 +8,7 @@ export type UiError = { key: MessageKey; params?: Record<string, string | number
 export function toUiError(error: unknown): UiError {
   if (error instanceof ApiError) {
     if (isTeamRefusal(error.refusal)) return teamRefusalError(error.refusal);
+    if (isAdminRefusal(error.refusal)) return adminRefusalError(error.refusal);
     return error.status === 409 ? { key: 'initiatives.codeTaken' } : { key: 'error.http', params: { status: error.status } };
   }
   return { raw: String(error) };
@@ -15,6 +16,9 @@ export function toUiError(error: unknown): UiError {
 
 /** Refus d'un changement de l'équipe (règles d'équipe de @app/shared). */
 export const teamRefusalError = (refusal: TeamRefusal): UiError => ({ key: `team.refusal.${refusal}` });
+
+/** Refus de l'administration des comptes (règles de @app/shared). */
+export const adminRefusalError = (refusal: AdminRefusal): UiError => ({ key: `admin.refusal.${refusal}` });
 
 export function ErrorMessage({ error }: { error: UiError | null }) {
   const { t } = useI18n();

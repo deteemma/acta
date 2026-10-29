@@ -1,10 +1,14 @@
 import type {
+  AccountDto,
   AddMemberInput,
+  CreateAccountInput,
   CreateInitiativeInput,
   InitiativeDto,
   InitiativeMemberDto,
   MeDto,
+  OrphanInitiativeDto,
   OwnerDesignationDto,
+  UpdateAccountInput,
   UpdateInitiativeInput,
   UpdateMeInput,
   UpdateMemberInput,
@@ -61,4 +65,16 @@ export const api = {
   removeMember: (id: string, userId: string) =>
     request<void>(`/initiatives/${id}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
   listOwnerDesignations: (id: string) => request<OwnerDesignationDto[]>(`/initiatives/${id}/owner-designations`),
+  // Administration (rôle administrateur, ticket 05).
+  listAccounts: () => request<AccountDto[]>('/admin/accounts'),
+  createAccount: (input: CreateAccountInput) =>
+    request<AccountDto>('/admin/accounts', { method: 'POST', body: JSON.stringify(input) }),
+  updateAccount: (id: string, input: UpdateAccountInput) =>
+    request<AccountDto>(`/admin/accounts/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  listOrphanInitiatives: () => request<OrphanInitiativeDto[]>('/admin/orphan-initiatives'),
+  designateOwner: (id: string, userId: string) =>
+    request<void>(`/admin/orphan-initiatives/${id}/owner-designations`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
 };

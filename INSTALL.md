@@ -118,7 +118,9 @@ Un fournisseur dont l'identifiant reste vide est désactivé.
 
 Pour chaque nouvelle version : `APPLICATIONS_DIR=/opt/applications ./deployer.sh monappli <version>`.
 Si `keycloak/realm.json` a changé dans la version, recopiez-le dans le socle et
-réappliquez-le :
+réappliquez-le (à la première application, le script ajoute aussi au `.env` le
+secret du compte technique `api-admin`, qui sert aux écrans d'administration des
+comptes ; redémarrez alors l'application) :
 
 ```bash
 cp /opt/applications/monappli/keycloak/realm.json /opt/socle/keycloak/realms/monappli.json

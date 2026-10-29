@@ -16,6 +16,7 @@ import {
 } from '@app/shared';
 import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
+import { isConstraintViolation, isUniqueViolation } from '../db/pg-errors.js';
 
 @Injectable()
 export class InitiativesService {
@@ -314,8 +315,3 @@ function teamRefusal(refusal: TeamRefusal) {
       return new ConflictException({ statusCode: 409, refusal });
   }
 }
-
-const pgErrorCode = (error: unknown) => (error as { code?: unknown } | null)?.code;
-const isUniqueViolation = (error: unknown) => pgErrorCode(error) === '23505';
-const isConstraintViolation = (error: unknown, constraint: string) =>
-  (error as { constraint?: unknown } | null)?.constraint === constraint;
