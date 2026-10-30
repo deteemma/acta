@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 — Parties prenantes
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 30.10.2026)
 
 - [x] L'administrateur paramètre l'acronyme de chaque catégorie d'objet (par défaut BE pour Besoin, EX pour Exigence) ; un changement d'acronyme ne modifie pas les références déjà attribuées.
 - [x] Une référence est de la forme CODE-ACRONYME-NUMÉRO ; le numéro est incrémenté par initiative et par catégorie, et jamais réutilisé, même après suppression.
