@@ -1,6 +1,8 @@
 // Contenu des panneaux : fiche d'une initiative, membre, création rapide.
 import {
+  type ActionDto,
   ANALYSIS_APPROACHES,
+  type BabokDto,
   type AnalysisApproach,
   can,
   createInitiativeSchema,
@@ -10,9 +12,11 @@ import {
   INITIATIVE_DESCRIPTION_MAX_LENGTH,
   type Locale,
   type OwnerDesignationDto,
+  sortByDueDate,
   updateInitiativeSchema,
 } from '@app/shared';
 import { type FormEvent, useEffect, useState } from 'react';
+import { ActionList } from './action-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
@@ -28,11 +32,16 @@ export function formatDate(locale: Locale, date: string): string {
 
 export function InitiativePanel({
   initiativeId,
+  babok,
+  actionsVersion,
   onChanged,
   onDeleted,
   onClose,
 }: {
   initiativeId: string;
+  babok: BabokDto | null;
+  /** Change à chaque écriture sur une action : la liste des actions se recharge. */
+  actionsVersion: number;
   onChanged: (initiative: InitiativeDto) => void;
   onDeleted: (initiativeId: string) => void;
   onClose: () => void;
@@ -41,6 +50,7 @@ export function InitiativePanel({
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
+  const [actions, setActions] = useState<ActionDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
   // Rechargée après chaque changement de l'équipe : il peut changer mon rôle.
@@ -59,6 +69,10 @@ export function InitiativePanel({
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initiativeId]);
+
+  useEffect(() => {
+    api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, actionsVersion]);
 
   function changed(next: InitiativeDto) {
     setInitiative(next);
@@ -84,6 +98,9 @@ export function InitiativePanel({
             <dt>{t('initiative.myRole')}</dt>
             <dd>{t(`role.${initiative.myRole}`)}</dd>
           </dl>
+          <h3>{t('actions.section')}</h3>
+          <ActionList actions={sortByDueDate(actions)} babok={babok} />
+          {actions.length === 0 && <p>{t('actions.sectionEmpty')}</p>}
           <TeamSection
             initiative={initiative}
             members={members}

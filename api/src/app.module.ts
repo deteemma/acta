@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ActionsController } from './actions/actions.controller.js';
+import { ActionsService } from './actions/actions.service.js';
 import { AdminController } from './admin/admin.controller.js';
 import { AdminService } from './admin/admin.service.js';
 import { KeycloakAdmin } from './admin/keycloak-admin.service.js';
@@ -17,7 +19,7 @@ import { MeController } from './users/me.controller.js';
 import { UsersService } from './users/users.service.js';
 
 @Module({
-  controllers: [AdminController, BabokController, HealthController, InitiativesController, MeController],
+  controllers: [ActionsController, AdminController, BabokController, HealthController, InitiativesController, MeController],
   providers: [
     { provide: AppConfig, useFactory: () => new AppConfig() },
     DatabaseService,
@@ -28,6 +30,7 @@ import { UsersService } from './users/users.service.js';
     KeycloakAdmin,
     AdminService,
     BabokService,
+    ActionsService,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })

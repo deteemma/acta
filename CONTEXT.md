@@ -67,6 +67,8 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 | Ticket | `ticket` | Élément de suivi générique d'une initiative, sur le modèle de Jira, caractérisé par son type et son statut ; porte une référence, des commentaires et des liens. |
 | Type de ticket | `ticket_type` | Nature d'un ticket : Epic, Action, Question, Décision, Risque, Demande de changement ; liste extensible par l'administration. Chaque type a ses propres statuts. |
 | Action | `action` | Type de ticket : unité de travail d'un BA, toujours rattachée à une tâche BABOK, éventuellement à une technique. Statuts : À faire, En cours, Terminée, Annulée. _À éviter_ : tâche (réservé aux tâches BABOK). |
+| Responsable d'une action | `assignee` | Membre propriétaire ou contributeur chargé d'une action. Il le reste s'il quitte ensuite l'initiative ou devient lecteur, signalé, jusqu'à réattribution. |
+| « Mes actions » | `my_actions` | Écran d'accueil : les actions dont je suis responsable, toutes initiatives confondues. |
 | Question | `question` | Type de ticket : point ouvert d'élicitation posé à des parties prenantes. Statuts : Ouverte, Répondue, Close. |
 | Décision | `decision` | Type de ticket : arbitrage obtenu. Statuts : Proposée, Actée. |
 | Risque | `risk` | Type de ticket : risque identifié sur le changement (tâche BABOK 6.3). Statuts : Identifié, Traité, Clos. |

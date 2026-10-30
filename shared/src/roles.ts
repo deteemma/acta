@@ -30,6 +30,8 @@ export const INITIATIVE_PERMISSIONS = {
    */
   changeTeam: 'reader',
   delete: 'owner',
+  /** Créer, modifier et supprimer une action (ticket 07). */
+  editActions: 'contributor',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;

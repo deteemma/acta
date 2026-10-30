@@ -1,6 +1,6 @@
 // Types Kysely des tables (voir api/migrations). À tenir à jour avec les migrations.
 import type { ColumnType, Generated } from 'kysely';
-import type { AnalysisApproach, InitiativeRole, Locale } from '@app/shared';
+import type { ActionStatus, AnalysisApproach, InitiativeRole, Locale } from '@app/shared';
 
 type Timestamp = ColumnType<Date, Date | string | undefined, Date | string>;
 /** Colonne facultative : absente à l'insertion. */
@@ -50,6 +50,24 @@ export interface OwnerDesignationTable {
   designated_at: Timestamp;
 }
 
+/** Action (migration 0010) : auteurs et dates écrits par un déclencheur. */
+export interface ActionTable {
+  id: string;
+  initiative_id: string;
+  title: string;
+  description: Optional<string>;
+  task_id: string;
+  technique_id: Optional<string>;
+  assignee_id: string;
+  /** Colonne « date » : lue en texte AAAA-MM-JJ (voir ActionsService). */
+  due_date: Optional<string>;
+  status: Generated<ActionStatus>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  updated_by: ColumnType<string, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
 /** Référentiel BABOK (migration 0009) : lecture seule, aucune écriture possible. */
 interface BabokElementColumns {
   id: string;
@@ -75,6 +93,7 @@ export interface BabokTaskTechniqueTable {
 }
 
 export interface Database {
+  action: ActionTable;
   app_user: AppUserTable;
   babok_knowledge_area: BabokKnowledgeAreaTable;
   babok_task: BabokTaskTable;

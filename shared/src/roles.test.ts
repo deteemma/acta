@@ -51,3 +51,10 @@ test('tout membre peut demander un changement de l’équipe, même sur une init
   assert.equal(can(null, 'changeTeam'), false);
   assert.equal(can('reader', 'changeTeam', { archived: true }), true);
 });
+
+test('actions : propriétaire et contributeurs les gèrent, le lecteur consulte ; archivée, plus personne', () => {
+  assert.equal(can('owner', 'editActions'), true);
+  assert.equal(can('contributor', 'editActions'), true);
+  assert.equal(can('reader', 'editActions'), false);
+  assert.equal(can('owner', 'editActions', { archived: true }), false);
+});

@@ -25,7 +25,7 @@ import { usePanels } from './panels';
 export const memberName = (member: MemberNameDto) => member.displayName ?? member.email ?? member.userId;
 
 /** Date et heure d'une désignation, dans la langue de l'interface. */
-const formatDateTime = (locale: Locale, date: string) =>
+export const formatDateTime = (locale: Locale, date: string) =>
   new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' }).format(new Date(date));
 
 export function TeamSection({

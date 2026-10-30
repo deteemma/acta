@@ -1,4 +1,11 @@
-import { type AdminRefusal, isAdminRefusal, isTeamRefusal, type MessageKey, type TeamRefusal } from '@app/shared';
+import {
+  type AdminRefusal,
+  isActionRefusal,
+  isAdminRefusal,
+  isTeamRefusal,
+  type MessageKey,
+  type TeamRefusal,
+} from '@app/shared';
 import { ApiError } from './api';
 import { useI18n } from './i18n';
 
@@ -9,6 +16,7 @@ export function toUiError(error: unknown): UiError {
   if (error instanceof ApiError) {
     if (isTeamRefusal(error.refusal)) return teamRefusalError(error.refusal);
     if (isAdminRefusal(error.refusal)) return adminRefusalError(error.refusal);
+    if (isActionRefusal(error.refusal)) return { key: `action.refusal.${error.refusal}` };
     return error.status === 409 ? { key: 'initiatives.codeTaken' } : { key: 'error.http', params: { status: error.status } };
   }
   return { raw: String(error) };

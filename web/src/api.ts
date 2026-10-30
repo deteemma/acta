@@ -1,5 +1,8 @@
 import type {
   AccountDto,
+  ActionDto,
+  CreateActionInput,
+  UpdateActionInput,
   AddMemberInput,
   BabokDto,
   CreateAccountInput,
@@ -67,6 +70,16 @@ export const api = {
   removeMember: (id: string, userId: string) =>
     request<void>(`/initiatives/${id}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
   listOwnerDesignations: (id: string) => request<OwnerDesignationDto[]>(`/initiatives/${id}/owner-designations`),
+  // Actions (ticket 07).
+  listMyActions: () => request<ActionDto[]>('/actions/mine'),
+  listActions: (id: string) => request<ActionDto[]>(`/initiatives/${id}/actions`),
+  getAction: (id: string, actionId: string) => request<ActionDto>(`/initiatives/${id}/actions/${actionId}`),
+  createAction: (id: string, input: CreateActionInput) =>
+    request<ActionDto>(`/initiatives/${id}/actions`, { method: 'POST', body: JSON.stringify(input) }),
+  updateAction: (id: string, actionId: string, input: UpdateActionInput) =>
+    request<ActionDto>(`/initiatives/${id}/actions/${actionId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deleteAction: (id: string, actionId: string) =>
+    request<void>(`/initiatives/${id}/actions/${actionId}`, { method: 'DELETE' }),
   // Administration (rôle administrateur, ticket 05).
   listAccounts: () => request<AccountDto[]>('/admin/accounts'),
   createAccount: (input: CreateAccountInput) =>

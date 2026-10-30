@@ -23,7 +23,10 @@ export type PanelContent =
   | { kind: 'member'; member: InitiativeMemberDto }
   | { kind: 'admin' }
   | { kind: 'babok' }
-  | { kind: 'babokElement'; elementId: string };
+  | { kind: 'babokElement'; elementId: string }
+  /** Création rapide ; l'initiative est proposée d'après le panneau d'où l'on vient. */
+  | { kind: 'createAction'; initiativeId?: string }
+  | { kind: 'action'; initiativeId: string; actionId: string };
 
 interface Entry {
   id: number;
@@ -93,6 +96,12 @@ export function PanelHost({ render }: { render: (content: PanelContent, close: (
 
 const PanelEntryContext = createContext<Entry | null>(null);
 
+/**
+ * Bouton flottant (« + Action »), repris dans chaque panneau latéral : un
+ * panneau modal rend inerte l'écran en dessous, le bouton y reste ainsi accessible.
+ */
+export const FabContext = createContext<ReactNode>(null);
+
 /** Glissement vers le bas, sur petit écran, au-delà duquel le panneau se referme. */
 const SWIPE_CLOSE_PX = 80;
 const NARROW_SCREEN = '(max-width: 40rem)';
@@ -101,6 +110,7 @@ export function Panel({
   title,
   titleTooltip,
   variant = 'side',
+  showFab = true,
   onClose,
   children,
 }: {
@@ -108,11 +118,14 @@ export function Panel({
   /** Info-bulle du titre (ex. nom anglais d'un élément du BABOK). */
   titleTooltip?: string;
   variant?: 'side' | 'palette';
+  /** Faux pour le panneau que le bouton flottant ouvre lui-même. */
+  showFab?: boolean;
   onClose: () => void;
   children: ReactNode;
 }) {
   const { t } = useI18n();
   const entry = useContext(PanelEntryContext);
+  const fab = useContext(FabContext);
   const ref = useRef<HTMLDialogElement>(null);
   const onCloseRef = useRef(onClose);
   const drag = useRef<{ startY: number; dy: number } | null>(null);
@@ -177,6 +190,7 @@ export function Panel({
         </button>
       </header>
       <div className="panel-body">{children}</div>
+      {variant === 'side' && showFab && fab}
     </dialog>
   );
 }

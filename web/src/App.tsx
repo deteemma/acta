@@ -1,6 +1,7 @@
 import { type BabokDto, findBabokElement, type InitiativeDto, type MeDto } from '@app/shared';
 import type { User } from 'oidc-client-ts';
 import { useEffect, useState } from 'react';
+import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
 import { api } from './api';
 import { BabokElementPanel, BabokPanel } from './babok-panels';
@@ -8,8 +9,9 @@ import { login, logout } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
 import { CreateInitiativePanel, InitiativePanel, MemberPanel } from './initiative-panels';
+import { MyActions } from './my-actions';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
-import { PanelHost, PanelsProvider, usePanels } from './panels';
+import { FabContext, PanelHost, PanelsProvider, usePanels } from './panels';
 
 export function App({ user }: { user: User | null }) {
   return (
@@ -43,14 +45,17 @@ function SignedIn({ user }: { user: User }) {
   );
 }
 
-/** Coque de navigation : liste, palette (Ctrl+K), bouton « + » et panneaux. */
+/** Coque de navigation : « Mes actions », initiatives, palette (Ctrl+K), bouton « + Action » et panneaux. */
 function Shell({ user }: { user: User }) {
   const { t } = useI18n();
-  const { open } = usePanels();
+  const { stack, open } = usePanels();
   const [initiatives, setInitiatives] = useState<InitiativeDto[]>([]);
   const [me, setMe] = useState<MeDto | null>(null);
   const [babok, setBabok] = useState<BabokDto | null>(null);
   const [error, setError] = useState<UiError | null>(null);
+  // Incrémenté à chaque écriture sur une action : les listes se rechargent.
+  const [actionsVersion, setActionsVersion] = useState(0);
+  const actionsChanged = () => setActionsVersion((v) => v + 1);
   usePaletteShortcut();
 
   useEffect(() => {
@@ -62,12 +67,29 @@ function Shell({ user }: { user: User }) {
 
   const active = initiatives.filter((i) => !i.archivedAt);
   const archived = initiatives.filter((i) => i.archivedAt);
+  // Initiative du panneau le plus haut qui en montre une, proposée à la création rapide.
+  const currentInitiativeId = stack
+    .map((e) => e.content)
+    .findLast((c) => c.kind === 'initiative' || c.kind === 'action')
+    ?.initiativeId;
+  const fab = (
+    <button
+      type="button"
+      className="fab"
+      aria-label={t('actions.new')}
+      title={t('actions.new')}
+      disabled={!babok}
+      onClick={() => open({ kind: 'createAction', initiativeId: currentInitiativeId })}
+    >
+      + {t('actions.fab')}
+    </button>
+  );
 
   return (
-    <>
+    <FabContext.Provider value={fab}>
       <main>
         <header>
-          <h1>{t('initiatives.title')}</h1>
+          <h1>{t('actions.title')}</h1>
           <span>
             <button type="button" onClick={() => open({ kind: 'palette' })}>
               {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
@@ -87,6 +109,13 @@ function Shell({ user }: { user: User }) {
           </span>
         </header>
         <ErrorMessage error={error} />
+        <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
+        <div className="section-header">
+          <h2>{t('initiatives.title')}</h2>
+          <button type="button" onClick={() => open({ kind: 'createInitiative' })}>
+            {t('initiatives.new')}
+          </button>
+        </div>
         <InitiativeList initiatives={active} />
         {initiatives.length === 0 && <p>{t('initiatives.empty')}</p>}
         {archived.length > 0 && (
@@ -96,16 +125,7 @@ function Shell({ user }: { user: User }) {
           </details>
         )}
       </main>
-      {/* Deviendra « + Action » au ticket 07. */}
-      <button
-        type="button"
-        className="fab"
-        aria-label={t('initiatives.new')}
-        title={t('initiatives.new')}
-        onClick={() => open({ kind: 'createInitiative' })}
-      >
-        +
-      </button>
+      {fab}
       <PanelHost
         render={(content, close) => {
           switch (content.kind) {
@@ -120,6 +140,8 @@ function Shell({ user }: { user: User }) {
               return (
                 <InitiativePanel
                   initiativeId={content.initiativeId}
+                  babok={babok}
+                  actionsVersion={actionsVersion}
                   onChanged={(changed) => setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)))}
                   onDeleted={(id) => setInitiatives((list) => list.filter((i) => i.id !== id))}
                   onClose={close}
@@ -135,10 +157,34 @@ function Shell({ user }: { user: User }) {
               const element = babok && findBabokElement(babok, content.elementId);
               return element && <BabokElementPanel babok={babok} element={element} onClose={close} />;
             }
+            case 'createAction':
+              return (
+                babok && (
+                  <CreateActionPanel
+                    babok={babok}
+                    initiatives={active}
+                    initiativeId={content.initiativeId}
+                    onCreated={actionsChanged}
+                    onClose={close}
+                  />
+                )
+              );
+            case 'action':
+              return (
+                babok && (
+                  <ActionPanel
+                    babok={babok}
+                    initiativeId={content.initiativeId}
+                    actionId={content.actionId}
+                    onChanged={actionsChanged}
+                    onClose={close}
+                  />
+                )
+              );
           }
         }}
       />
-    </>
+    </FabContext.Provider>
   );
 }
 

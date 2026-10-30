@@ -316,3 +316,120 @@ form.invite h4 {
 .owner-history {
   padding-inline-start: 1.25rem;
 }
+/* Actions et « Mes actions » (ticket 07) */
+.fab {
+  width: auto;
+  padding: 0 1.25rem;
+  border-radius: 1.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.fab:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.action-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem 1rem;
+}
+.action-filters fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  border: 1px solid var(--panel-border);
+}
+.action-filters label.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.action-filters input[type='checkbox'] {
+  flex: none;
+}
+.action-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+.action-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  margin-inline-start: auto;
+}
+.status-in_progress {
+  border-color: var(--accent);
+}
+.status-done,
+.status-cancelled {
+  opacity: 0.6;
+}
+/* Aperçu au survol ou au focus d'une tâche ou d'une technique. */
+.babok-preview {
+  position: relative;
+}
+.preview-card {
+  display: none;
+  position: absolute;
+  z-index: 2;
+  top: 100%;
+  inset-inline-start: 0;
+  width: min(20rem, 80vw);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.25rem;
+  background: Canvas;
+  color: CanvasText;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  font-weight: normal;
+}
+.babok-preview:is(:hover, :focus-within) .preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.rich-text-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.rich-text-editor textarea {
+  font: inherit;
+  padding: 0.4rem;
+  resize: vertical;
+}
+.rich-text-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+.rich-text-toolbar > span {
+  margin-inline-end: auto;
+}
+.format-bold {
+  font-weight: bold;
+}
+.format-italic {
+  font-style: italic;
+}
+.rich-text :is(h3, h4, h5) {
+  margin: 0.75rem 0 0.25rem;
+}
+.rich-text :is(p, ul, ol) {
+  margin: 0.25rem 0;
+}
+.audit {
+  margin-top: 1rem;
+}
