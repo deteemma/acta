@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 — Actions et « Mes actions »
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 30.10.2026)
 
 - [x] Le tableau de bord présente les 6 domaines de connaissance et leurs tâches, avec pour chaque tâche le nombre d'actions par statut.
 - [x] Les tâches sans aucune action apparaissent comme non couvertes.
@@ -16,8 +16,8 @@ Réalisation :
 - Web : bouton « Tableau de bord » dans la section « Actions » de la fiche Initiative ; panneau latéral qui liste, par domaine, chaque tâche avec ses statuts (ou « Non couverte ») ; un clic sur la tâche déplie ses actions, un clic sur une action ouvre sa fiche. Le bouton « + Action » y propose l'initiative du tableau de bord.
 - Aucune nouvelle table ni route : le tableau de bord s'appuie sur la liste des actions de l'initiative (tout membre, lecteur compris ; initiative archivée en lecture).
 
-Points à valider par la responsable fonctionnelle :
+Points validés par la responsable fonctionnelle (30.10.2026) :
 - Une tâche est couverte dès qu'elle a une action, **quel qu'en soit le statut**, Annulée comprise (lecture littérale de « sans aucune action »). Le ticket 14 (R14, domaine non couvert) reprendra la même définition.
 - Seuls les statuts présents sont affichés (« À faire : 2 · Terminée : 1 ») ; les statuts à 0 sont omis pour alléger les 30 lignes.
-- Ajouts non demandés, à garder ou retirer : le total « n tâche(s) couverte(s) sur m » par domaine ; les actions d'une tâche triées par échéance comme dans « Mes actions ».
-- Termes « tableau de bord » et « tâche couverte » à ajouter au glossaire `CONTEXT.md` une fois la définition validée.
+- Ajouts gardés : le total « n tâche(s) couverte(s) sur m » par domaine ; les actions d'une tâche triées par échéance comme dans « Mes actions ».
+- Termes « tableau de bord » et « tâche couverte » ajoutés au glossaire `CONTEXT.md`.
