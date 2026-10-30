@@ -1,0 +1,5 @@
+# Mêmes vérifications que la CI (.github/workflows/ci.yml), avant chaque commit.
+pnpm --filter @app/shared build
+pnpm lint
+pnpm typecheck
+pnpm --filter @app/shared test

@@ -23,6 +23,27 @@ export default tseslint.config(
     },
   },
   {
+    // Requêtes métier par DatabaseService.asUser() seulement (ADR-0003) : aucune
+    // autre connexion à la base dans l'API.
+    files: ['api/src/**/*.ts'],
+    ignores: ['api/src/db/database.service.ts', 'api/src/migrations/run.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'pg', message: 'Passer par DatabaseService.asUser() (ADR-0003).' },
+            {
+              name: 'kysely',
+              importNames: ['Kysely', 'PostgresDialect'],
+              message: 'Passer par DatabaseService.asUser() (ADR-0003).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['web/**/*.{ts,tsx}', 'mobile/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser } },
     plugins: { 'react-hooks': reactHooks },
