@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] La liste complète des règles est rédigée dans un document et validée par la responsable fonctionnelle avant tout développement.
+- [x] La liste complète des règles est rédigée dans un document et validée par la responsable fonctionnelle avant tout développement : `.scratch/phase-1/14-regles-actions-suggerees.md` (validé le 30.10.2026).
 - [ ] Seules les règles validées sont mises en œuvre ; chaque suggestion affiche sa justification et permet de créer l'Action en un clic.
 - [ ] Une suggestion disparaît dès que la situation qui l'a déclenchée n'existe plus.
 - [ ] Tous les libellés existent en français et en anglais (ADR-0013).
