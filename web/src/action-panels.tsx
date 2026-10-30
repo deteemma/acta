@@ -69,9 +69,15 @@ export function BabokPreview({ element }: { element: BabokElementDto }) {
   );
 }
 
-function StatusLabel({ status }: { status: ActionStatus }) {
+/** Statut d'une action ; avec `count`, le nombre d'actions à ce statut (tableau de bord). */
+export function StatusLabel({ status, count }: { status: ActionStatus; count?: number }) {
   const { t } = useI18n();
-  return <span className={`badge status-${status}`}>{t(`actionStatus.${status}`)}</span>;
+  const label = t(`actionStatus.${status}`);
+  return (
+    <span className={`badge status-${status}`}>
+      {count === undefined ? label : t('dashboard.statusCount', { status: label, count })}
+    </span>
+  );
 }
 
 /** Liste d'actions ; `showInitiative` pour « Mes actions », toutes initiatives confondues. */

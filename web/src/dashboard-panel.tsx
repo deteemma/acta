@@ -8,7 +8,7 @@ import {
   initiativeDashboard,
 } from '@app/shared';
 import { useEffect, useState } from 'react';
-import { ActionList } from './action-panels';
+import { ActionList, StatusLabel } from './action-panels';
 import { api } from './api';
 import { BabokName } from './babok-panels';
 import { ErrorMessage, toUiError, type UiError } from './errors';
@@ -61,19 +61,14 @@ export function DashboardPanel({
                   <span className="action-meta">
                     {covered ? (
                       ACTION_STATUSES.filter((status) => countByStatus[status] > 0).map((status) => (
-                        <span key={status} className={`badge status-${status}`}>
-                          {t('dashboard.statusCount', {
-                            status: t(`actionStatus.${status}`),
-                            count: countByStatus[status],
-                          })}
-                        </span>
+                        <StatusLabel key={status} status={status} count={countByStatus[status]} />
                       ))
                     ) : (
                       <span className="badge">{t('dashboard.uncovered')}</span>
                     )}
                   </span>
                 </summary>
-                {covered ? <ActionList actions={ofTask} babok={babok} /> : <p>{t('dashboard.noActions')}</p>}
+                {ofTask.length > 0 ? <ActionList actions={ofTask} babok={babok} /> : <p>{t('dashboard.noActions')}</p>}
               </details>
             ))}
           </section>
