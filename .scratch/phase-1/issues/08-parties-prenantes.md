@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 — Actions et « Mes actions »
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 30.10.2026)
 
 - [x] Une fiche porte : nom, nature (personne, groupe, organisation), un ou plusieurs rôles BABOK parmi les 11 (§2.4), influence et intérêt (faible, moyen, fort), coordonnées (texte libre), notes.
 - [x] Une fiche peut être reliée à un compte utilisateur ; un utilisateur est relié à au plus une fiche par initiative, et peut l'être dans plusieurs initiatives.
@@ -32,7 +32,10 @@ Précisions de la responsable fonctionnelle (30.10.2026) :
 - Dates de création et de modification conservées avec leur auteur.
 - Noms français des 11 rôles (§2.4) : Analyste métier, Client, Expert métier du domaine, Utilisateur final, Expert de la mise en œuvre, Support opérationnel, Chef de projet, Régulateur, Sponsor, Fournisseur, Testeur.
 
-Points à valider :
+Points validés par la responsable fonctionnelle (30.10.2026) :
 - Modifier les parties prenantes liées à une action compte comme une modification de l'action (auteur et date de dernière modification mis à jour).
 - Matrice : une partie prenante n'y figure que si influence **et** intérêt sont renseignés.
+- La création rapide « + Action » ne propose pas de parties prenantes : on les coche ensuite dans la fiche de l'action.
+- Glossaire (`CONTEXT.md`) : entrées « Rôle de partie prenante » et « Matrice influence × intérêt » ; « Partie prenante » précisée (au plus une fiche par compte et par initiative).
+- Refus de suppression d'une action liée : « passez-la au statut Annulée, ou retirez d'abord ses liens ».
 - Mobile : non traité.
