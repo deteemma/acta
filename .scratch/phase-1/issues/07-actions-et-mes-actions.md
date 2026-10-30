@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Fiche Initiative complète ; 06 — Référentiel BABOK
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 30.10.2026)
 
 - [x] Une Action porte : titre, description (texte mis en forme, qui accueille aussi les comptes rendus d'élicitation), tâche BABOK (obligatoire), technique (facultative, parmi les 50), responsable (un membre de l'initiative), échéance (facultative), statut.
 - [x] Statuts : À faire, En cours, Terminée, Annulée.
@@ -33,7 +33,7 @@ Précisions de la responsable fonctionnelle (30.10.2026) :
 - Initiative archivée : ses actions n'apparaissent dans « Mes actions » que si l'on filtre sur elle.
 - Statuts libres (une action terminée ou annulée peut être rouverte) ; échéance quelconque, même passée.
 
-Points à valider :
+Points validés par la responsable fonctionnelle (30.10.2026) :
 - Titre d'une action : 200 caractères au plus (limite non précisée, choisie par analogie avec les autres champs).
 - À échéance égale, la plus ancienne créée apparaît d'abord.
 - Un responsable passé **lecteur** reste membre : il voit encore l'action dans « Mes actions » (en lecture seule). Un membre qui a quitté l'initiative ne la voit plus.
