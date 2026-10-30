@@ -4,7 +4,7 @@
 
 **Blocked by:** 09 — Références et Besoins
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 30.10.2026)
 
 - [x] Une Exigence porte : référence (ex. CRM-EX-012), titre, énoncé, type (métier, partie prenante, solution, transition), sous-type fonctionnelle ou non fonctionnelle pour le type solution, statut, sources (parties prenantes), besoins liés, exigence parente.
 - [x] Une exigence est liée à au moins un besoin ou à une exigence parente.
