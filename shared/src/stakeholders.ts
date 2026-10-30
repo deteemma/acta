@@ -148,7 +148,7 @@ export function linkableMembers<M extends { userId: string }>(
  * - `userNotMember` : le compte à relier n'est pas membre de l'initiative ;
  * - `userAlreadyLinked` : ce compte est déjà relié à une autre fiche de l'initiative ;
  * - `unknownStakeholder` : une action est liée à une partie prenante absente de l'initiative ;
- * - `stakeholderLinked` : la partie prenante est liée à une action (ou plus tard à un autre objet).
+ * - `stakeholderLinked` : la partie prenante est liée à une action, à l’origine d’un besoin ou source d’une exigence.
  */
 export const STAKEHOLDER_REFUSALS = ['userNotMember', 'userAlreadyLinked', 'unknownStakeholder', 'stakeholderLinked'] as const;
 export type StakeholderRefusal = (typeof STAKEHOLDER_REFUSALS)[number];

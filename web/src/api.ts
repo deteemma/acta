@@ -13,8 +13,12 @@ import type {
   OrphanInitiativeDto,
   OwnerDesignationDto,
   CreateNeedInput,
+  CreateRequirementInput,
   CreateStakeholderInput,
   NeedDto,
+  RequirementDto,
+  RequirementVersionDto,
+  UpdateRequirementInput,
   ReferenceCategory,
   ReferenceCategoryDto,
   ReferenceDto,
@@ -110,6 +114,21 @@ export const api = {
   updateNeed: (id: string, needId: string, input: UpdateNeedInput) =>
     request<NeedDto>(`/initiatives/${id}/needs/${needId}`, { method: 'PATCH', body: JSON.stringify(input) }),
   deleteNeed: (id: string, needId: string) => request<void>(`/initiatives/${id}/needs/${needId}`, { method: 'DELETE' }),
+  // Exigences (ticket 10).
+  listRequirements: (id: string) => request<RequirementDto[]>(`/initiatives/${id}/requirements`),
+  getRequirement: (id: string, requirementId: string) =>
+    request<RequirementDto>(`/initiatives/${id}/requirements/${requirementId}`),
+  requirementHistory: (id: string, requirementId: string) =>
+    request<RequirementVersionDto[]>(`/initiatives/${id}/requirements/${requirementId}/history`),
+  createRequirement: (id: string, input: CreateRequirementInput) =>
+    request<RequirementDto>(`/initiatives/${id}/requirements`, { method: 'POST', body: JSON.stringify(input) }),
+  updateRequirement: (id: string, requirementId: string, input: UpdateRequirementInput) =>
+    request<RequirementDto>(`/initiatives/${id}/requirements/${requirementId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  deleteRequirement: (id: string, requirementId: string) =>
+    request<void>(`/initiatives/${id}/requirements/${requirementId}`, { method: 'DELETE' }),
   // Administration (rôle administrateur, tickets 05 et 09).
   listReferenceCategories: () => request<ReferenceCategoryDto[]>('/admin/reference-categories'),
   updateReferenceCategory: (category: ReferenceCategory, input: UpdateReferenceCategoryInput) =>

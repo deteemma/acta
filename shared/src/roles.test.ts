@@ -72,3 +72,10 @@ test('propriétaire et contributeurs écrivent les besoins ; lecteurs consultent
   assert.equal(can('reader', 'editNeeds'), false);
   assert.equal(can('contributor', 'editNeeds', { archived: true }), false);
 });
+
+test('propriétaire et contributeurs écrivent les exigences, statut compris ; lecteurs consultent ; archivée : lecture seule', () => {
+  assert.equal(can('owner', 'editRequirements'), true);
+  assert.equal(can('contributor', 'editRequirements'), true);
+  assert.equal(can('reader', 'editRequirements'), false);
+  assert.equal(can('contributor', 'editRequirements', { archived: true }), false);
+});

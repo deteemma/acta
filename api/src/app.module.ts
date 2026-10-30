@@ -19,6 +19,8 @@ import { InitiativeRoleGuard } from './initiatives/initiative-role.guard.js';
 import { InitiativesService } from './initiatives/initiatives.service.js';
 import { NeedsController } from './needs/needs.controller.js';
 import { NeedsService } from './needs/needs.service.js';
+import { RequirementsController } from './requirements/requirements.controller.js';
+import { RequirementsService } from './requirements/requirements.service.js';
 import { StakeholdersController } from './stakeholders/stakeholders.controller.js';
 import { StakeholdersService } from './stakeholders/stakeholders.service.js';
 import { MeController } from './users/me.controller.js';
@@ -34,6 +36,7 @@ import { UsersService } from './users/users.service.js';
     MeController,
     NeedsController,
     ReferenceCategoriesController,
+    RequirementsController,
     StakeholdersController,
   ],
   providers: [
@@ -50,6 +53,7 @@ import { UsersService } from './users/users.service.js';
     StakeholdersService,
     NeedsService,
     ReferenceCategoriesService,
+    RequirementsService,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })

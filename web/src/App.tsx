@@ -14,6 +14,8 @@ import { NeedPanel } from './need-panels';
 import { StakeholderPanel, StakeholdersPanel } from './stakeholder-panels';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
 import { FabContext, PanelHost, PanelsProvider, usePanels } from './panels';
+import { ReferencesProvider } from './references';
+import { RequirementPanel } from './requirement-panels';
 
 export function App({ user }: { user: User | null }) {
   return (
@@ -64,6 +66,9 @@ function Shell({ user }: { user: User }) {
   // De même pour les besoins.
   const [needsVersion, setNeedsVersion] = useState(0);
   const needsChanged = () => setNeedsVersion((v) => v + 1);
+  // De même pour les exigences.
+  const [requirementsVersion, setRequirementsVersion] = useState(0);
+  const requirementsChanged = () => setRequirementsVersion((v) => v + 1);
   usePaletteShortcut();
 
   useEffect(() => {
@@ -94,137 +99,157 @@ function Shell({ user }: { user: User }) {
   );
 
   return (
-    <FabContext.Provider value={fab}>
-      <main>
-        <header>
-          <h1>{t('actions.title')}</h1>
-          <span>
-            <button type="button" onClick={() => open({ kind: 'palette' })}>
-              {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
-            </button>{' '}
-            <button type="button" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
-              {t('babok.open')}
-            </button>{' '}
-            {me?.isAdmin && (
-              <>
-                <button type="button" onClick={() => open({ kind: 'admin' })}>
-                  {t('admin.open')}
-                </button>{' '}
-              </>
-            )}
-            {user.profile.name ?? user.profile.preferred_username} <LanguageSelector />{' '}
-            <button onClick={() => void logout()}>{t('auth.logout')}</button>
-          </span>
-        </header>
-        <ErrorMessage error={error} />
-        <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
-        <div className="section-header">
-          <h2>{t('initiatives.title')}</h2>
-          <button type="button" onClick={() => open({ kind: 'createInitiative' })}>
-            {t('initiatives.new')}
-          </button>
-        </div>
-        <InitiativeList initiatives={active} />
-        {initiatives.length === 0 && <p>{t('initiatives.empty')}</p>}
-        {archived.length > 0 && (
-          <details className="archived">
-            <summary>{t('initiatives.archivedSection', { count: archived.length })}</summary>
-            <InitiativeList initiatives={archived} />
-          </details>
-        )}
-      </main>
-      {fab}
-      <PanelHost
-        render={(content, close) => {
-          switch (content.kind) {
-            case 'palette':
-              // Les archivées après les actives.
-              return <Palette initiatives={[...active, ...archived]} babok={babok} onClose={close} />;
-            case 'createInitiative':
-              return (
-                <CreateInitiativePanel onCreated={(i) => setInitiatives((list) => [i, ...list])} onClose={close} />
-              );
-            case 'initiative':
-              return (
-                <InitiativePanel
-                  initiativeId={content.initiativeId}
-                  babok={babok}
-                  actionsVersion={actionsVersion}
-                  stakeholdersVersion={stakeholdersVersion}
-                  needsVersion={needsVersion}
-                  onChanged={(changed) => setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)))}
-                  onDeleted={(id) => setInitiatives((list) => list.filter((i) => i.id !== id))}
-                  onClose={close}
-                />
-              );
-            case 'member':
-              return <MemberPanel member={content.member} onClose={close} />;
-            case 'admin':
-              return me && <AdminPanel myId={me.id} onClose={close} />;
-            case 'babok':
-              return babok && <BabokPanel babok={babok} onClose={close} />;
-            case 'babokElement': {
-              const element = babok && findBabokElement(babok, content.elementId);
-              return element && <BabokElementPanel babok={babok} element={element} onClose={close} />;
-            }
-            case 'createAction':
-              return (
-                babok && (
-                  <CreateActionPanel
-                    babok={babok}
-                    initiatives={active}
+    // Les références citées dans un texte suivent les besoins et exigences créés, modifiés ou supprimés.
+    <ReferencesProvider version={needsVersion + requirementsVersion}>
+      <FabContext.Provider value={fab}>
+        <main>
+          <header>
+            <h1>{t('actions.title')}</h1>
+            <span>
+              <button type="button" onClick={() => open({ kind: 'palette' })}>
+                {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
+              </button>{' '}
+              <button type="button" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
+                {t('babok.open')}
+              </button>{' '}
+              {me?.isAdmin && (
+                <>
+                  <button type="button" onClick={() => open({ kind: 'admin' })}>
+                    {t('admin.open')}
+                  </button>{' '}
+                </>
+              )}
+              {user.profile.name ?? user.profile.preferred_username} <LanguageSelector />{' '}
+              <button onClick={() => void logout()}>{t('auth.logout')}</button>
+            </span>
+          </header>
+          <ErrorMessage error={error} />
+          <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
+          <div className="section-header">
+            <h2>{t('initiatives.title')}</h2>
+            <button type="button" onClick={() => open({ kind: 'createInitiative' })}>
+              {t('initiatives.new')}
+            </button>
+          </div>
+          <InitiativeList initiatives={active} />
+          {initiatives.length === 0 && <p>{t('initiatives.empty')}</p>}
+          {archived.length > 0 && (
+            <details className="archived">
+              <summary>{t('initiatives.archivedSection', { count: archived.length })}</summary>
+              <InitiativeList initiatives={archived} />
+            </details>
+          )}
+        </main>
+        {fab}
+        <PanelHost
+          render={(content, close) => {
+            switch (content.kind) {
+              case 'palette':
+                // Les archivées après les actives.
+                return <Palette initiatives={[...active, ...archived]} babok={babok} onClose={close} />;
+              case 'createInitiative':
+                return (
+                  <CreateInitiativePanel onCreated={(i) => setInitiatives((list) => [i, ...list])} onClose={close} />
+                );
+              case 'initiative':
+                return (
+                  <InitiativePanel
                     initiativeId={content.initiativeId}
-                    onCreated={actionsChanged}
-                    onClose={close}
-                  />
-                )
-              );
-            case 'action':
-              return (
-                babok && (
-                  <ActionPanel
                     babok={babok}
-                    initiativeId={content.initiativeId}
-                    actionId={content.actionId}
+                    actionsVersion={actionsVersion}
                     stakeholdersVersion={stakeholdersVersion}
                     needsVersion={needsVersion}
-                    onChanged={actionsChanged}
+                    requirementsVersion={requirementsVersion}
+                    onChanged={(changed) => setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)))}
+                    onDeleted={(id) => setInitiatives((list) => list.filter((i) => i.id !== id))}
                     onClose={close}
                   />
-                )
-              );
-            case 'stakeholders':
-              return (
-                <StakeholdersPanel initiativeId={content.initiativeId} version={stakeholdersVersion} onClose={close} />
-              );
-            case 'stakeholder':
-              return (
-                <StakeholderPanel
-                  babok={babok}
-                  initiativeId={content.initiativeId}
-                  stakeholderId={content.stakeholderId}
-                  actionsVersion={actionsVersion}
-                  needsVersion={needsVersion}
-                  onChanged={stakeholdersChanged}
-                  onClose={close}
-                />
-              );
-            case 'need':
-              return (
-                <NeedPanel
-                  babok={babok}
-                  initiativeId={content.initiativeId}
-                  needId={content.needId}
-                  actionsVersion={actionsVersion}
-                  stakeholdersVersion={stakeholdersVersion}
-                  onChanged={needsChanged}
-                  onClose={close}
-                />
-              );
-          }
-        }}
-      />
-    </FabContext.Provider>
+                );
+              case 'member':
+                return <MemberPanel member={content.member} onClose={close} />;
+              case 'admin':
+                return me && <AdminPanel myId={me.id} onClose={close} />;
+              case 'babok':
+                return babok && <BabokPanel babok={babok} onClose={close} />;
+              case 'babokElement': {
+                const element = babok && findBabokElement(babok, content.elementId);
+                return element && <BabokElementPanel babok={babok} element={element} onClose={close} />;
+              }
+              case 'createAction':
+                return (
+                  babok && (
+                    <CreateActionPanel
+                      babok={babok}
+                      initiatives={active}
+                      initiativeId={content.initiativeId}
+                      onCreated={actionsChanged}
+                      onClose={close}
+                    />
+                  )
+                );
+              case 'action':
+                return (
+                  babok && (
+                    <ActionPanel
+                      babok={babok}
+                      initiativeId={content.initiativeId}
+                      actionId={content.actionId}
+                      stakeholdersVersion={stakeholdersVersion}
+                      needsVersion={needsVersion}
+                      requirementsVersion={requirementsVersion}
+                      onChanged={actionsChanged}
+                      onClose={close}
+                    />
+                  )
+                );
+              case 'stakeholders':
+                return (
+                  <StakeholdersPanel initiativeId={content.initiativeId} version={stakeholdersVersion} onClose={close} />
+                );
+              case 'stakeholder':
+                return (
+                  <StakeholderPanel
+                    babok={babok}
+                    initiativeId={content.initiativeId}
+                    stakeholderId={content.stakeholderId}
+                    actionsVersion={actionsVersion}
+                    needsVersion={needsVersion}
+                    requirementsVersion={requirementsVersion}
+                    onChanged={stakeholdersChanged}
+                    onClose={close}
+                  />
+                );
+              case 'need':
+                return (
+                  <NeedPanel
+                    babok={babok}
+                    initiativeId={content.initiativeId}
+                    needId={content.needId}
+                    actionsVersion={actionsVersion}
+                    stakeholdersVersion={stakeholdersVersion}
+                    requirementsVersion={requirementsVersion}
+                    onChanged={needsChanged}
+                    onClose={close}
+                  />
+                );
+              case 'requirement':
+                return (
+                  <RequirementPanel
+                    babok={babok}
+                    initiativeId={content.initiativeId}
+                    requirementId={content.requirementId}
+                    actionsVersion={actionsVersion}
+                    stakeholdersVersion={stakeholdersVersion}
+                    needsVersion={needsVersion}
+                    onChanged={requirementsChanged}
+                    onClose={close}
+                  />
+                );
+            }
+          }}
+        />
+      </FabContext.Provider>
+    </ReferencesProvider>
   );
 }
 

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { BabokDto, TechniqueDto } from './babok.js';
 import { hasAtLeast, type InitiativeRole } from './roles.js';
 import { needIdsSchema, type NeedRefDto } from './needs.js';
+import { requirementIdsSchema, type RequirementRefDto } from './requirements.js';
 import type { MemberNameDto } from './schemas.js';
 import { stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
 
@@ -41,6 +42,7 @@ export const createActionSchema = z.object({
   description: actionDescriptionSchema.optional(),
   stakeholderIds: stakeholderIdsSchema.optional(),
   needIds: needIdsSchema.optional(),
+  requirementIds: requirementIdsSchema.optional(),
 });
 export type CreateActionInput = z.infer<typeof createActionSchema>;
 
@@ -58,6 +60,8 @@ export const updateActionSchema = z
     stakeholderIds: stakeholderIdsSchema,
     /** Remplace l'ensemble des besoins liés (ticket 09). */
     needIds: needIdsSchema,
+    /** Remplace l'ensemble des exigences liées (ticket 10). */
+    requirementIds: requirementIdsSchema,
   })
   .partial();
 export type UpdateActionInput = z.infer<typeof updateActionSchema>;
@@ -82,6 +86,8 @@ export interface ActionDto {
   stakeholders: StakeholderRefDto[];
   /** Besoins liés, par référence. */
   needs: NeedRefDto[];
+  /** Exigences liées, par référence. */
+  requirements: RequirementRefDto[];
   createdAt: string;
   createdBy: MemberNameDto;
   updatedAt: string;

@@ -12,6 +12,7 @@ import {
   linkableMembers,
   type MessageKey,
   type NeedDto,
+  type RequirementDto,
   STAKEHOLDER_CONTACT_MAX_LENGTH,
   STAKEHOLDER_KINDS,
   STAKEHOLDER_LEVELS,
@@ -32,6 +33,7 @@ import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedList } from './need-panels';
+import { RequirementList } from './requirement-panels';
 import { Panel, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { formatDateTime, memberName } from './team-section';
@@ -208,6 +210,7 @@ export function StakeholderPanel({
   stakeholderId,
   actionsVersion,
   needsVersion,
+  requirementsVersion,
   onChanged,
   onClose,
 }: {
@@ -218,6 +221,8 @@ export function StakeholderPanel({
   actionsVersion: number;
   /** De même pour les besoins dont elle est à l'origine. */
   needsVersion: number;
+  /** De même pour les exigences dont elle est la source. */
+  requirementsVersion: number;
   /** Une partie prenante a été créée, modifiée ou supprimée : les listes se rechargent. */
   onChanged: () => void;
   onClose: () => void;
@@ -229,6 +234,7 @@ export function StakeholderPanel({
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [needs, setNeeds] = useState<NeedDto[]>([]);
+  const [requirements, setRequirements] = useState<RequirementDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
@@ -253,9 +259,15 @@ export function StakeholderPanel({
     api.listNeeds(initiativeId).then(setNeeds, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, stakeholderId, needsVersion]);
 
+  useEffect(() => {
+    if (!stakeholderId) return;
+    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, stakeholderId, requirementsVersion]);
+
   const stakeholder = stakeholderId ? stakeholders?.find((s) => s.id === stakeholderId) : undefined;
   const linkedActions = sortByDueDate(actions.filter((a) => a.stakeholders.some((s) => s.id === stakeholderId)));
   const originatedNeeds = needs.filter((n) => n.stakeholders.some((s) => s.id === stakeholderId));
+  const sourcedRequirements = requirements.filter((r) => r.stakeholders.some((s) => s.id === stakeholderId));
   const ready = initiative && members && stakeholders && (!stakeholderId || stakeholder);
 
   function saved(next: StakeholderDto) {
@@ -293,6 +305,9 @@ export function StakeholderPanel({
               <h3>{t('stakeholder.needs')}</h3>
               <NeedList needs={originatedNeeds} />
               {originatedNeeds.length === 0 && <p>{t('stakeholder.noNeeds')}</p>}
+              <h3>{t('stakeholder.requirements')}</h3>
+              <RequirementList requirements={sourcedRequirements} />
+              {sourcedRequirements.length === 0 && <p>{t('stakeholder.noRequirements')}</p>}
               <AuditTrail stakeholder={stakeholder} />
               {canEditStakeholders(initiative) && (
                 <DeleteStakeholder

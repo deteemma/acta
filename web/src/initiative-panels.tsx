@@ -13,6 +13,7 @@ import {
   type Locale,
   type NeedDto,
   type OwnerDesignationDto,
+  type RequirementDto,
   sortByDueDate,
   type StakeholderDto,
   updateInitiativeSchema,
@@ -24,6 +25,8 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { canEditNeeds, NeedList } from './need-panels';
 import { Panel, usePanels } from './panels';
+import { canEditRequirements, RequirementList } from './requirement-panels';
+import { TextWithReferences } from './rich-text';
 import { memberName, TeamSection } from './team-section';
 
 /** Date AAAA-MM-JJ ou horodatage, affiché dans la langue de l'interface. */
@@ -39,6 +42,7 @@ export function InitiativePanel({
   actionsVersion,
   stakeholdersVersion,
   needsVersion,
+  requirementsVersion,
   onChanged,
   onDeleted,
   onClose,
@@ -51,6 +55,8 @@ export function InitiativePanel({
   stakeholdersVersion: number;
   /** Change à chaque écriture sur un besoin (le code peut aussi se figer). */
   needsVersion: number;
+  /** Change à chaque écriture sur une exigence. */
+  requirementsVersion: number;
   onChanged: (initiative: InitiativeDto) => void;
   onDeleted: (initiativeId: string) => void;
   onClose: () => void;
@@ -63,6 +69,7 @@ export function InitiativePanel({
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[]>([]);
   const [needs, setNeeds] = useState<NeedDto[]>([]);
+  const [requirements, setRequirements] = useState<RequirementDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
   // Rechargée après chaque changement de l'équipe : il peut changer mon rôle.
@@ -96,6 +103,10 @@ export function InitiativePanel({
     api.getInitiative(initiativeId).then(changed, (e: unknown) => setError(toUiError(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initiativeId, needsVersion]);
+
+  useEffect(() => {
+    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, requirementsVersion]);
 
   function changed(next: InitiativeDto) {
     setInitiative(next);
@@ -145,6 +156,16 @@ export function InitiativePanel({
           </div>
           <NeedList needs={needs} />
           {needs.length === 0 && <p>{t('needs.sectionEmpty')}</p>}
+          <div className="section-header">
+            <h3 title={englishTermTooltip(locale, 'requirements.section')}>{t('requirements.section')}</h3>
+            {canEditRequirements(initiative) && (
+              <button type="button" onClick={() => open({ kind: 'requirement', initiativeId })}>
+                {t('requirements.new')}
+              </button>
+            )}
+          </div>
+          <RequirementList requirements={requirements} />
+          {requirements.length === 0 && <p>{t('requirements.sectionEmpty')}</p>}
           <TeamSection
             initiative={initiative}
             members={members}
@@ -189,7 +210,7 @@ function InitiativeDetails({ initiative }: { initiative: InitiativeDto }) {
       <dt>{t('initiative.name')}</dt>
       <dd>{initiative.name}</dd>
       <dt>{t('initiative.description')}</dt>
-      <dd className="multiline">{initiative.description ?? notSet}</dd>
+      <dd className="multiline">{initiative.description ? <TextWithReferences text={initiative.description} /> : notSet}</dd>
       <dt title={englishTermTooltip(locale, 'initiative.analysisApproach')}>{t('initiative.analysisApproach')}</dt>
       <dd>{initiative.analysisApproach ? <ApproachLabel approach={initiative.analysisApproach} /> : notSet}</dd>
       <dt>{t('initiative.startDate')}</dt>

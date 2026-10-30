@@ -12,6 +12,7 @@ import {
   type NeedDto,
   type NeedNature,
   type NeedRefDto,
+  type RequirementDto,
   type StakeholderDto,
   sortByDueDate,
 } from '@app/shared';
@@ -21,6 +22,7 @@ import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { Panel, usePanels } from './panels';
+import { RequirementList } from './requirement-panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
 import { formatDateTime, memberName } from './team-section';
@@ -62,6 +64,7 @@ export function NeedPanel({
   needId,
   actionsVersion,
   stakeholdersVersion,
+  requirementsVersion,
   onChanged,
   onClose,
 }: {
@@ -72,6 +75,8 @@ export function NeedPanel({
   actionsVersion: number;
   /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
   stakeholdersVersion: number;
+  /** De même pour les exigences liées. */
+  requirementsVersion: number;
   /** Un besoin a été créé, modifié ou supprimé : les listes se rechargent. */
   onChanged: () => void;
   onClose: () => void;
@@ -82,6 +87,7 @@ export function NeedPanel({
   const [need, setNeed] = useState<NeedDto | null>(null);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
   const [actions, setActions] = useState<ActionDto[]>([]);
+  const [requirements, setRequirements] = useState<RequirementDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
@@ -98,7 +104,13 @@ export function NeedPanel({
     api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, needId, actionsVersion]);
 
+  useEffect(() => {
+    if (!needId) return;
+    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, needId, requirementsVersion]);
+
   const linkedActions = sortByDueDate(actions.filter((a) => a.needs.some((n) => n.id === needId)));
+  const linkedRequirements = requirements.filter((r) => r.needs.some((n) => n.id === needId));
   const ready = initiative && stakeholders && (!needId || need);
 
   return (
@@ -129,6 +141,9 @@ export function NeedPanel({
               <h3>{t('need.actions')}</h3>
               <ActionList actions={linkedActions} babok={babok} />
               {linkedActions.length === 0 && <p>{t('need.noActions')}</p>}
+              <h3>{t('need.requirements')}</h3>
+              <RequirementList requirements={linkedRequirements} />
+              {linkedRequirements.length === 0 && <p>{t('need.noRequirements')}</p>}
               <AuditTrail need={need} />
               {canEditNeeds(initiative) && (
                 <DeleteNeed

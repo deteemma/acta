@@ -463,3 +463,32 @@ form.invite h4 {
 .stakeholder-matrix .links {
   margin: 0;
 }
+/* Exigences (ticket 10) */
+.reference-mention {
+  position: relative;
+}
+.reference-preview {
+  position: absolute;
+  z-index: 1;
+  inset-inline-start: 0;
+  top: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: max-content;
+  max-width: min(20rem, 80vw);
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.25rem;
+  background: Canvas;
+  color: CanvasText;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.15);
+  font-weight: normal;
+}
+.requirement-history ol {
+  padding-inline-start: 1.25rem;
+}
+.requirement-history ul {
+  margin: 0.25rem 0 0.5rem;
+  padding-inline-start: 1rem;
+}

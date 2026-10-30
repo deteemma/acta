@@ -25,24 +25,42 @@ export class NeedsService {
     });
   }
 
-  /** Palette : les besoins de toutes les initiatives dont je suis membre (RLS). */
+  /**
+   * Palette et aperçu des références citées dans un texte : besoins et exigences
+   * de toutes les initiatives dont je suis membre (RLS).
+   */
   listReferences(userId: string): Promise<ReferenceDto[]> {
     return this.database.asUser(userId, async (tx) => {
-      const rows = await tx
+      const needs = await tx
         .selectFrom('need as n')
         .innerJoin('initiative as i', 'i.id', 'n.initiative_id')
         .select(['n.id', 'n.initiative_id', 'i.archived_at', 'n.reference', 'n.title'])
         .execute();
-      return sortByReference(
-        rows.map((r) => ({
+      const requirements = await tx
+        .selectFrom('requirement as r')
+        .innerJoin('initiative as i', 'i.id', 'r.initiative_id')
+        .select(['r.id', 'r.initiative_id', 'i.archived_at', 'r.reference', 'r.title', 'r.type', 'r.subtype', 'r.status'])
+        .execute();
+      return sortByReference([
+        ...needs.map((r) => ({
           category: 'need' as const,
           id: r.id,
           initiativeId: r.initiative_id,
           initiativeArchived: r.archived_at != null,
           reference: r.reference,
           title: r.title,
+          requirement: null,
         })),
-      );
+        ...requirements.map((r) => ({
+          category: 'requirement' as const,
+          id: r.id,
+          initiativeId: r.initiative_id,
+          initiativeArchived: r.archived_at != null,
+          reference: r.reference,
+          title: r.title,
+          requirement: { type: r.type, subtype: r.subtype, status: r.status },
+        })),
+      ]);
     });
   }
 
@@ -101,7 +119,7 @@ export class NeedsService {
     });
   }
 
-  /** Un besoin lié à une action ne se supprime pas ; ses parties prenantes à l'origine partent avec lui. */
+  /** Un besoin lié à une action ou à une exigence ne se supprime pas ; ses parties prenantes à l'origine partent avec lui. */
   remove(userId: string, initiativeId: string, needId: string): Promise<void> {
     return this.database.asUser(userId, async (tx) => {
       await this.loadNeed(tx, initiativeId, needId);

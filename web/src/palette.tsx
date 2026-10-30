@@ -14,6 +14,7 @@ import { api } from './api';
 import { BabokName } from './babok-panels';
 import { useI18n } from './i18n';
 import { Panel, type PanelContent, usePanels } from './panels';
+import { referenceTarget } from './references';
 
 type Result =
   | { kind: 'initiative'; item: InitiativeDto }
@@ -71,7 +72,7 @@ export function Palette({
       case 'initiative':
         return { kind: 'initiative', initiativeId: result.item.id };
       case 'reference':
-        return { kind: 'need', initiativeId: result.item.initiativeId, needId: result.item.id };
+        return referenceTarget(result.item);
       case 'babok':
         return { kind: 'babokElement', elementId: result.item.id };
     }

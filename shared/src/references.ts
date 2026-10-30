@@ -2,6 +2,7 @@
 // CODE-ACRONYME-NUMÉRO. Règles écrites une seule fois ici, appliquées par l'API
 // et reproduites par la base (migration 0012).
 import { z } from 'zod';
+import type { RequirementStatus, RequirementSubtype, RequirementType } from './requirements.js';
 import { matchesEveryWord } from './search.js';
 
 /** Catégories d'objets qui portent une référence ; chacune a son acronyme. */
@@ -66,6 +67,8 @@ export interface ReferenceDto {
   initiativeArchived: boolean;
   reference: string;
   title: string;
+  /** Exigence : son type et son statut, montrés par l'aperçu au survol ; null pour un besoin. */
+  requirement: { type: RequirementType; subtype: RequirementSubtype | null; status: RequirementStatus } | null;
 }
 
 /** Par code, acronyme puis numéro (CRM-BE-999 avant CRM-BE-1000). */

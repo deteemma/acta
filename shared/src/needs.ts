@@ -40,7 +40,7 @@ export type CreateNeedInput = z.infer<typeof createNeedSchema>;
 export const updateNeedSchema = z.object(needFields).partial();
 export type UpdateNeedInput = z.infer<typeof updateNeedSchema>;
 
-/** Besoins liés à une action (ou plus tard à un autre objet), de la même initiative ; un doublon est ignoré. */
+/** Besoins liés à une action ou à une exigence, de la même initiative ; un doublon est ignoré. */
 export const needIdsSchema = z.array(z.uuid()).transform((ids) => [...new Set(ids)]);
 
 /** Besoin tel que renvoyé par l'API. */
@@ -71,7 +71,7 @@ export interface NeedRefDto {
 /**
  * Refus d'une écriture sur un besoin, renvoyés par l'API (`refusal`) :
  * - `unknownNeed` : un objet est lié à un besoin absent de l'initiative ;
- * - `needLinked` : le besoin est lié à une action (ou plus tard à un autre objet).
+ * - `needLinked` : le besoin est lié à une action ou à une exigence.
  */
 export const NEED_REFUSALS = ['unknownNeed', 'needLinked'] as const;
 export type NeedRefusal = (typeof NEED_REFUSALS)[number];

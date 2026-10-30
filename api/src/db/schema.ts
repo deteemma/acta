@@ -7,6 +7,10 @@ import type {
   Locale,
   NeedNature,
   ReferenceCategory,
+  RequirementSnapshot,
+  RequirementStatus,
+  RequirementSubtype,
+  RequirementType,
   StakeholderKind,
   StakeholderLevel,
   StakeholderRole,
@@ -143,6 +147,54 @@ export interface ActionNeedTable {
   need_id: string;
 }
 
+/** Exigence (migration 0013) : référence, auteurs et dates écrits par un déclencheur. */
+export interface RequirementTable {
+  id: string;
+  initiative_id: string;
+  reference: ColumnType<string, never, never>;
+  title: string;
+  statement: string;
+  type: RequirementType;
+  subtype: Optional<RequirementSubtype>;
+  status: Generated<RequirementStatus>;
+  parent_id: Optional<string>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  updated_by: ColumnType<string, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+/** Source d'une exigence (migration 0013) : créé ou retiré, jamais modifié. */
+export interface RequirementStakeholderTable {
+  initiative_id: string;
+  requirement_id: string;
+  stakeholder_id: string;
+}
+
+/** Besoin lié à une exigence (migration 0013) : créé ou retiré, jamais modifié. */
+export interface RequirementNeedTable {
+  initiative_id: string;
+  requirement_id: string;
+  need_id: string;
+}
+
+/** Lien action ↔ exigence (migration 0013) : créé ou retiré, jamais modifié. */
+export interface ActionRequirementTable {
+  initiative_id: string;
+  action_id: string;
+  requirement_id: string;
+}
+
+/** Historique d'une exigence (migration 0013) : écrit seulement par la base, en lecture seule. */
+export interface RequirementVersionTable {
+  id: ColumnType<string, never, never>;
+  initiative_id: ColumnType<string, never, never>;
+  requirement_id: ColumnType<string, never, never>;
+  changed_by: ColumnType<string, never, never>;
+  changed_at: ColumnType<Date, never, never>;
+  snapshot: ColumnType<RequirementSnapshot, never, never>;
+}
+
 /** Référentiel BABOK (migration 0009) : lecture seule, aucune écriture possible. */
 interface BabokElementColumns {
   id: string;
@@ -170,6 +222,7 @@ export interface BabokTaskTechniqueTable {
 export interface Database {
   action: ActionTable;
   action_need: ActionNeedTable;
+  action_requirement: ActionRequirementTable;
   action_stakeholder: ActionStakeholderTable;
   app_user: AppUserTable;
   babok_knowledge_area: BabokKnowledgeAreaTable;
@@ -183,5 +236,9 @@ export interface Database {
   owner_designation: OwnerDesignationTable;
   reference_acronym: ReferenceAcronymTable;
   reference_category: ReferenceCategoryTable;
+  requirement: RequirementTable;
+  requirement_need: RequirementNeedTable;
+  requirement_stakeholder: RequirementStakeholderTable;
+  requirement_version: RequirementVersionTable;
   stakeholder: StakeholderTable;
 }
