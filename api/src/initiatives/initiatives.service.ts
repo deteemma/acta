@@ -16,6 +16,7 @@ import {
   type UpdateMemberInput,
 } from '@app/shared';
 import { sql } from 'kysely';
+import { referenceRefusal } from '../admin/reference-categories.service.js';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isUniqueViolation } from '../db/pg-errors.js';
 
@@ -66,7 +67,10 @@ export class InitiativesService {
       if (input.code !== undefined && input.code !== current.code && !can(role, 'editCode')) {
         throw new ForbiddenException();
       }
-      // Ticket 09 : refuser aussi le changement de code dès qu'une référence existe.
+      // Dès qu'une référence a été attribuée, le code ne change plus.
+      if (input.code !== undefined && input.code !== current.code && current.code_frozen) {
+        throw referenceRefusal('codeFrozen');
+      }
       try {
         await tx
           .updateTable('initiative')
@@ -83,6 +87,8 @@ export class InitiativesService {
           .execute();
       } catch (error) {
         if (isUniqueViolation(error)) throw new ConflictException('Ce code d’initiative est déjà utilisé');
+        // Référence attribuée entre-temps.
+        if (isConstraintViolation(error, 'initiative_code_frozen')) throw referenceRefusal('codeFrozen');
         // Fin prévue avant le début, une fois combinée avec la date déjà enregistrée.
         if (isConstraintViolation(error, 'initiative_dates_order')) {
           throw new BadRequestException('La fin prévue précède le début');
@@ -277,6 +283,7 @@ export class InitiativesService {
         'i.archived_at',
         'i.created_at',
         'm.role',
+        sql<boolean>`initiative_has_references(i.id)`.as('code_frozen'),
       ]);
   }
 }
@@ -292,6 +299,7 @@ function toDto(row: {
   archived_at: Date | null;
   created_at: Date;
   role: InitiativeDto['myRole'];
+  code_frozen: boolean;
 }): InitiativeDto {
   return {
     id: row.id,
@@ -304,6 +312,7 @@ function toDto(row: {
     archivedAt: row.archived_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
     myRole: row.role,
+    codeFrozen: row.code_frozen,
   };
 }
 

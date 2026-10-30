@@ -4,8 +4,9 @@
 import { z } from 'zod';
 import type { BabokDto, TechniqueDto } from './babok.js';
 import { hasAtLeast, type InitiativeRole } from './roles.js';
+import { needIdsSchema, type NeedRefDto } from './needs.js';
 import type { MemberNameDto } from './schemas.js';
-import type { StakeholderRefDto } from './stakeholders.js';
+import { stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
 
 /** Statuts d'une action ; tout statut peut passer à tout autre. */
 export const ACTION_STATUSES = ['todo', 'in_progress', 'done', 'cancelled'] as const;
@@ -27,9 +28,6 @@ export const actionDescriptionSchema = z
 /** Identifiant d'une tâche (`4.1`) ou d'une technique (`10.33`) du référentiel BABOK. */
 const babokIdSchema = z.string().regex(/^\d+\.\d+$/);
 
-/** Parties prenantes liées à l'action (ticket 08), de la même initiative ; un doublon est ignoré. */
-const stakeholderIdsSchema = z.array(z.uuid()).transform((ids) => [...new Set(ids)]);
-
 /**
  * Création d'une action : la création rapide fournit le titre et la tâche ; le
  * responsable est alors la personne qui crée l'action.
@@ -42,6 +40,7 @@ export const createActionSchema = z.object({
   dueDate: z.iso.date().nullable().optional(),
   description: actionDescriptionSchema.optional(),
   stakeholderIds: stakeholderIdsSchema.optional(),
+  needIds: needIdsSchema.optional(),
 });
 export type CreateActionInput = z.infer<typeof createActionSchema>;
 
@@ -57,6 +56,8 @@ export const updateActionSchema = z
     status: actionStatusSchema,
     /** Remplace l'ensemble des parties prenantes liées. */
     stakeholderIds: stakeholderIdsSchema,
+    /** Remplace l'ensemble des besoins liés (ticket 09). */
+    needIds: needIdsSchema,
   })
   .partial();
 export type UpdateActionInput = z.infer<typeof updateActionSchema>;
@@ -79,6 +80,8 @@ export interface ActionDto {
   status: ActionStatus;
   /** Parties prenantes liées, par ordre alphabétique. */
   stakeholders: StakeholderRefDto[];
+  /** Besoins liés, par référence. */
+  needs: NeedRefDto[];
   createdAt: string;
   createdBy: MemberNameDto;
   updatedAt: string;

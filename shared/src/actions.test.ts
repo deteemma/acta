@@ -25,6 +25,7 @@ function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
     dueDate: null,
     status: 'todo',
     stakeholders: [],
+    needs: [],
     createdAt: '2026-10-01T08:00:00.000Z',
     createdBy: person('alice'),
     updatedAt: '2026-10-01T08:00:00.000Z',

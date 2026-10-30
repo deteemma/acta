@@ -33,6 +33,9 @@ export const STAKEHOLDER_CONTACT_MAX_LENGTH = 1000;
 /** Notes : texte mis en forme (rich-text.ts), même limite que la description d'une action. */
 export const STAKEHOLDER_NOTES_MAX_LENGTH = 20000;
 
+/** Parties prenantes liées à un autre objet, de la même initiative ; un doublon est ignoré. */
+export const stakeholderIdsSchema = z.array(z.uuid()).transform((ids) => [...new Set(ids)]);
+
 /** Texte facultatif : vide = absent. */
 const optionalText = (max: number) =>
   z

@@ -5,6 +5,8 @@ import type {
   AnalysisApproach,
   InitiativeRole,
   Locale,
+  NeedNature,
+  ReferenceCategory,
   StakeholderKind,
   StakeholderLevel,
   StakeholderRole,
@@ -102,6 +104,45 @@ export interface ActionStakeholderTable {
   stakeholder_id: string;
 }
 
+/** Acronymes des références (migration 0012) : écrits seulement par admin_set_reference_acronym. */
+export interface ReferenceCategoryTable {
+  category: ReferenceCategory;
+  acronym: string;
+}
+
+export interface ReferenceAcronymTable {
+  acronym: string;
+  category: ReferenceCategory;
+}
+
+/** Besoin (migration 0012) : référence, auteurs et dates écrits par un déclencheur. */
+export interface NeedTable {
+  id: string;
+  initiative_id: string;
+  reference: ColumnType<string, never, never>;
+  title: string;
+  nature: NeedNature;
+  description: Optional<string>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  updated_by: ColumnType<string, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+/** Partie prenante à l'origine d'un besoin (migration 0012) : créé ou retiré, jamais modifié. */
+export interface NeedStakeholderTable {
+  initiative_id: string;
+  need_id: string;
+  stakeholder_id: string;
+}
+
+/** Lien action ↔ besoin (migration 0012) : créé ou retiré, jamais modifié. */
+export interface ActionNeedTable {
+  initiative_id: string;
+  action_id: string;
+  need_id: string;
+}
+
 /** Référentiel BABOK (migration 0009) : lecture seule, aucune écriture possible. */
 interface BabokElementColumns {
   id: string;
@@ -128,6 +169,7 @@ export interface BabokTaskTechniqueTable {
 
 export interface Database {
   action: ActionTable;
+  action_need: ActionNeedTable;
   action_stakeholder: ActionStakeholderTable;
   app_user: AppUserTable;
   babok_knowledge_area: BabokKnowledgeAreaTable;
@@ -136,6 +178,10 @@ export interface Database {
   babok_technique: BabokTechniqueTable;
   initiative: InitiativeTable;
   initiative_member: InitiativeMemberTable;
+  need: NeedTable;
+  need_stakeholder: NeedStakeholderTable;
   owner_designation: OwnerDesignationTable;
+  reference_acronym: ReferenceAcronymTable;
+  reference_category: ReferenceCategoryTable;
   stakeholder: StakeholderTable;
 }

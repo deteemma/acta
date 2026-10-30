@@ -1,13 +1,15 @@
-// Administration des comptes (ticket 05, ADR-0005) : comptes de Keycloak et
-// initiatives sans propriétaire actif. Les contrôles proposés et les refus
-// suivent les règles de @app/shared (admin.ts).
+// Administration (ticket 05, ADR-0005) : comptes de Keycloak, initiatives sans
+// propriétaire actif, acronymes des références (ticket 09). Les contrôles
+// proposés et les refus suivent les règles de @app/shared (admin.ts, references.ts).
 import {
   type AccountDto,
   checkAccountChange,
+  checkAcronymChange,
   checkAdminOwnerDesignation,
   createAccountSchema,
   isAdminRefusal,
   type OrphanInitiativeDto,
+  type ReferenceCategoryDto,
   type UpdateAccountInput,
 } from '@app/shared';
 import { type FormEvent, useEffect, useState } from 'react';
@@ -38,6 +40,7 @@ export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => voi
     <Panel title={t('admin.title')} onClose={onClose}>
       <AccountsSection myId={myId} />
       <OrphanInitiativesSection />
+      <ReferenceCategoriesSection />
     </Panel>
   );
 }
@@ -243,5 +246,85 @@ function OrphanInitiativesSection() {
         </section>
       ))}
     </section>
+  );
+}
+
+/** Acronyme de chaque catégorie ; les références déjà attribuées ne changent pas. */
+function ReferenceCategoriesSection() {
+  const { t } = useI18n();
+  const [categories, setCategories] = useState<ReferenceCategoryDto[] | null>(null);
+  const [error, setError] = useState<UiError | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.listReferenceCategories().then(setCategories, (e: unknown) => setError(toUiError(e)));
+  }, []);
+
+  async function save(category: ReferenceCategoryDto, acronym: string) {
+    const refusal = checkAcronymChange(categories ?? [], category.category, acronym);
+    if (refusal) {
+      setDone(null);
+      setError({ key: `reference.refusal.${refusal}` });
+      return;
+    }
+    try {
+      setCategories(await api.updateReferenceCategory(category.category, { acronym }));
+      setError(null);
+      setDone(t('admin.reference.saved', { category: t(`referenceCategory.${category.category}`), acronym }));
+    } catch (e) {
+      setDone(null);
+      setError(toUiError(e));
+    }
+  }
+
+  return (
+    <section>
+      <h3>{t('admin.references')}</h3>
+      <p>
+        <small>{t('admin.referencesHint')}</small>
+      </p>
+      <ErrorMessage error={error} />
+      {done && <p className="notice">{done}</p>}
+      {categories && (
+        <ul className="links team-members">
+          {categories.map((category) => (
+            <AcronymForm key={category.category} category={category} onSave={(acronym) => void save(category, acronym)} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function AcronymForm({ category, onSave }: { category: ReferenceCategoryDto; onSave: (acronym: string) => void }) {
+  const { t } = useI18n();
+  const [acronym, setAcronym] = useState(category.acronym);
+  const name = t(`referenceCategory.${category.category}`);
+  const former = category.usedAcronyms.filter((a) => a !== category.acronym);
+  return (
+    <li>
+      <span>
+        {name}
+        {former.length > 0 && <small> · {t('admin.reference.former', { list: former.join(', ') })}</small>}
+      </span>
+      <form
+        className="team-controls"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave(acronym);
+        }}
+      >
+        <input
+          value={acronym}
+          size={5}
+          maxLength={4}
+          aria-label={t('admin.reference.acronym', { category: name })}
+          onChange={(e) => setAcronym(e.target.value.toUpperCase())}
+        />
+        <button type="submit" disabled={acronym === category.acronym}>
+          {t('admin.reference.save')}
+        </button>
+      </form>
+    </li>
   );
 }

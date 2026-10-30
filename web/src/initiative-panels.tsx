@@ -11,6 +11,7 @@ import {
   type InitiativeMemberDto,
   INITIATIVE_DESCRIPTION_MAX_LENGTH,
   type Locale,
+  type NeedDto,
   type OwnerDesignationDto,
   sortByDueDate,
   type StakeholderDto,
@@ -21,6 +22,7 @@ import { ActionList } from './action-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
+import { canEditNeeds, NeedList } from './need-panels';
 import { Panel, usePanels } from './panels';
 import { memberName, TeamSection } from './team-section';
 
@@ -36,6 +38,7 @@ export function InitiativePanel({
   babok,
   actionsVersion,
   stakeholdersVersion,
+  needsVersion,
   onChanged,
   onDeleted,
   onClose,
@@ -46,6 +49,8 @@ export function InitiativePanel({
   actionsVersion: number;
   /** Change à chaque écriture sur une partie prenante. */
   stakeholdersVersion: number;
+  /** Change à chaque écriture sur un besoin (le code peut aussi se figer). */
+  needsVersion: number;
   onChanged: (initiative: InitiativeDto) => void;
   onDeleted: (initiativeId: string) => void;
   onClose: () => void;
@@ -57,6 +62,7 @@ export function InitiativePanel({
   const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[]>([]);
+  const [needs, setNeeds] = useState<NeedDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
   // Rechargée après chaque changement de l'équipe : il peut changer mon rôle.
@@ -83,6 +89,13 @@ export function InitiativePanel({
   useEffect(() => {
     api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, stakeholdersVersion]);
+
+  useEffect(() => {
+    api.listNeeds(initiativeId).then(setNeeds, (e: unknown) => setError(toUiError(e)));
+    // Le premier besoin fige le code : la fiche est relue.
+    api.getInitiative(initiativeId).then(changed, (e: unknown) => setError(toUiError(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initiativeId, needsVersion]);
 
   function changed(next: InitiativeDto) {
     setInitiative(next);
@@ -122,6 +135,16 @@ export function InitiativePanel({
               ? t('stakeholders.sectionEmpty')
               : t('stakeholders.sectionCount', { count: stakeholders.length })}
           </p>
+          <div className="section-header">
+            <h3 title={englishTermTooltip(locale, 'needs.section')}>{t('needs.section')}</h3>
+            {canEditNeeds(initiative) && (
+              <button type="button" onClick={() => open({ kind: 'need', initiativeId })}>
+                {t('needs.new')}
+              </button>
+            )}
+          </div>
+          <NeedList needs={needs} />
+          {needs.length === 0 && <p>{t('needs.sectionEmpty')}</p>}
           <TeamSection
             initiative={initiative}
             members={members}
@@ -180,7 +203,8 @@ function InitiativeDetails({ initiative }: { initiative: InitiativeDto }) {
 /** Fiche modifiable : propriétaire et contributeurs ; le code est réservé au propriétaire. */
 function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; onSaved: (i: InitiativeDto) => void }) {
   const { t, locale } = useI18n();
-  const canEditCode = can(initiative.myRole, 'editCode');
+  // Propriétaire seul, et tant qu'aucune référence n'a été attribuée.
+  const canEditCode = can(initiative.myRole, 'editCode') && !initiative.codeFrozen;
   const [code, setCode] = useState(initiative.code);
   const [name, setName] = useState(initiative.name);
   const [description, setDescription] = useState(initiative.description ?? '');
@@ -227,6 +251,7 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
         ) : (
           <input value={code} readOnly aria-readonly="true" />
         )}
+        {initiative.codeFrozen && <small>{t('initiative.codeFrozen')}</small>}
       </label>
       <label>
         {t('initiative.name')}

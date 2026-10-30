@@ -10,6 +10,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
 import { CreateInitiativePanel, InitiativePanel, MemberPanel } from './initiative-panels';
 import { MyActions } from './my-actions';
+import { NeedPanel } from './need-panels';
 import { StakeholderPanel, StakeholdersPanel } from './stakeholder-panels';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
 import { FabContext, PanelHost, PanelsProvider, usePanels } from './panels';
@@ -60,6 +61,9 @@ function Shell({ user }: { user: User }) {
   // De même pour les parties prenantes.
   const [stakeholdersVersion, setStakeholdersVersion] = useState(0);
   const stakeholdersChanged = () => setStakeholdersVersion((v) => v + 1);
+  // De même pour les besoins.
+  const [needsVersion, setNeedsVersion] = useState(0);
+  const needsChanged = () => setNeedsVersion((v) => v + 1);
   usePaletteShortcut();
 
   useEffect(() => {
@@ -147,6 +151,7 @@ function Shell({ user }: { user: User }) {
                   babok={babok}
                   actionsVersion={actionsVersion}
                   stakeholdersVersion={stakeholdersVersion}
+                  needsVersion={needsVersion}
                   onChanged={(changed) => setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)))}
                   onDeleted={(id) => setInitiatives((list) => list.filter((i) => i.id !== id))}
                   onClose={close}
@@ -182,6 +187,7 @@ function Shell({ user }: { user: User }) {
                     initiativeId={content.initiativeId}
                     actionId={content.actionId}
                     stakeholdersVersion={stakeholdersVersion}
+                    needsVersion={needsVersion}
                     onChanged={actionsChanged}
                     onClose={close}
                   />
@@ -198,7 +204,20 @@ function Shell({ user }: { user: User }) {
                   initiativeId={content.initiativeId}
                   stakeholderId={content.stakeholderId}
                   actionsVersion={actionsVersion}
+                  needsVersion={needsVersion}
                   onChanged={stakeholdersChanged}
+                  onClose={close}
+                />
+              );
+            case 'need':
+              return (
+                <NeedPanel
+                  babok={babok}
+                  initiativeId={content.initiativeId}
+                  needId={content.needId}
+                  actionsVersion={actionsVersion}
+                  stakeholdersVersion={stakeholdersVersion}
+                  onChanged={needsChanged}
                   onClose={close}
                 />
               );

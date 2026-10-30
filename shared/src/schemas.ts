@@ -88,6 +88,8 @@ export interface InitiativeDto {
   archivedAt: string | null;
   createdAt: string;
   myRole: z.infer<typeof initiativeRoleSchema>;
+  /** Une référence a déjà été attribuée dans l'initiative : son code ne change plus (ticket 09). */
+  codeFrozen: boolean;
 }
 
 export interface InitiativeMemberDto {

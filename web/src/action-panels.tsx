@@ -16,6 +16,7 @@ import {
   findBabokElement,
   type InitiativeDto,
   type InitiativeMemberDto,
+  type NeedDto,
   type StakeholderDto,
   techniqueChoices,
   tasksOfKnowledgeArea,
@@ -26,6 +27,7 @@ import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
+import { NeedLink } from './need-panels';
 import { Panel, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
@@ -163,6 +165,7 @@ export function ActionPanel({
   initiativeId,
   actionId,
   stakeholdersVersion,
+  needsVersion,
   onChanged,
   onClose,
 }: {
@@ -171,6 +174,8 @@ export function ActionPanel({
   actionId: string;
   /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
   stakeholdersVersion: number;
+  /** De même pour les besoins. */
+  needsVersion: number;
   /** Une action a été modifiée ou supprimée : les listes se rechargent. */
   onChanged: () => void;
   onClose: () => void;
@@ -179,6 +184,7 @@ export function ActionPanel({
   const [action, setAction] = useState<ActionDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
+  const [needs, setNeeds] = useState<NeedDto[] | null>(null);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
@@ -190,18 +196,23 @@ export function ActionPanel({
     api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, stakeholdersVersion]);
 
+  useEffect(() => {
+    api.listNeeds(initiativeId).then(setNeeds, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, needsVersion]);
+
   return (
     <Panel title={action ? `${action.initiative.code} · ${action.title}` : t('common.loading')} onClose={onClose}>
       <ErrorMessage error={error} />
       {action && (
         <>
           {action.initiative.archived && <p className="notice">{t('initiative.archived')}</p>}
-          {canEditActions(action) && members && stakeholders ? (
+          {canEditActions(action) && members && stakeholders && needs ? (
             <ActionForm
               babok={babok}
               action={action}
               members={members}
               stakeholders={stakeholders}
+              needs={needs}
               onSaved={(saved) => {
                 setAction(saved);
                 onChanged();
@@ -268,6 +279,20 @@ function ActionDetails({ babok, action }: { babok: BabokDto; action: ActionDto }
           </ul>
         )}
       </dd>
+      <dt>{t('action.needs')}</dt>
+      <dd>
+        {action.needs.length === 0 ? (
+          <small>{t('action.noNeeds')}</small>
+        ) : (
+          <ul className="links">
+            {action.needs.map((n) => (
+              <li key={n.id}>
+                <NeedLink initiativeId={action.initiative.id} need={n} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </dd>
       <dt>{t('action.description')}</dt>
       <dd>{action.description ? <RichText source={action.description} /> : notSet}</dd>
     </dl>
@@ -279,6 +304,7 @@ function ActionForm({
   action,
   members,
   stakeholders,
+  needs,
   onSaved,
 }: {
   babok: BabokDto;
@@ -286,6 +312,8 @@ function ActionForm({
   members: InitiativeMemberDto[];
   /** Parties prenantes de l'initiative, que l'on peut lier à l'action. */
   stakeholders: StakeholderDto[];
+  /** Besoins de l'initiative, par référence. */
+  needs: NeedDto[];
   onSaved: (action: ActionDto) => void;
 }) {
   const { t } = useI18n();
@@ -297,11 +325,15 @@ function ActionForm({
   const [dueDate, setDueDate] = useState(action.dueDate ?? '');
   const [description, setDescription] = useState(action.description ?? '');
   const [stakeholderIds, setStakeholderIds] = useState<readonly string[]>(action.stakeholders.map((s) => s.id));
+  const [needIds, setNeedIds] = useState<readonly string[]>(action.needs.map((n) => n.id));
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
 
   const toggleStakeholder = (id: string) =>
     setStakeholderIds((current) => (current.includes(id) ? current.filter((s) => s !== id) : [...current, id]));
+
+  const toggleNeed = (id: string) =>
+    setNeedIds((current) => (current.includes(id) ? current.filter((n) => n !== id) : [...current, id]));
 
   const task = findBabokElement(babok, taskId);
   const technique = techniqueId ? findBabokElement(babok, techniqueId) : undefined;
@@ -322,6 +354,7 @@ function ActionForm({
       dueDate: dueDate || null,
       description,
       stakeholderIds,
+      needIds,
     });
     if (!parsed.success) {
       setError({ key: 'action.invalid' });
@@ -392,6 +425,16 @@ function ActionForm({
           <label key={s.id} className="inline">
             <input type="checkbox" checked={stakeholderIds.includes(s.id)} onChange={() => toggleStakeholder(s.id)} />
             {s.name}
+          </label>
+        ))}
+      </fieldset>
+      <fieldset>
+        <legend>{t('action.needs')}</legend>
+        {needs.length === 0 && <small>{t('needs.sectionEmpty')}</small>}
+        {needs.map((n) => (
+          <label key={n.id} className="inline">
+            <input type="checkbox" checked={needIds.includes(n.id)} onChange={() => toggleNeed(n.id)} />
+            <strong>{n.reference}</strong> {n.title}
           </label>
         ))}
       </fieldset>

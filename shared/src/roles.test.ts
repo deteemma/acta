@@ -65,3 +65,10 @@ test('parties prenantes : propriétaire et contributeurs les gèrent, le lecteur
   assert.equal(can('reader', 'editStakeholders'), false);
   assert.equal(can('contributor', 'editStakeholders', { archived: true }), false);
 });
+
+test('propriétaire et contributeurs écrivent les besoins ; lecteurs consultent ; archivée : lecture seule', () => {
+  assert.equal(can('owner', 'editNeeds'), true);
+  assert.equal(can('contributor', 'editNeeds'), true);
+  assert.equal(can('reader', 'editNeeds'), false);
+  assert.equal(can('contributor', 'editNeeds', { archived: true }), false);
+});

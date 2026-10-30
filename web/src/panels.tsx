@@ -29,7 +29,9 @@ export type PanelContent =
   | { kind: 'action'; initiativeId: string; actionId: string }
   | { kind: 'stakeholders'; initiativeId: string }
   /** Sans `stakeholderId`, création d'une partie prenante. */
-  | { kind: 'stakeholder'; initiativeId: string; stakeholderId?: string };
+  | { kind: 'stakeholder'; initiativeId: string; stakeholderId?: string }
+  /** Sans `needId`, création d'un besoin. */
+  | { kind: 'need'; initiativeId: string; needId?: string };
 
 interface Entry {
   id: number;

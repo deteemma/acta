@@ -12,7 +12,14 @@ import type {
   MeDto,
   OrphanInitiativeDto,
   OwnerDesignationDto,
+  CreateNeedInput,
   CreateStakeholderInput,
+  NeedDto,
+  ReferenceCategory,
+  ReferenceCategoryDto,
+  ReferenceDto,
+  UpdateNeedInput,
+  UpdateReferenceCategoryInput,
   StakeholderDto,
   UpdateStakeholderInput,
   UpdateAccountInput,
@@ -94,7 +101,22 @@ export const api = {
     }),
   deleteStakeholder: (id: string, stakeholderId: string) =>
     request<void>(`/initiatives/${id}/stakeholders/${stakeholderId}`, { method: 'DELETE' }),
-  // Administration (rôle administrateur, ticket 05).
+  // Besoins et références (ticket 09).
+  listReferences: () => request<ReferenceDto[]>('/references'),
+  listNeeds: (id: string) => request<NeedDto[]>(`/initiatives/${id}/needs`),
+  getNeed: (id: string, needId: string) => request<NeedDto>(`/initiatives/${id}/needs/${needId}`),
+  createNeed: (id: string, input: CreateNeedInput) =>
+    request<NeedDto>(`/initiatives/${id}/needs`, { method: 'POST', body: JSON.stringify(input) }),
+  updateNeed: (id: string, needId: string, input: UpdateNeedInput) =>
+    request<NeedDto>(`/initiatives/${id}/needs/${needId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deleteNeed: (id: string, needId: string) => request<void>(`/initiatives/${id}/needs/${needId}`, { method: 'DELETE' }),
+  // Administration (rôle administrateur, tickets 05 et 09).
+  listReferenceCategories: () => request<ReferenceCategoryDto[]>('/admin/reference-categories'),
+  updateReferenceCategory: (category: ReferenceCategory, input: UpdateReferenceCategoryInput) =>
+    request<ReferenceCategoryDto[]>(`/admin/reference-categories/${category}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
   listAccounts: () => request<AccountDto[]>('/admin/accounts'),
   createAccount: (input: CreateAccountInput) =>
     request<AccountDto>('/admin/accounts', { method: 'POST', body: JSON.stringify(input) }),
