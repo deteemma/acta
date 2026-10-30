@@ -1,14 +1,8 @@
-import type { CreateProjectInput, ProjectDto, UpdateProjectInput } from '@app/shared';
+import type { CreateInitiativeInput, InitiativeDto, MeDto, UpdateInitiativeInput, UpdateMeInput } from '@app/shared';
+import { ApiError } from './api-error';
 import { API_URL } from './config';
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export { ApiError };
 
 export function createApi(getToken: () => string) {
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -25,12 +19,14 @@ export function createApi(getToken: () => string) {
   }
 
   return {
-    listProjects: () => request<ProjectDto[]>('/projects'),
-    createProject: (input: CreateProjectInput) =>
-      request<ProjectDto>('/projects', { method: 'POST', body: JSON.stringify(input) }),
-    updateProject: (id: string, input: UpdateProjectInput) =>
-      request<ProjectDto>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
-    deleteProject: (id: string) => request<void>(`/projects/${id}`, { method: 'DELETE' }),
+    me: () => request<MeDto>('/me'),
+    updateMe: (input: UpdateMeInput) => request<MeDto>('/me', { method: 'PATCH', body: JSON.stringify(input) }),
+    listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
+    createInitiative: (input: CreateInitiativeInput) =>
+      request<InitiativeDto>('/initiatives', { method: 'POST', body: JSON.stringify(input) }),
+    updateInitiative: (id: string, input: UpdateInitiativeInput) =>
+      request<InitiativeDto>(`/initiatives/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+    deleteInitiative: (id: string) => request<void>(`/initiatives/${id}`, { method: 'DELETE' }),
   };
 }
 

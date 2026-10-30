@@ -1,5 +1,33 @@
-import type { CreateProjectInput, ProjectDto } from '@app/shared';
+import type {
+  AccountDto,
+  ActionDto,
+  CreateActionInput,
+  UpdateActionInput,
+  AddMemberInput,
+  BabokDto,
+  CreateAccountInput,
+  CreateInitiativeInput,
+  InitiativeDto,
+  InitiativeMemberDto,
+  MeDto,
+  OrphanInitiativeDto,
+  OwnerDesignationDto,
+  UpdateAccountInput,
+  UpdateInitiativeInput,
+  UpdateMeInput,
+  UpdateMemberInput,
+} from '@app/shared';
 import { accessToken } from './auth';
+
+export class ApiError extends Error {
+  /** Motif de refus renvoyé par l'API (ex. règles d'équipe : `lastOwner`). */
+  constructor(
+    readonly status: number,
+    readonly refusal?: string,
+  ) {
+    super(`HTTP ${status}`);
+  }
+}
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api${path}`, {
@@ -11,12 +39,57 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers,
     },
   });
-  if (!response.ok) throw new Error(`Erreur ${response.status}`);
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { refusal?: unknown } | null;
+    throw new ApiError(response.status, typeof body?.refusal === 'string' ? body.refusal : undefined);
+  }
   return (response.status === 204 ? undefined : await response.json()) as T;
 }
 
 export const api = {
-  listProjects: () => request<ProjectDto[]>('/projects'),
-  createProject: (input: CreateProjectInput) =>
-    request<ProjectDto>('/projects', { method: 'POST', body: JSON.stringify(input) }),
+  me: () => request<MeDto>('/me'),
+  updateMe: (input: UpdateMeInput) => request<MeDto>('/me', { method: 'PATCH', body: JSON.stringify(input) }),
+  babok: () => request<BabokDto>('/babok'),
+  listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
+  getInitiative: (id: string) => request<InitiativeDto>(`/initiatives/${id}`),
+  listMembers: (id: string) => request<InitiativeMemberDto[]>(`/initiatives/${id}/members`),
+  createInitiative: (input: CreateInitiativeInput) =>
+    request<InitiativeDto>('/initiatives', { method: 'POST', body: JSON.stringify(input) }),
+  updateInitiative: (id: string, input: UpdateInitiativeInput) =>
+    request<InitiativeDto>(`/initiatives/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  archiveInitiative: (id: string) => request<InitiativeDto>(`/initiatives/${id}/archive`, { method: 'PUT' }),
+  unarchiveInitiative: (id: string) => request<InitiativeDto>(`/initiatives/${id}/archive`, { method: 'DELETE' }),
+  deleteInitiative: (id: string) => request<void>(`/initiatives/${id}`, { method: 'DELETE' }),
+  addMember: (id: string, input: AddMemberInput) =>
+    request<void>(`/initiatives/${id}/members`, { method: 'POST', body: JSON.stringify(input) }),
+  updateMember: (id: string, userId: string, input: UpdateMemberInput) =>
+    request<void>(`/initiatives/${id}/members/${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  removeMember: (id: string, userId: string) =>
+    request<void>(`/initiatives/${id}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+  listOwnerDesignations: (id: string) => request<OwnerDesignationDto[]>(`/initiatives/${id}/owner-designations`),
+  // Actions (ticket 07).
+  listMyActions: () => request<ActionDto[]>('/actions/mine'),
+  listActions: (id: string) => request<ActionDto[]>(`/initiatives/${id}/actions`),
+  getAction: (id: string, actionId: string) => request<ActionDto>(`/initiatives/${id}/actions/${actionId}`),
+  createAction: (id: string, input: CreateActionInput) =>
+    request<ActionDto>(`/initiatives/${id}/actions`, { method: 'POST', body: JSON.stringify(input) }),
+  updateAction: (id: string, actionId: string, input: UpdateActionInput) =>
+    request<ActionDto>(`/initiatives/${id}/actions/${actionId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deleteAction: (id: string, actionId: string) =>
+    request<void>(`/initiatives/${id}/actions/${actionId}`, { method: 'DELETE' }),
+  // Administration (rôle administrateur, ticket 05).
+  listAccounts: () => request<AccountDto[]>('/admin/accounts'),
+  createAccount: (input: CreateAccountInput) =>
+    request<AccountDto>('/admin/accounts', { method: 'POST', body: JSON.stringify(input) }),
+  updateAccount: (id: string, input: UpdateAccountInput) =>
+    request<AccountDto>(`/admin/accounts/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  listOrphanInitiatives: () => request<OrphanInitiativeDto[]>('/admin/orphan-initiatives'),
+  designateOwner: (id: string, userId: string) =>
+    request<void>(`/admin/orphan-initiatives/${id}/owner-designations`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
 };

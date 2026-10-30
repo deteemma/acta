@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { APP_ADMIN_ROLE, type MeDto, type UpdateMeInput } from '@app/shared';
 import { sql } from 'kysely';
 import type { AuthenticatedUser } from '../auth/authenticated-user.js';
-import { DatabaseService } from '../db/database.service.js';
+import { DatabaseService, type Tx } from '../db/database.service.js';
 
 const REFRESH_MS = 5 * 60 * 1000;
 
@@ -30,5 +31,36 @@ export class UsersService {
         .execute(),
     );
     this.lastSeen.set(user.id, Date.now());
+  }
+
+  me(user: AuthenticatedUser): Promise<MeDto> {
+    return this.database.asUser(user.id, (tx) => this.selectMe(tx, user));
+  }
+
+  updateMe(user: AuthenticatedUser, input: UpdateMeInput): Promise<MeDto> {
+    return this.database.asUser(user.id, async (tx) => {
+      await tx
+        .updateTable('app_user')
+        .set({ locale: input.locale, updated_at: sql`now()` })
+        .where('id', '=', user.id)
+        .execute();
+      return this.selectMe(tx, user);
+    });
+  }
+
+  private async selectMe(tx: Tx, user: AuthenticatedUser): Promise<MeDto> {
+    const row = await tx
+      .selectFrom('app_user')
+      .select(['id', 'email', 'display_name', 'locale'])
+      .where('id', '=', user.id)
+      .executeTakeFirst();
+    if (!row) throw new NotFoundException();
+    return {
+      id: row.id,
+      email: row.email,
+      displayName: row.display_name,
+      locale: row.locale,
+      isAdmin: user.appRoles.includes(APP_ADMIN_ROLE),
+    };
   }
 }

@@ -30,6 +30,18 @@ export class DatabaseService implements OnModuleDestroy {
     });
   }
 
+  /**
+   * Transaction d'un administrateur, pour les seules routes `@RequireAppRole` :
+   * la base l'autorise à appeler les fonctions admin_* (migration 0007). Aucune
+   * politique RLS ne lui ouvre pour autant le contenu des initiatives.
+   */
+  asAdmin<T>(userId: string, work: (tx: Tx) => Promise<T>): Promise<T> {
+    return this.asUser(userId, async (tx) => {
+      await sql`SELECT set_config('app.is_admin', 'true', true)`.execute(tx);
+      return work(tx);
+    });
+  }
+
   async ping(): Promise<void> {
     await sql`SELECT 1`.execute(this.db);
   }
