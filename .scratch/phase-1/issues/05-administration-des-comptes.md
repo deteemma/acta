@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Coque de navigation
 
-**Status:** done (à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 30.10.2026)
 
 - [x] Seul un utilisateur ayant le rôle administrateur accède aux écrans d'administration.
 - [x] L'administrateur liste les comptes, en crée un, le désactive et le réactive ; un compte n'est jamais supprimé, pour garder la trace des auteurs.
