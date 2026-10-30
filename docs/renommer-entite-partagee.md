@@ -16,7 +16,7 @@ le singulier, le pluriel et les variantes de casse : `project`, `projects`,
 | Web | `web/src/App.tsx`, `web/src/api.ts` |
 | Mobile | `mobile/src/*.tsx`, `mobile/src/api.ts`, `mobile/src/powersync.ts` (schéma local) |
 | Synchronisation | `powersync/powersync.yaml` (règles de synchronisation) |
-| Tests | `scripts/tester-roles.mjs` |
+| Tests | `scripts/tester-roles.mjs` et `scripts/roles/*.mjs` |
 | Documentation | `CONTEXT.md` (glossaire). Les ADR ne sont **pas** modifiés. |
 
 ## Autres renommages au démarrage

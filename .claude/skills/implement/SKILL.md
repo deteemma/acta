@@ -15,3 +15,5 @@ Run typechecking regularly, single test files regularly, and the full test suite
 Once done, call the Skill tool with "code-review" to review the work.
 
 Commit your work to the current branch.
+
+End your report with a **Pour essayer** section for the functional owner, who validates in the running app: for each acceptance criterion of the ticket, the URL and the click path that shows it. Done when every criterion has its path.

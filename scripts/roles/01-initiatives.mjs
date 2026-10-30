@@ -1,0 +1,233 @@
+// Initiatives : création, droits, fiche et archivage.
+import { API, assert, check, call, asUserInDb, alice, bruno, chloe, admin, code } from './commun.mjs';
+
+console.log('\nBarrière 1 : API (guards NestJS)');
+export let initiativeId;
+await check('sans jeton : 401', async () => {
+  assert.equal((await fetch(`${API}/initiatives`)).status, 401);
+});
+await check('alice crée une initiative et en devient propriétaire', async () => {
+  const r = await call(alice, 'POST', '/initiatives', { code, name: `Initiative test ${code}` });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.myRole, 'owner');
+  assert.equal(r.body.code, code);
+  initiativeId = r.body.id;
+});
+await check('nom vide refusé (schéma partagé) : 400', async () => {
+  assert.equal((await call(alice, 'POST', '/initiatives', { code: 'X1', name: '  ' })).status, 400);
+});
+await check('code invalide refusé (schéma partagé) : 400', async () => {
+  assert.equal((await call(alice, 'POST', '/initiatives', { code: '1AB', name: 'Code invalide' })).status, 400);
+});
+await check('code déjà utilisé, même par une initiative invisible : 409', async () => {
+  assert.equal((await call(bruno, 'POST', '/initiatives', { code, name: 'Doublon' })).status, 409);
+});
+await check('alice (créatrice) est BA de l’équipe', async () => {
+  const r = await call(alice, 'GET', `/initiatives/${initiativeId}/members`);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.find((m) => m.userId === alice.sub)?.isTeamBa, true);
+});
+await check('alice invite bruno (contributeur) et chloé (lectrice)', async () => {
+  assert.equal((await call(alice, 'POST', `/initiatives/${initiativeId}/members`, { email: 'bruno@exemple.test', role: 'contributor' })).status, 204);
+  assert.equal((await call(alice, 'POST', `/initiatives/${initiativeId}/members`, { email: 'chloe@exemple.test', role: 'reader' })).status, 204);
+});
+await check('chloé (lectrice) consulte l’initiative : 200', async () => {
+  const r = await call(chloe, 'GET', `/initiatives/${initiativeId}`);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.myRole, 'reader');
+});
+await check('chloé (lectrice) ne peut pas modifier : 403', async () => {
+  assert.equal((await call(chloe, 'PATCH', `/initiatives/${initiativeId}`, { name: 'Piraté' })).status, 403);
+});
+await check('bruno (contributeur) modifie : 200', async () => {
+  assert.equal((await call(bruno, 'PATCH', `/initiatives/${initiativeId}`, { name: 'Renommé par Bruno' })).status, 200);
+});
+await check('bruno (contributeur) ne gère pas les membres : 403', async () => {
+  assert.equal((await call(bruno, 'POST', `/initiatives/${initiativeId}/members`, { email: 'admin@exemple.test', role: 'reader' })).status, 403);
+});
+await check('bruno (contributeur) ne supprime pas : 403', async () => {
+  assert.equal((await call(bruno, 'DELETE', `/initiatives/${initiativeId}`)).status, 403);
+});
+await check('admin (non-membre) ne voit pas l’initiative : 404', async () => {
+  assert.equal((await call(admin, 'GET', `/initiatives/${initiativeId}`)).status, 404);
+  const list = await call(admin, 'GET', '/initiatives');
+  assert.ok(!list.body.some((p) => p.id === initiativeId));
+});
+await check('langue du compte : enregistrée puis relue (ADR-0013)', async () => {
+  assert.equal((await call(chloe, 'PATCH', '/me', { locale: 'en' })).status, 200);
+  assert.equal((await call(chloe, 'GET', '/me')).body.locale, 'en');
+});
+await check('langue non disponible refusée (schéma partagé) : 400', async () => {
+  assert.equal((await call(chloe, 'PATCH', '/me', { locale: 'de' })).status, 400);
+});
+
+// Fiche Initiative complète (ticket 03).
+export let otherInitiativeId;
+await check('bruno (contributeur) renseigne la fiche complète : 200', async () => {
+  const fiche = {
+    description: 'Ligne 1\nLigne 2',
+    analysisApproach: 'adaptive',
+    startDate: '2026-11-01',
+    plannedEndDate: '2027-03-31',
+  };
+  const r = await call(bruno, 'PATCH', `/initiatives/${initiativeId}`, fiche);
+  assert.equal(r.status, 200);
+  assert.deepEqual(
+    { description: r.body.description, analysisApproach: r.body.analysisApproach, startDate: r.body.startDate, plannedEndDate: r.body.plannedEndDate },
+    fiche,
+  );
+});
+await check('approche d’analyse inconnue refusée (schéma partagé) : 400', async () => {
+  assert.equal((await call(bruno, 'PATCH', `/initiatives/${initiativeId}`, { analysisApproach: 'agile' })).status, 400);
+});
+await check('fin prévue avant le début, dans la même demande : 400', async () => {
+  const r = await call(bruno, 'PATCH', `/initiatives/${initiativeId}`, { startDate: '2026-11-02', plannedEndDate: '2026-11-01' });
+  assert.equal(r.status, 400);
+});
+await check('fin prévue avant le début déjà enregistré : 400', async () => {
+  assert.equal((await call(bruno, 'PATCH', `/initiatives/${initiativeId}`, { plannedEndDate: '2026-10-01' })).status, 400);
+});
+await check('chloé (lectrice) ne modifie pas la fiche : 403', async () => {
+  assert.equal((await call(chloe, 'PATCH', `/initiatives/${initiativeId}`, { description: 'Piraté' })).status, 403);
+});
+await check('bruno (contributeur) ne change pas le code : 403', async () => {
+  assert.equal((await call(bruno, 'PATCH', `/initiatives/${initiativeId}`, { code: `${code}B` })).status, 403);
+});
+await check('bruno (contributeur) peut renvoyer le code inchangé : 200', async () => {
+  assert.equal((await call(bruno, 'PATCH', `/initiatives/${initiativeId}`, { code, name: 'Renommé par Bruno' })).status, 200);
+});
+await check('alice (propriétaire) change le code : 200', async () => {
+  const r = await call(alice, 'PATCH', `/initiatives/${initiativeId}`, { code: `${code}B` });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.code, `${code}B`);
+});
+await check('code déjà pris par une autre initiative, même invisible : 409', async () => {
+  const other = await call(bruno, 'POST', '/initiatives', { code: `${code}C`, name: 'Autre initiative' });
+  assert.equal(other.status, 201);
+  otherInitiativeId = other.body.id;
+  assert.equal((await call(alice, 'PATCH', `/initiatives/${initiativeId}`, { code: `${code}C` })).status, 409);
+});
+await check('bruno (contributeur) n’archive pas : 403', async () => {
+  assert.equal((await call(bruno, 'PUT', `/initiatives/${initiativeId}/archive`)).status, 403);
+});
+await check('admin (non-membre) n’archive pas : 404', async () => {
+  assert.equal((await call(admin, 'PUT', `/initiatives/${initiativeId}/archive`)).status, 404);
+});
+await check('alice (propriétaire) archive : 200, visible dans la liste', async () => {
+  const r = await call(alice, 'PUT', `/initiatives/${initiativeId}/archive`);
+  assert.equal(r.status, 200);
+  assert.ok(r.body.archivedAt);
+  const list = await call(chloe, 'GET', '/initiatives');
+  assert.ok(list.body.find((i) => i.id === initiativeId)?.archivedAt);
+});
+await check('archivée : chloé (lectrice) consulte toujours : 200', async () => {
+  assert.equal((await call(chloe, 'GET', `/initiatives/${initiativeId}`)).status, 200);
+});
+await check('archivée : bruno (contributeur) ne modifie plus : 403', async () => {
+  assert.equal((await call(bruno, 'PATCH', `/initiatives/${initiativeId}`, { name: 'Interdit' })).status, 403);
+});
+await check('archivée : alice (propriétaire) ne modifie plus : 403', async () => {
+  assert.equal((await call(alice, 'PATCH', `/initiatives/${initiativeId}`, { name: 'Interdit' })).status, 403);
+});
+await check('archivée : alice (propriétaire) ne gère plus les membres : 403', async () => {
+  assert.equal((await call(alice, 'POST', `/initiatives/${initiativeId}/members`, { email: 'admin@exemple.test', role: 'reader' })).status, 403);
+});
+await check('archivée : bruno (contributeur) ne désarchive pas : 403', async () => {
+  assert.equal((await call(bruno, 'DELETE', `/initiatives/${initiativeId}/archive`)).status, 403);
+});
+
+console.log('\nBarrière 2 : base de données (RLS, compte applicatif)');
+// L'initiative est encore archivée (barrière 1).
+await check('archivée : alice (propriétaire) : UPDATE de la fiche refusé', async () => {
+  await assert.rejects(
+    asUserInDb(alice.sub, `UPDATE initiative SET name = 'Interdit' WHERE id = $1`, [initiativeId]),
+    /lecture seule/,
+  );
+});
+await check('archivée : alice (propriétaire) : ajout de membre refusé', async () => {
+  await assert.rejects(
+    asUserInDb(alice.sub, `INSERT INTO initiative_member (initiative_id, user_id, role) VALUES ($1, $2, 'reader')`, [initiativeId, admin.sub]),
+    /row-level security/,
+  );
+});
+await check('archivée : alice (propriétaire) : retrait de membre sans effet', async () => {
+  const r = await asUserInDb(alice.sub, `DELETE FROM initiative_member WHERE initiative_id = $1 AND user_id = $2`, [initiativeId, chloe.sub]);
+  assert.equal(r.rowCount, 0);
+});
+await check('archivée : bruno (contributeur) : désarchivage refusé', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `UPDATE initiative SET archived_at = NULL, archived_by = NULL WHERE id = $1`, [initiativeId]),
+    /propriétaire/,
+  );
+});
+await check('archivée : alice (propriétaire) : désarchiver et modifier en même temps refusé', async () => {
+  await assert.rejects(
+    asUserInDb(alice.sub, `UPDATE initiative SET archived_at = NULL, archived_by = NULL, name = 'Interdit' WHERE id = $1`, [initiativeId]),
+    /sans autre modification/,
+  );
+});
+await check('archivée : alice (propriétaire) : désarchivage accepté', async () => {
+  const r = await asUserInDb(alice.sub, `UPDATE initiative SET archived_at = NULL, archived_by = NULL WHERE id = $1`, [initiativeId]);
+  assert.equal(r.rowCount, 1);
+});
+await check('alice (propriétaire) désarchive par l’API : 200', async () => {
+  const r = await call(alice, 'DELETE', `/initiatives/${initiativeId}/archive`);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.archivedAt, null);
+});
+await check('bruno (contributeur) : changement de code refusé', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `UPDATE initiative SET code = 'PIRATE' WHERE id = $1`, [initiativeId]),
+    /propriétaire/,
+  );
+});
+await check('bruno (contributeur) : archivage refusé', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `UPDATE initiative SET archived_at = now() WHERE id = $1`, [initiativeId]),
+    /propriétaire/,
+  );
+});
+await check('description de plus de 4 000 caractères refusée (contrainte en base)', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `UPDATE initiative SET description = repeat('x', 4001) WHERE id = $1`, [initiativeId]),
+    /check constraint/,
+  );
+});
+await check('fin prévue avant le début refusée (contrainte en base)', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `UPDATE initiative SET start_date = '2026-11-02', planned_end_date = '2026-11-01' WHERE id = $1`, [initiativeId]),
+    /initiative_dates_order/,
+  );
+});
+await check('chloé (lectrice) : UPDATE sans effet', async () => {
+  const r = await asUserInDb(chloe.sub, `UPDATE initiative SET name = 'Piraté' WHERE id = $1`, [initiativeId]);
+  assert.equal(r.rowCount, 0);
+});
+await check('bruno (contributeur) : UPDATE accepté', async () => {
+  const r = await asUserInDb(bruno.sub, `UPDATE initiative SET name = 'Via SQL' WHERE id = $1`, [initiativeId]);
+  assert.equal(r.rowCount, 1);
+});
+await check('bruno (contributeur) : ajout de membre refusé', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `INSERT INTO initiative_member (initiative_id, user_id, role) VALUES ($1, $2, 'owner')`, [initiativeId, bruno.sub]),
+    /row-level security/,
+  );
+});
+await check('un lecteur ne peut pas être BA de l’équipe (contrainte en base)', async () => {
+  await assert.rejects(
+    asUserInDb(alice.sub, `UPDATE initiative_member SET is_team_ba = true WHERE initiative_id = $1 AND user_id = $2`, [initiativeId, chloe.sub]),
+    /check constraint/,
+  );
+});
+await check('bruno ne modifie pas la langue de chloé', async () => {
+  const r = await asUserInDb(bruno.sub, `UPDATE app_user SET locale = 'fr' WHERE id = $1`, [chloe.sub]);
+  assert.equal(r.rowCount, 0);
+});
+await check('admin (non-membre) : aucune ligne visible', async () => {
+  const r = await asUserInDb(admin.sub, `SELECT * FROM initiative WHERE id = $1`, [initiativeId]);
+  assert.equal(r.rowCount, 0);
+});
+await check('sans utilisateur courant : aucune ligne visible', async () => {
+  const r = await asUserInDb('', `SELECT count(*)::int AS n FROM initiative`);
+  assert.equal(r.rows[0].n, 0);
+});

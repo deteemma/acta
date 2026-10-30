@@ -1,0 +1,20 @@
+# Mêmes vérifications que la CI (.github/workflows/ci.yml), avant chaque commit.
+# Une ligne par étape ; la sortie complète seulement en cas d'échec.
+log="$(mktemp)"
+step() {
+  label="$1"
+  shift
+  if "$@" >"$log" 2>&1; then
+    echo "✔ $label"
+  else
+    cat "$log"
+    echo "✘ $label"
+    rm -f "$log"
+    exit 1
+  fi
+}
+step "build de shared" pnpm --filter @app/shared build
+step "lint et RLS" pnpm lint
+step "types" pnpm typecheck
+step "tests de shared" pnpm --filter @app/shared test
+rm -f "$log"
