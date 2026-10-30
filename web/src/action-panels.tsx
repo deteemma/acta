@@ -19,6 +19,14 @@ import {
   type NeedDto,
   type RequirementDto,
   type StakeholderDto,
+  type ActionOrigin,
+  analysisObjectLinks,
+  type AnalysisObjectRef,
+  rankTechniques,
+  suggestTasks,
+  type TechniqueCounts,
+  type TechniqueDto,
+  type TechniqueUsage,
   techniqueChoices,
   tasksOfKnowledgeArea,
   updateActionSchema,
@@ -564,15 +572,56 @@ function DeleteAction({ action, onDeleted }: { action: ActionDto; onDeleted: () 
   );
 }
 
+/** Bouton « Nouvelle action » d'une fiche : l'action est créée depuis cet objet et liée à lui (ticket 13). */
+export function NewActionButton({ initiative, from }: { initiative: InitiativeDto; from: AnalysisObjectRef }) {
+  const { t } = useI18n();
+  const { open } = usePanels();
+  if (!can(initiative.myRole, 'editActions', { archived: initiative.archivedAt != null })) return null;
+  return (
+    <button type="button" onClick={() => open({ kind: 'createAction', initiativeId: initiative.id, from })}>
+      {t('actions.new')}
+    </button>
+  );
+}
+
+/** Objet d'origine, chargé pour la tâche proposée (statut d'une exigence) et son nom. */
+interface LoadedOriginObject {
+  origin: ActionOrigin;
+  name: string;
+}
+
+async function loadOriginObject(initiativeId: string, from: AnalysisObjectRef): Promise<LoadedOriginObject> {
+  switch (from.kind) {
+    case 'stakeholder': {
+      const stakeholder = (await api.listStakeholders(initiativeId)).find((s) => s.id === from.id);
+      return { origin: { kind: 'stakeholder' }, name: stakeholder?.name ?? '' };
+    }
+    case 'need': {
+      const need = await api.getNeed(initiativeId, from.id);
+      return { origin: { kind: 'need' }, name: `${need.reference} ${need.title}` };
+    }
+    case 'requirement': {
+      const requirement = await api.getRequirement(initiativeId, from.id);
+      return {
+        origin: { kind: 'requirement', status: requirement.status },
+        name: `${requirement.reference} ${requirement.title}`,
+      };
+    }
+  }
+}
+
 /**
- * Création rapide, ouverte par le bouton flottant « + Action » : initiative,
- * titre, tâche BABOK ; la personne qui crée en est responsable. La fiche créée
- * remplace le panneau.
+ * Création rapide, ouverte par le bouton flottant « + Action » ou le bouton
+ * « Nouvelle action » d'une fiche : initiative, titre, tâche BABOK, technique ;
+ * la personne qui crée en est responsable. Tâches proposées selon l'origine et
+ * techniques classées par usage : @app/shared (suggestions.ts) ; la première
+ * tâche proposée est présélectionnée. La fiche créée remplace le panneau.
  */
 export function CreateActionPanel({
   babok,
   initiatives,
   initiativeId,
+  from,
   onCreated,
   onClose,
 }: {
@@ -580,24 +629,70 @@ export function CreateActionPanel({
   initiatives: InitiativeDto[];
   /** Initiative proposée d'abord (celle du panneau d'où l'on vient). */
   initiativeId?: string;
+  /** Objet de l'initiative `initiativeId` depuis lequel l'action est créée. */
+  from?: AnalysisObjectRef;
   onCreated: () => void;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { replace } = usePanels();
   const editable = initiatives.filter((i) => can(i.myRole, 'editActions', { archived: i.archivedAt != null }));
-  const [chosenInitiative, setChosenInitiative] = useState(
-    editable.find((i) => i.id === initiativeId)?.id ?? editable[0]?.id ?? '',
-  );
+  const proposed = editable.find((i) => i.id === initiativeId);
+  // Sans droit d'écriture sur l'initiative de l'objet, on ne part pas de cet objet.
+  const originObject = proposed ? from : undefined;
+  const [chosenInitiative, setChosenInitiative] = useState(proposed?.id ?? editable[0]?.id ?? '');
   const [title, setTitle] = useState('');
-  const [taskId, setTaskId] = useState('');
+  // Tâche choisie par le BA ; à défaut, la première tâche proposée est présélectionnée.
+  const [chosenTask, setChosenTask] = useState<string | null>(null);
+  const [techniqueId, setTechniqueId] = useState('');
+  const [loadedActions, setLoadedActions] = useState<{ initiativeId: string; actions: ActionDto[] } | null>(null);
+  const [applicationCounts, setApplicationCounts] = useState<TechniqueCounts>({});
+  const [loadedOriginObject, setLoadedOriginObject] = useState<LoadedOriginObject | null>(null);
   const [error, setError] = useState<UiError | null>(null);
+
+  useEffect(() => {
+    api.techniqueUsage().then(setApplicationCounts, (e: unknown) => setError(toUiError(e)));
+  }, []);
+
+  useEffect(() => {
+    if (!chosenInitiative) return;
+    api.listActions(chosenInitiative).then(
+      (actions) => setLoadedActions({ initiativeId: chosenInitiative, actions }),
+      (e: unknown) => setError(toUiError(e)),
+    );
+  }, [chosenInitiative]);
+  // Actions de l'initiative choisie ; null tant qu'elles se chargent.
+  const initiativeActions = loadedActions?.initiativeId === chosenInitiative ? loadedActions.actions : null;
+
+  // Partant d'un objet, l'initiative est figée : celle de l'objet.
+  const originKind = originObject?.kind;
+  const originId = originObject?.id;
+  useEffect(() => {
+    if (!originKind || !originId) return;
+    loadOriginObject(chosenInitiative, { kind: originKind, id: originId }).then(setLoadedOriginObject, (e: unknown) =>
+      setError(toUiError(e)),
+    );
+  }, [chosenInitiative, originKind, originId]);
+
+  const origin: ActionOrigin | null = originObject
+    ? (loadedOriginObject?.origin ?? null)
+    : initiativeActions && { kind: 'initiative', hasActions: initiativeActions.length > 0 };
+  const suggestions = origin ? suggestTasks(origin) : [];
+  const taskId = chosenTask ?? suggestions[0]?.taskId ?? '';
+
   const task = taskId ? findBabokElement(babok, taskId) : undefined;
+  const techniques = rankTechniques(babok, taskId, initiativeActions ?? [], applicationCounts);
+  const technique = techniqueId ? findBabokElement(babok, techniqueId) : undefined;
 
   async function create(event: FormEvent) {
     event.preventDefault();
     // Même schéma de validation que l'API (@app/shared).
-    const parsed = createActionSchema.safeParse({ title, taskId });
+    const parsed = createActionSchema.safeParse({
+      title,
+      taskId,
+      techniqueId: techniqueId || null,
+      ...(originObject && analysisObjectLinks(originObject)),
+    });
     if (!parsed.success || !chosenInitiative) {
       setError({ key: 'action.invalid' });
       return;
@@ -611,6 +706,13 @@ export function CreateActionPanel({
     }
   }
 
+  const techniqueOption = (item: TechniqueDto, usage?: TechniqueUsage) => (
+    <option key={item.id} value={item.id} title={babokEnglishName(item, locale)}>
+      {item.section} {item.name[locale]}
+      {usage && ` · ${t('suggestion.techniqueUsage', { ...usage })}`}
+    </option>
+  );
+
   return (
     <Panel title={t('actions.new')} showFab={false} onClose={onClose}>
       {editable.length === 0 ? (
@@ -619,7 +721,7 @@ export function CreateActionPanel({
         <form className="stacked" onSubmit={(e) => void create(e)}>
           <label>
             {t('action.initiative')}
-            <select value={chosenInitiative} onChange={(e) => setChosenInitiative(e.target.value)}>
+            <select value={chosenInitiative} disabled={!!originObject} onChange={(e) => setChosenInitiative(e.target.value)}>
               {editable.map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.code} · {i.name}
@@ -627,13 +729,39 @@ export function CreateActionPanel({
               ))}
             </select>
           </label>
+          {loadedOriginObject && <p>{t('action.linkedTo', { name: loadedOriginObject.name })}</p>}
           <label>
             {t('action.title')}
             <input data-autofocus value={title} maxLength={ACTION_TITLE_MAX_LENGTH} onChange={(e) => setTitle(e.target.value)} />
           </label>
+          {suggestions.length > 0 && (
+            <fieldset className="suggestions">
+              <legend>{t('suggestion.tasks')}</legend>
+              <ul>
+                {suggestions.map((s) => {
+                  const suggested = findBabokElement(babok, s.taskId);
+                  return (
+                    suggested && (
+                      <li key={s.taskId}>
+                        <button
+                          type="button"
+                          aria-pressed={taskId === s.taskId}
+                          title={babokEnglishName(suggested, locale)}
+                          onClick={() => setChosenTask(s.taskId)}
+                        >
+                          <strong>{suggested.section}</strong> {suggested.name[locale]}
+                        </button>{' '}
+                        <small>{t(`suggestion.task.${s.reason}`)}</small>
+                      </li>
+                    )
+                  );
+                })}
+              </ul>
+            </fieldset>
+          )}
           <label>
             <TermLabel term="babok.task" />
-            <select value={taskId} onChange={(e) => setTaskId(e.target.value)}>
+            <select value={taskId} onChange={(e) => setChosenTask(e.target.value)}>
               <option value="" disabled>
                 {t('action.chooseTask')}
               </option>
@@ -641,6 +769,19 @@ export function CreateActionPanel({
             </select>
           </label>
           {task && <BabokPreview element={task} />}
+          <label>
+            <TermLabel term="babok.technique" />
+            <select value={techniqueId} onChange={(e) => setTechniqueId(e.target.value)}>
+              <option value="">{t('action.noTechnique')}</option>
+              {techniques.suggested.length > 0 && (
+                <optgroup label={t('suggestion.techniques')}>
+                  {techniques.suggested.map((s) => techniqueOption(s.technique, s.usage))}
+                </optgroup>
+              )}
+              <optgroup label={t('action.otherTechniques')}>{techniques.others.map((o) => techniqueOption(o))}</optgroup>
+            </select>
+          </label>
+          {technique && <BabokPreview element={technique} />}
           <button type="submit">{t('action.create')}</button>
         </form>
       )}

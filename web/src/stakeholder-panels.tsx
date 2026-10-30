@@ -28,7 +28,7 @@ import {
   sortByDueDate,
 } from '@app/shared';
 import { type FormEvent, useEffect, useState } from 'react';
-import { ActionList } from './action-panels';
+import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
@@ -299,7 +299,10 @@ export function StakeholderPanel({
           )}
           {stakeholder && (
             <>
-              <h3>{t('stakeholder.actions')}</h3>
+              <div className="section-header">
+                <h3>{t('stakeholder.actions')}</h3>
+                <NewActionButton initiative={initiative} from={{ kind: 'stakeholder', id: stakeholder.id }} />
+              </div>
               <ActionList actions={linkedActions} babok={babok} />
               {linkedActions.length === 0 && <p>{t('stakeholder.noActions')}</p>}
               <h3>{t('stakeholder.needs')}</h3>

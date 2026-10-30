@@ -518,3 +518,21 @@ details.dashboard-task.uncovered summary .badge {
   margin: 0.25rem 0 0.5rem;
   padding-inline-start: 1rem;
 }
+/* Suggestions à la création d'une action (ticket 13) */
+.suggestions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.suggestions li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+}
+.suggestions button[aria-pressed='true'] {
+  font-weight: 600;
+  border-color: var(--accent);
+}

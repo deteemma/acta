@@ -11,4 +11,5 @@ export * from './roles.js';
 export * from './schemas.js';
 export * from './search.js';
 export * from './stakeholders.js';
+export * from './suggestions.js';
 export * from './team.js';

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { BabokDto } from '@app/shared';
+import type { BabokDto, TechniqueCounts } from '@app/shared';
+import { sql } from 'kysely';
 import { DatabaseService } from '../db/database.service.js';
 
 const ELEMENT_COLUMNS = ['id', 'section', 'name_en', 'name_fr', 'summary_en', 'summary_fr'] as const;
@@ -54,6 +55,19 @@ export class BabokService {
         })),
         techniques: techniques.map((row) => ({ kind: 'technique' as const, ...element(row) })),
       };
+    });
+  }
+
+  /**
+   * Usage des techniques dans toute l'application, initiatives dont
+   * l'utilisateur n'est pas membre comprises : des nombres seuls (migration 0014).
+   */
+  techniqueUsage(userId: string): Promise<TechniqueCounts> {
+    return this.database.asUser(userId, async (tx) => {
+      const { rows } = await sql<{ technique_id: string; action_count: string }>`
+        SELECT technique_id, action_count FROM technique_usage_counts()
+      `.execute(tx);
+      return Object.fromEntries(rows.map((row) => [row.technique_id, Number(row.action_count)]));
     });
   }
 }
