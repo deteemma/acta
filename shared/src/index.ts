@@ -1,6 +1,7 @@
 export * from './actions.js';
 export * from './admin.js';
 export * from './babok.js';
+export * from './dashboard.js';
 export * from './i18n.js';
 export * from './needs.js';
 export * from './references.js';

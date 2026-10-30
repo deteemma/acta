@@ -5,6 +5,7 @@ import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
 import { api } from './api';
 import { BabokElementPanel, BabokPanel } from './babok-panels';
+import { DashboardPanel } from './dashboard-panel';
 import { login, logout } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
@@ -83,7 +84,7 @@ function Shell({ user }: { user: User }) {
   // Initiative du panneau le plus haut qui en montre une, proposée à la création rapide.
   const currentInitiativeId = stack
     .map((e) => e.content)
-    .findLast((c) => c.kind === 'initiative' || c.kind === 'action')
+    .findLast((c) => c.kind === 'initiative' || c.kind === 'dashboard' || c.kind === 'action')
     ?.initiativeId;
   const fab = (
     <button
@@ -164,6 +165,17 @@ function Shell({ user }: { user: User }) {
                     onDeleted={(id) => setInitiatives((list) => list.filter((i) => i.id !== id))}
                     onClose={close}
                   />
+                );
+              case 'dashboard':
+                return (
+                  babok && (
+                    <DashboardPanel
+                      initiativeId={content.initiativeId}
+                      babok={babok}
+                      actionsVersion={actionsVersion}
+                      onClose={close}
+                    />
+                  )
                 );
               case 'member':
                 return <MemberPanel member={content.member} onClose={close} />;

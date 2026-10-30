@@ -132,7 +132,12 @@ export function InitiativePanel({
             <dt>{t('initiative.myRole')}</dt>
             <dd>{t(`role.${initiative.myRole}`)}</dd>
           </dl>
-          <h3>{t('actions.section')}</h3>
+          <div className="section-header">
+            <h3>{t('actions.section')}</h3>
+            <button type="button" disabled={!babok} onClick={() => open({ kind: 'dashboard', initiativeId })}>
+              {t('dashboard.open')}
+            </button>
+          </div>
           <ActionList actions={sortByDueDate(actions)} babok={babok} />
           {actions.length === 0 && <p>{t('actions.sectionEmpty')}</p>}
           <div className="section-header">

@@ -20,6 +20,7 @@ export type PanelContent =
   | { kind: 'palette' }
   | { kind: 'createInitiative' }
   | { kind: 'initiative'; initiativeId: string }
+  | { kind: 'dashboard'; initiativeId: string }
   | { kind: 'member'; member: InitiativeMemberDto }
   | { kind: 'admin' }
   | { kind: 'babok' }
