@@ -894,9 +894,781 @@ await check('bruno (contributeur) supprime une action liée à rien : 204', asyn
   assert.equal((await call(alice, 'GET', actionPath(aliceActionId))).status, 404);
 });
 
+// Parties prenantes (ticket 08). Initiative propre à cette section : alice
+// propriétaire, bruno contributeur, chloé lectrice ; admin n'en est pas membre.
+console.log('\nParties prenantes — barrière 1 : API (guards NestJS)');
+let shInitiativeId;
+let sponsorId;
+let chloeStakeholderId;
+let shActionId;
+let otherShInitiativeId;
+let otherStakeholderId;
+const stakeholders = (id = shInitiativeId) => `/initiatives/${id}/stakeholders`;
+const stakeholderPath = (id) => `${stakeholders()}/${id}`;
+const shActions = () => `/initiatives/${shInitiativeId}/actions`;
+const sponsor = { name: 'Direction commerciale', kind: 'group', roles: ['sponsor', 'customer'], influence: 'high', interest: 'medium' };
+await check('alice crée l’initiative et invite bruno (contributeur) et chloé (lectrice)', async () => {
+  const r = await call(alice, 'POST', '/initiatives', { code: `${code.slice(0, 8)}PP`, name: 'Parties prenantes' });
+  assert.equal(r.status, 201);
+  shInitiativeId = r.body.id;
+  assert.equal((await call(alice, 'POST', `/initiatives/${shInitiativeId}/members`, { email: 'bruno@exemple.test', role: 'contributor' })).status, 204);
+  assert.equal((await call(alice, 'POST', `/initiatives/${shInitiativeId}/members`, { email: 'chloe@exemple.test', role: 'reader' })).status, 204);
+});
+await check('alice (propriétaire) crée une fiche : nature, rôles BABOK, matrice, auteur et dates', async () => {
+  const r = await call(alice, 'POST', stakeholders(), { ...sponsor, contact: 'Bâtiment B', notes: '**Décideur**' });
+  assert.equal(r.status, 201);
+  assert.deepEqual([r.body.kind, r.body.roles, r.body.influence, r.body.interest], ['group', ['sponsor', 'customer'], 'high', 'medium']);
+  assert.equal(r.body.createdBy.userId, alice.sub);
+  assert.equal(r.body.user, null);
+  sponsorId = r.body.id;
+});
+await check('sans rôle BABOK ou rôle inconnu (schéma partagé) : 400', async () => {
+  assert.equal((await call(alice, 'POST', stakeholders(), { ...sponsor, roles: [] })).status, 400);
+  assert.equal((await call(alice, 'POST', stakeholders(), { ...sponsor, roles: ['chef'] })).status, 400);
+});
+await check('bruno (contributeur) relie une fiche au compte de chloé (lectrice), sans influence ni intérêt', async () => {
+  const r = await call(bruno, 'POST', stakeholders(), { name: 'Chloé', kind: 'person', roles: ['end_user'], userId: chloe.sub });
+  assert.equal(r.status, 201);
+  assert.deepEqual([r.body.user.userId, r.body.user.member, r.body.influence], [chloe.sub, true, null]);
+  chloeStakeholderId = r.body.id;
+});
+await check('un compte n’est relié qu’à une fiche par initiative : 409', async () => {
+  const r = await call(alice, 'POST', stakeholders(), { name: 'Chloé bis', kind: 'person', roles: ['tester'], userId: chloe.sub });
+  assert.equal(r.status, 409);
+  assert.equal(r.body.refusal, 'userAlreadyLinked');
+  const p = await call(alice, 'PATCH', stakeholderPath(sponsorId), { userId: chloe.sub });
+  assert.equal(p.body.refusal, 'userAlreadyLinked');
+});
+await check('le compte d’un non-membre ne se relie pas : 400', async () => {
+  const r = await call(alice, 'PATCH', stakeholderPath(sponsorId), { userId: admin.sub });
+  assert.equal(r.status, 400);
+  assert.equal(r.body.refusal, 'userNotMember');
+});
+await check('chloé peut être reliée à une fiche dans une autre initiative', async () => {
+  const r = await call(bruno, 'POST', '/initiatives', { code: `${code.slice(0, 8)}PQ`, name: 'Autre' });
+  otherShInitiativeId = r.body.id;
+  assert.equal((await call(bruno, 'POST', `/initiatives/${otherShInitiativeId}/members`, { email: 'chloe@exemple.test', role: 'reader' })).status, 204);
+  const s = await call(bruno, 'POST', stakeholders(otherShInitiativeId), { name: 'Chloé', kind: 'person', roles: ['regulator'], userId: chloe.sub });
+  assert.equal(s.status, 201);
+  otherStakeholderId = s.body.id;
+});
+await check('chloé (lectrice) consulte la liste et une fiche : 200', async () => {
+  const r = await call(chloe, 'GET', stakeholders());
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.map((s) => s.name), ['Chloé', 'Direction commerciale']);
+  assert.equal((await call(chloe, 'GET', stakeholderPath(sponsorId))).status, 200);
+});
+await check('chloé (lectrice) ne crée, ne modifie ni ne supprime : 403', async () => {
+  assert.equal((await call(chloe, 'POST', stakeholders(), sponsor)).status, 403);
+  assert.equal((await call(chloe, 'PATCH', stakeholderPath(sponsorId), { influence: 'low' })).status, 403);
+  assert.equal((await call(chloe, 'DELETE', stakeholderPath(sponsorId))).status, 403);
+});
+await check('admin (non-membre) ne voit ni ne crée de partie prenante : 404', async () => {
+  assert.equal((await call(admin, 'GET', stakeholders())).status, 404);
+  assert.equal((await call(admin, 'GET', stakeholderPath(sponsorId))).status, 404);
+  assert.equal((await call(admin, 'POST', stakeholders(), sponsor)).status, 404);
+  assert.equal((await call(admin, 'DELETE', stakeholderPath(sponsorId))).status, 404);
+});
+await check('bruno (contributeur) modifie la fiche d’alice : auteur de la modification enregistré', async () => {
+  const r = await call(bruno, 'PATCH', stakeholderPath(sponsorId), { interest: 'high', contact: '' });
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.body.interest, r.body.contact, r.body.createdBy.userId, r.body.updatedBy.userId], ['high', null, alice.sub, bruno.sub]);
+});
+await check('une action est liée à des parties prenantes, à la création comme à la modification', async () => {
+  const r = await call(alice, 'POST', shActions(), { title: 'Atelier de cadrage', taskId: '4.2', stakeholderIds: [sponsorId] });
+  assert.equal(r.status, 201);
+  assert.deepEqual(r.body.stakeholders.map((s) => s.id), [sponsorId]);
+  shActionId = r.body.id;
+  const p = await call(bruno, 'PATCH', `${shActions()}/${shActionId}`, { stakeholderIds: [sponsorId, chloeStakeholderId] });
+  assert.deepEqual(p.body.stakeholders.map((s) => s.name), ['Chloé', 'Direction commerciale']);
+  assert.equal(p.body.updatedBy.userId, bruno.sub);
+});
+await check('partie prenante d’une autre initiative : 400', async () => {
+  const r = await call(bruno, 'PATCH', `${shActions()}/${shActionId}`, { stakeholderIds: [otherStakeholderId] });
+  assert.equal(r.status, 400);
+  assert.equal(r.body.refusal, 'unknownStakeholder');
+});
+await check('chloé (lectrice) ne lie pas de partie prenante : 403', async () => {
+  assert.equal((await call(chloe, 'PATCH', `${shActions()}/${shActionId}`, { stakeholderIds: [] })).status, 403);
+});
+await check('liée : ni la partie prenante ni l’action ne se suppriment (409)', async () => {
+  const s = await call(alice, 'DELETE', stakeholderPath(sponsorId));
+  assert.equal(s.status, 409);
+  assert.equal(s.body.refusal, 'stakeholderLinked');
+  const a = await call(alice, 'DELETE', `${shActions()}/${shActionId}`);
+  assert.equal(a.status, 409);
+  assert.equal(a.body.refusal, 'linked');
+});
+await check('retirée de l’action, une fiche reliée à un compte se supprime : 204', async () => {
+  const p = await call(bruno, 'PATCH', `${shActions()}/${shActionId}`, { stakeholderIds: [sponsorId] });
+  assert.equal(p.status, 200);
+  assert.equal((await call(bruno, 'DELETE', stakeholderPath(chloeStakeholderId))).status, 204);
+  assert.equal((await call(alice, 'GET', stakeholderPath(chloeStakeholderId))).status, 404);
+});
+await check('initiative archivée : parties prenantes et liens en lecture seule', async () => {
+  assert.equal((await call(alice, 'PUT', `/initiatives/${shInitiativeId}/archive`)).status, 200);
+  assert.equal((await call(chloe, 'GET', stakeholders())).status, 200);
+  assert.equal((await call(alice, 'POST', stakeholders(), sponsor)).status, 403);
+  assert.equal((await call(bruno, 'PATCH', stakeholderPath(sponsorId), { influence: 'low' })).status, 403);
+  assert.equal((await call(alice, 'DELETE', stakeholderPath(sponsorId))).status, 403);
+  assert.equal((await call(alice, 'PATCH', `${shActions()}/${shActionId}`, { stakeholderIds: [] })).status, 403);
+});
+
+console.log('\nParties prenantes — barrière 2 : base de données (RLS, compte applicatif)');
+// L'initiative est encore archivée.
+const insertStakeholder = (sub, userId = null, initiative = shInitiativeId) =>
+  asUserInDb(
+    sub,
+    `INSERT INTO stakeholder (id, initiative_id, name, kind, roles, user_id) VALUES (gen_random_uuid(), $1, 'Via SQL', 'person', '{sponsor}', $2) RETURNING id, created_by`,
+    [initiative, userId],
+  );
+await check('archivée : alice (propriétaire) : UPDATE et DELETE sans effet, INSERT refusé', async () => {
+  assert.equal((await asUserInDb(alice.sub, `UPDATE stakeholder SET name = 'Interdit' WHERE id = $1`, [sponsorId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `DELETE FROM action_stakeholder WHERE stakeholder_id = $1`, [sponsorId])).rowCount, 0);
+  await assert.rejects(insertStakeholder(alice.sub), /row-level security/);
+});
+await check('alice désarchive l’initiative : 200', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${shInitiativeId}/archive`)).status, 200);
+});
+await check('chloé (lectrice) : INSERT refusés, UPDATE et DELETE sans effet', async () => {
+  await assert.rejects(insertStakeholder(chloe.sub), /row-level security/);
+  assert.equal((await asUserInDb(chloe.sub, `UPDATE stakeholder SET name = 'Piraté' WHERE id = $1`, [sponsorId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM action_stakeholder WHERE stakeholder_id = $1`, [sponsorId])).rowCount, 0);
+  await assert.rejects(
+    asUserInDb(chloe.sub, `INSERT INTO action_stakeholder VALUES ($1, $2, $3)`, [shInitiativeId, shActionId, sponsorId]),
+    /row-level security/,
+  );
+});
+await check('admin (non-membre) : aucune fiche ni lien visible, aucune écriture', async () => {
+  assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM stakeholder WHERE initiative_id = $1`, [shInitiativeId])).rowCount, 0);
+  assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM action_stakeholder WHERE initiative_id = $1`, [shInitiativeId])).rowCount, 0);
+  assert.equal((await asUserInDb(admin.sub, `UPDATE stakeholder SET name = 'Piraté' WHERE id = $1`, [sponsorId])).rowCount, 0);
+  await assert.rejects(insertStakeholder(admin.sub), /row-level security/);
+});
+await check('bruno (contributeur) : INSERT accepté, auteur imposé par la base', async () => {
+  const r = await insertStakeholder(bruno.sub);
+  assert.equal(r.rows[0].created_by, bruno.sub);
+});
+await check('compte d’un non-membre refusé, compte déjà relié refusé (déclencheur, unicité)', async () => {
+  await assert.rejects(insertStakeholder(bruno.sub, admin.sub), /membre/);
+  await assert.rejects(
+    asUserInDb(
+      bruno.sub,
+      `INSERT INTO stakeholder (id, initiative_id, name, kind, roles, user_id) VALUES
+         (gen_random_uuid(), $1, 'A', 'person', '{sponsor}', $2), (gen_random_uuid(), $1, 'B', 'person', '{sponsor}', $2)`,
+      [shInitiativeId, bruno.sub],
+    ),
+    /stakeholder_user_unique/,
+  );
+});
+await check('aucun rôle, ou notes de plus de 20 000 caractères : refusés (contraintes en base)', async () => {
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE stakeholder SET roles = '{}' WHERE id = $1`, [sponsorId]), /check constraint/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE stakeholder SET notes = repeat('x', 20001) WHERE id = $1`, [sponsorId]), /check constraint/);
+});
+await check('bruno ne falsifie ni l’auteur ni les dates (déclencheur)', async () => {
+  const r = await asUserInDb(
+    bruno.sub,
+    `UPDATE stakeholder SET created_by = $2, updated_by = $2, created_at = '2000-01-01' WHERE id = $1 RETURNING created_by, updated_by, created_at`,
+    [sponsorId, chloe.sub],
+  );
+  assert.equal(r.rows[0].created_by, alice.sub);
+  assert.equal(r.rows[0].updated_by, bruno.sub);
+  assert.notEqual(r.rows[0].created_at.getFullYear(), 2000);
+});
+await check('une partie prenante ne change pas d’initiative', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `UPDATE stakeholder SET initiative_id = $2 WHERE id = $1`, [sponsorId, otherShInitiativeId]),
+    /ne change pas/,
+  );
+});
+await check('lien vers une partie prenante d’une autre initiative refusé (clé étrangère)', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `INSERT INTO action_stakeholder VALUES ($1, $2, $3)`, [shInitiativeId, shActionId, otherStakeholderId]),
+    /foreign key/,
+  );
+});
+await check('partie prenante et action liées : DELETE refusé (clé étrangère)', async () => {
+  await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM stakeholder WHERE id = $1`, [sponsorId]), /foreign key/);
+  await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM action WHERE id = $1`, [shActionId]), /foreign key/);
+});
+await check('chloé quitte l’initiative : sa fiche reste reliée à son compte, signalée', async () => {
+  assert.equal((await call(bruno, 'DELETE', `/initiatives/${otherShInitiativeId}/members/${chloe.sub}`)).status, 204);
+  const r = await call(bruno, 'GET', `${stakeholders(otherShInitiativeId)}/${otherStakeholderId}`);
+  assert.deepEqual([r.body.user.userId, r.body.user.member], [chloe.sub, false]);
+});
+
+// Références et besoins (ticket 09). État de départ : alice propriétaire,
+// bruno contributeur, chloé lectrice, admin non-membre (mais administrateur).
+console.log('\nRéférences et besoins — barrière 1 : API (guards NestJS)');
+let rbInitiativeId;
+let rbCode = `${code.slice(0, 8)}RB`;
+let otherRbInitiativeId;
+let otherNeedId;
+let originId;
+let needId;
+let secondNeedId;
+let rbActionId;
+let needAcronym;
+const needs = (id = rbInitiativeId) => `/initiatives/${id}/needs`;
+const needPath = (id) => `${needs()}/${id}`;
+const rbActions = () => `/initiatives/${rbInitiativeId}/actions`;
+const categories = '/admin/reference-categories';
+const problem = { title: 'Délais de traitement trop longs', nature: 'problem' };
+await check('alice crée l’initiative et invite bruno (contributeur) et chloé (lectrice)', async () => {
+  const r = await call(alice, 'POST', '/initiatives', { code: rbCode, name: 'Références et besoins' });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.codeFrozen, false);
+  rbInitiativeId = r.body.id;
+  assert.equal((await call(alice, 'POST', `/initiatives/${rbInitiativeId}/members`, { email: 'bruno@exemple.test', role: 'contributor' })).status, 204);
+  assert.equal((await call(alice, 'POST', `/initiatives/${rbInitiativeId}/members`, { email: 'chloe@exemple.test', role: 'reader' })).status, 204);
+  const s = await call(alice, 'POST', `/initiatives/${rbInitiativeId}/stakeholders`, { name: 'Service client', kind: 'group', roles: ['end_user'] });
+  originId = s.body.id;
+});
+await check('admin consulte les acronymes ; bruno, chloé (non administrateurs) : 403', async () => {
+  const r = await call(admin, 'GET', categories);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.map((c) => c.category), ['need', 'requirement']);
+  needAcronym = r.body[0].acronym;
+  assert.equal((await call(bruno, 'GET', categories)).status, 403);
+  assert.equal((await call(chloe, 'PATCH', `${categories}/need`, { acronym: 'BS' })).status, 403);
+});
+await check('acronyme invalide (400), acronyme d’une autre catégorie (409 acronymTaken)', async () => {
+  assert.equal((await call(admin, 'PATCH', `${categories}/need`, { acronym: 'B1' })).status, 400);
+  assert.equal((await call(admin, 'PATCH', `${categories}/need`, { acronym: 'BESOIN' })).status, 400);
+  assert.equal((await call(admin, 'PATCH', `${categories}/nothing`, { acronym: 'NO' })).status, 400);
+  const r = await call(admin, 'PATCH', `${categories}/requirement`, { acronym: needAcronym });
+  assert.equal(r.status, 409);
+  assert.equal(r.body.refusal, 'acronymTaken');
+});
+await check('alice (propriétaire) change le code tant qu’aucune référence n’existe : 200', async () => {
+  rbCode = `${code.slice(0, 8)}RC`;
+  const r = await call(alice, 'PATCH', `/initiatives/${rbInitiativeId}`, { code: rbCode });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.code, rbCode);
+});
+await check('bruno (contributeur) crée un besoin : référence attribuée, origine, auteur', async () => {
+  const r = await call(bruno, 'POST', needs(), { ...problem, description: '**Urgent**', stakeholderIds: [originId] });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.reference, `${rbCode}-${needAcronym}-001`);
+  assert.deepEqual(r.body.stakeholders.map((s) => s.id), [originId]);
+  assert.deepEqual([r.body.nature, r.body.createdBy.userId], ['problem', bruno.sub]);
+  needId = r.body.id;
+  const s = await call(alice, 'POST', needs(), { title: 'Vente croisée', nature: 'opportunity' });
+  assert.equal(s.body.reference, `${rbCode}-${needAcronym}-002`);
+  secondNeedId = s.body.id;
+});
+await check('sans nature, nature inconnue ou titre vide (schéma partagé) : 400', async () => {
+  assert.equal((await call(bruno, 'POST', needs(), { title: 'Sans nature' })).status, 400);
+  assert.equal((await call(bruno, 'POST', needs(), { ...problem, nature: 'risk' })).status, 400);
+  assert.equal((await call(bruno, 'POST', needs(), { ...problem, title: ' ' })).status, 400);
+});
+await check('une référence existe : le code est figé (409 codeFrozen), même pour la propriétaire', async () => {
+  assert.equal((await call(alice, 'GET', `/initiatives/${rbInitiativeId}`)).body.codeFrozen, true);
+  const r = await call(alice, 'PATCH', `/initiatives/${rbInitiativeId}`, { code: `${code.slice(0, 8)}RZ` });
+  assert.equal(r.status, 409);
+  assert.equal(r.body.refusal, 'codeFrozen');
+  assert.equal((await call(alice, 'PATCH', `/initiatives/${rbInitiativeId}`, { code: rbCode, name: 'Renommée' })).status, 200);
+});
+await check('chloé (lectrice) consulte la liste (par référence) et une fiche : 200', async () => {
+  const r = await call(chloe, 'GET', needs());
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.map((n) => n.id), [needId, secondNeedId]);
+  assert.equal((await call(chloe, 'GET', needPath(needId))).status, 200);
+});
+await check('chloé (lectrice) ne crée, ne modifie ni ne supprime : 403', async () => {
+  assert.equal((await call(chloe, 'POST', needs(), problem)).status, 403);
+  assert.equal((await call(chloe, 'PATCH', needPath(needId), { title: 'Piraté' })).status, 403);
+  assert.equal((await call(chloe, 'DELETE', needPath(needId))).status, 403);
+});
+await check('admin (non-membre) ne voit ni ne crée de besoin : 404', async () => {
+  assert.equal((await call(admin, 'GET', needs())).status, 404);
+  assert.equal((await call(admin, 'GET', needPath(needId))).status, 404);
+  assert.equal((await call(admin, 'POST', needs(), problem)).status, 404);
+  assert.equal((await call(admin, 'PATCH', needPath(needId), { title: 'Piraté' })).status, 404);
+  assert.equal((await call(admin, 'DELETE', needPath(needId))).status, 404);
+});
+await check('palette : chloé (lectrice) trouve les références, admin (non-membre) non', async () => {
+  const mine = await call(chloe, 'GET', '/references');
+  assert.equal(mine.status, 200);
+  assert.ok(mine.body.some((r) => r.reference === `${rbCode}-${needAcronym}-001`));
+  const theirs = await call(admin, 'GET', '/references');
+  assert.ok(!theirs.body.some((r) => r.initiativeId === rbInitiativeId));
+});
+await check('alice (propriétaire) modifie le besoin : auteur de la modification, référence inchangée', async () => {
+  const r = await call(alice, 'PATCH', needPath(needId), { nature: 'opportunity', stakeholderIds: [] });
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.body.nature, r.body.stakeholders, r.body.reference], ['opportunity', [], `${rbCode}-${needAcronym}-001`]);
+  assert.deepEqual([r.body.createdBy.userId, r.body.updatedBy.userId], [bruno.sub, alice.sub]);
+  assert.equal((await call(alice, 'PATCH', needPath(needId), { stakeholderIds: [originId] })).body.stakeholders.length, 1);
+});
+await check('partie prenante d’une autre initiative à l’origine : 400', async () => {
+  const r = await call(bruno, 'POST', '/initiatives', { code: `${code.slice(0, 8)}RD`, name: 'Autre' });
+  otherRbInitiativeId = r.body.id;
+  otherNeedId = (await call(bruno, 'POST', needs(otherRbInitiativeId), problem)).body.id;
+  const o = await call(bruno, 'POST', `/initiatives/${otherRbInitiativeId}/stakeholders`, { name: 'Ailleurs', kind: 'person', roles: ['sponsor'] });
+  const p = await call(bruno, 'PATCH', needPath(needId), { stakeholderIds: [o.body.id] });
+  assert.equal(p.status, 400);
+  assert.equal(p.body.refusal, 'unknownStakeholder');
+});
+await check('une action est liée à des besoins, à la création comme à la modification', async () => {
+  const r = await call(bruno, 'POST', rbActions(), { title: 'Entretiens', taskId: '4.2', needIds: [needId] });
+  assert.equal(r.status, 201);
+  assert.deepEqual(r.body.needs.map((n) => n.reference), [`${rbCode}-${needAcronym}-001`]);
+  rbActionId = r.body.id;
+  const p = await call(alice, 'PATCH', `${rbActions()}/${rbActionId}`, { needIds: [secondNeedId, needId] });
+  assert.deepEqual(p.body.needs.map((n) => n.id), [needId, secondNeedId]);
+  assert.equal(p.body.updatedBy.userId, alice.sub);
+});
+await check('besoin d’une autre initiative : 400 ; chloé (lectrice) ne lie pas : 403', async () => {
+  const r = await call(bruno, 'PATCH', `${rbActions()}/${rbActionId}`, { needIds: [otherNeedId] });
+  assert.equal(r.status, 400);
+  assert.equal(r.body.refusal, 'unknownNeed');
+  assert.equal((await call(chloe, 'PATCH', `${rbActions()}/${rbActionId}`, { needIds: [] })).status, 403);
+});
+await check('liés : ni le besoin, ni l’action, ni la partie prenante à l’origine ne se suppriment (409)', async () => {
+  const n = await call(alice, 'DELETE', needPath(needId));
+  assert.equal(n.status, 409);
+  assert.equal(n.body.refusal, 'needLinked');
+  assert.equal((await call(alice, 'DELETE', `${rbActions()}/${rbActionId}`)).body.refusal, 'linked');
+  const s = await call(alice, 'DELETE', `/initiatives/${rbInitiativeId}/stakeholders/${originId}`);
+  assert.equal(s.status, 409);
+  assert.equal(s.body.refusal, 'stakeholderLinked');
+});
+await check('retiré des actions, un besoin à l’origine renseignée se supprime ; son numéro n’est pas réattribué', async () => {
+  assert.equal((await call(bruno, 'PATCH', `${rbActions()}/${rbActionId}`, { needIds: [secondNeedId] })).status, 200);
+  assert.equal((await call(bruno, 'DELETE', needPath(needId))).status, 204);
+  assert.equal((await call(alice, 'GET', needPath(needId))).status, 404);
+  const r = await call(bruno, 'POST', needs(), problem);
+  assert.equal(r.body.reference, `${rbCode}-${needAcronym}-003`);
+  needId = r.body.id;
+});
+await check('aucune référence restante n’y change rien : le code reste figé', async () => {
+  const r = await call(alice, 'PATCH', `/initiatives/${rbInitiativeId}`, { code: `${code.slice(0, 8)}RZ` });
+  assert.equal(r.body.refusal, 'codeFrozen');
+});
+await check('initiative archivée : besoins et liens en lecture seule', async () => {
+  assert.equal((await call(alice, 'PUT', `/initiatives/${rbInitiativeId}/archive`)).status, 200);
+  assert.equal((await call(chloe, 'GET', needs())).status, 200);
+  assert.equal((await call(alice, 'POST', needs(), problem)).status, 403);
+  assert.equal((await call(bruno, 'PATCH', needPath(needId), { title: 'Interdit' })).status, 403);
+  assert.equal((await call(alice, 'DELETE', needPath(needId))).status, 403);
+  assert.equal((await call(alice, 'PATCH', `${rbActions()}/${rbActionId}`, { needIds: [] })).status, 403);
+});
+
+console.log('\nRéférences et besoins — barrière 2 : base de données (RLS, compte applicatif)');
+// L'initiative est encore archivée.
+const insertNeed = (sub, initiative = rbInitiativeId) =>
+  asUserInDb(
+    sub,
+    `INSERT INTO need (id, initiative_id, reference, title, nature) VALUES (gen_random_uuid(), $1, 'FAUX-BE-999', 'Via SQL', 'problem') RETURNING reference, created_by`,
+    [initiative],
+  );
+/** Plusieurs requêtes dans une même transaction annulée, chacune « en tant que » son utilisateur. */
+async function inDbTransaction(steps) {
+  const client = new pg.Client({ connectionString: env.DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query('BEGIN');
+    let result;
+    for (const { sub, admin: isAdmin = false, query, params } of steps) {
+      await client.query(`SELECT set_config('app.user_id', $1, true), set_config('app.is_admin', $2, true)`, [sub, String(isAdmin)]);
+      result = await client.query(query, params);
+    }
+    return result;
+  } finally {
+    await client.query('ROLLBACK').catch(() => undefined);
+    await client.end();
+  }
+}
+await check('archivée : alice (propriétaire) : UPDATE et DELETE sans effet, INSERT refusé', async () => {
+  assert.equal((await asUserInDb(alice.sub, `UPDATE need SET title = 'Interdit' WHERE id = $1`, [needId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `DELETE FROM action_need WHERE action_id = $1`, [rbActionId])).rowCount, 0);
+  await assert.rejects(insertNeed(alice.sub), /row-level security/);
+});
+await check('alice désarchive l’initiative : 200', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${rbInitiativeId}/archive`)).status, 200);
+});
+await check('chloé (lectrice) : INSERT refusés, UPDATE et DELETE sans effet', async () => {
+  await assert.rejects(insertNeed(chloe.sub), /row-level security/);
+  assert.equal((await asUserInDb(chloe.sub, `UPDATE need SET title = 'Piraté' WHERE id = $1`, [needId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM need_stakeholder WHERE need_id = $1`, [needId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM action_need WHERE action_id = $1`, [rbActionId])).rowCount, 0);
+  await assert.rejects(
+    asUserInDb(chloe.sub, `INSERT INTO action_need VALUES ($1, $2, $3)`, [rbInitiativeId, rbActionId, needId]),
+    /row-level security/,
+  );
+  await assert.rejects(
+    asUserInDb(chloe.sub, `INSERT INTO need_stakeholder VALUES ($1, $2, $3)`, [rbInitiativeId, needId, originId]),
+    /row-level security/,
+  );
+});
+await check('admin (non-membre) : aucun besoin ni lien visible, aucune écriture', async () => {
+  assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM need WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
+  assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM need_stakeholder WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
+  assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM action_need WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
+  assert.equal((await asUserInDb(admin.sub, `UPDATE need SET title = 'Piraté' WHERE id = $1`, [needId])).rowCount, 0);
+  await assert.rejects(insertNeed(admin.sub), /row-level security/);
+});
+await check('bruno (contributeur) : INSERT accepté, référence et auteur imposés par la base', async () => {
+  const r = await insertNeed(bruno.sub);
+  assert.deepEqual([r.rows[0].reference, r.rows[0].created_by], [`${rbCode}-${needAcronym}-004`, bruno.sub]);
+});
+await check('bruno ne change ni la référence, ni l’auteur, ni l’initiative d’un besoin (déclencheur)', async () => {
+  const r = await asUserInDb(
+    bruno.sub,
+    `UPDATE need SET reference = 'FAUX-BE-001', created_by = $2 WHERE id = $1 RETURNING reference, created_by, updated_by`,
+    [secondNeedId, chloe.sub],
+  );
+  assert.deepEqual(Object.values(r.rows[0]), [`${rbCode}-${needAcronym}-002`, alice.sub, bruno.sub]);
+  await assert.rejects(
+    asUserInDb(bruno.sub, `UPDATE need SET initiative_id = $2 WHERE id = $1`, [needId, otherRbInitiativeId]),
+    /ne change pas/,
+  );
+});
+await check('titre vide ou description de plus de 20 000 caractères : refusés (contraintes en base)', async () => {
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE need SET title = '' WHERE id = $1`, [needId]), /check constraint/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE need SET description = repeat('x', 20001) WHERE id = $1`, [needId]), /check constraint/);
+});
+await check('compteur : invisible et non modifiable ; numérotation inaccessible directement', async () => {
+  assert.equal((await asUserInDb(alice.sub, `SELECT 1 FROM reference_counter WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `UPDATE reference_counter SET last_number = 0 WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `DELETE FROM reference_counter WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
+  await assert.rejects(asUserInDb(alice.sub, `SELECT next_reference($1, 'need')`, [rbInitiativeId]), /permission denied/);
+});
+await check('alice (propriétaire) : changement de code refusé par la base dès qu’une référence existe', async () => {
+  await assert.rejects(
+    asUserInDb(alice.sub, `UPDATE initiative SET code = $2 WHERE id = $1`, [rbInitiativeId, `${code.slice(0, 8)}RZ`]),
+    /ne change plus/,
+  );
+});
+await check('acronymes : écriture directe sans effet ; fonction réservée à l’administrateur', async () => {
+  for (const u of [alice, admin]) {
+    assert.equal((await asUserInDb(u.sub, `UPDATE reference_category SET acronym = 'ZZ'`, [], { admin: true })).rowCount, 0);
+  }
+  await assert.rejects(asUserInDb(alice.sub, `INSERT INTO reference_acronym VALUES ('ZZ', 'need')`, []), /row-level security/);
+  await assert.rejects(asUserInDb(bruno.sub, `SELECT admin_set_reference_acronym('need', 'ZZ')`, []), /administrateur/);
+});
+await check('admin : acronyme d’une autre catégorie refusé par la base', async () => {
+  await assert.rejects(
+    asUserInDb(admin.sub, `SELECT admin_set_reference_acronym('requirement', $1)`, [needAcronym], { admin: true }),
+    /autre catégorie/,
+  );
+});
+await check('nouvel acronyme : les références attribuées restent, la suivante le prend, numéro continu (annulé)', async () => {
+  const r = await inDbTransaction([
+    { sub: admin.sub, admin: true, query: `SELECT admin_set_reference_acronym('need', 'ZZQ')` },
+    { sub: bruno.sub, query: `INSERT INTO need (id, initiative_id, title, nature) VALUES (gen_random_uuid(), $1, 'Après', 'problem')`, params: [rbInitiativeId] },
+    { sub: bruno.sub, query: `SELECT reference FROM need WHERE initiative_id = $1`, params: [rbInitiativeId] },
+  ]);
+  const references = r.rows.map((row) => row.reference).sort();
+  assert.ok(references.includes(`${rbCode}-${needAcronym}-002`));
+  // L'insertion SQL précédente a été annulée avec sa transaction : le compteur en était à 3.
+  assert.ok(references.includes(`${rbCode}-ZZQ-004`));
+});
+await check('liens vers un besoin ou une partie prenante d’une autre initiative refusés (clé étrangère)', async () => {
+  await assert.rejects(
+    asUserInDb(bruno.sub, `INSERT INTO action_need VALUES ($1, $2, $3)`, [rbInitiativeId, rbActionId, otherNeedId]),
+    /foreign key/,
+  );
+  await assert.rejects(
+    asUserInDb(bruno.sub, `INSERT INTO need_stakeholder VALUES ($1, $2, $3)`, [otherRbInitiativeId, otherNeedId, originId]),
+    /foreign key/,
+  );
+});
+await check('besoin lié à une action, partie prenante à l’origine : DELETE refusé (clé étrangère)', async () => {
+  await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM need WHERE id = $1`, [secondNeedId]), /foreign key/);
+  assert.equal((await call(bruno, 'PATCH', needPath(needId), { stakeholderIds: [originId] })).status, 200);
+  await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM stakeholder WHERE id = $1`, [originId]), /foreign key/);
+});
+await check('bruno (contributeur) : DELETE d’un besoin non lié accepté, origine comprise', async () => {
+  assert.equal((await asUserInDb(bruno.sub, `DELETE FROM need WHERE id = $1`, [needId])).rowCount, 1);
+});
+
+// Exigences (ticket 10). Initiative propre à cette section : alice
+// propriétaire, bruno contributeur, chloé lectrice ; admin n'en est pas membre.
+console.log('\nExigences — barrière 1 : API (guards NestJS)');
+let exInitiativeId;
+const exCode = `${code.slice(0, 8)}EX`;
+let otherExInitiativeId;
+let exAcronym;
+let exNeedId;
+let exSourceId;
+let rootId;
+let childId;
+let exActionId;
+let otherRequirementId;
+let otherExNeedId;
+let otherExSourceId;
+const requirements = (id = exInitiativeId) => `/initiatives/${id}/requirements`;
+const requirementPath = (id) => `${requirements()}/${id}`;
+const exActions = () => `/initiatives/${exInitiativeId}/actions`;
+const business = () => ({ title: 'Suivi des réclamations', statement: 'Le service client suit chaque réclamation.', type: 'business', needIds: [exNeedId] });
+await check('alice crée l’initiative et invite bruno (contributeur) et chloé (lectrice) ; un besoin, une partie prenante', async () => {
+  const r = await call(alice, 'POST', '/initiatives', { code: exCode, name: 'Exigences' });
+  assert.equal(r.status, 201);
+  exInitiativeId = r.body.id;
+  assert.equal((await call(alice, 'POST', `/initiatives/${exInitiativeId}/members`, { email: 'bruno@exemple.test', role: 'contributor' })).status, 204);
+  assert.equal((await call(alice, 'POST', `/initiatives/${exInitiativeId}/members`, { email: 'chloe@exemple.test', role: 'reader' })).status, 204);
+  exSourceId = (await call(alice, 'POST', `/initiatives/${exInitiativeId}/stakeholders`, { name: 'Service client', kind: 'group', roles: ['end_user'] })).body.id;
+  exNeedId = (await call(alice, 'POST', `/initiatives/${exInitiativeId}/needs`, { title: 'Réclamations perdues', nature: 'problem' })).body.id;
+  exAcronym = (await call(admin, 'GET', categories)).body.find((c) => c.category === 'requirement').acronym;
+});
+await check('bruno (contributeur) crée une exigence : référence attribuée, statut Proposée, besoin, source, auteur', async () => {
+  const r = await call(bruno, 'POST', requirements(), { ...business(), stakeholderIds: [exSourceId], status: 'approved' });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.reference, `${exCode}-${exAcronym}-001`);
+  assert.deepEqual([r.body.status, r.body.subtype, r.body.parent], ['proposed', null, null]);
+  assert.deepEqual([r.body.needs.map((n) => n.id), r.body.stakeholders.map((s) => s.id)], [[exNeedId], [exSourceId]]);
+  assert.equal(r.body.createdBy.userId, bruno.sub);
+  rootId = r.body.id;
+});
+await check('alice crée une exigence de solution fonctionnelle qui dérive de la première, sans besoin', async () => {
+  const r = await call(alice, 'POST', requirements(), { title: 'Saisie', statement: 'Saisir une réclamation.', type: 'solution', subtype: 'functional', parentId: rootId });
+  assert.equal(r.status, 201);
+  assert.deepEqual([r.body.reference, r.body.parent.id, r.body.needs], [`${exCode}-${exAcronym}-002`, rootId, []]);
+  childId = r.body.id;
+});
+await check('sous-type absent ou de trop, ni besoin ni parente, énoncé vide (schéma partagé) : 400', async () => {
+  assert.equal((await call(bruno, 'POST', requirements(), { ...business(), type: 'solution' })).status, 400);
+  assert.equal((await call(bruno, 'POST', requirements(), { ...business(), subtype: 'functional' })).status, 400);
+  assert.equal((await call(bruno, 'POST', requirements(), { ...business(), needIds: [] })).status, 400);
+  assert.equal((await call(bruno, 'POST', requirements(), { ...business(), statement: ' ' })).status, 400);
+});
+await check('chloé (lectrice) consulte la liste (par référence), une fiche et son historique : 200', async () => {
+  const r = await call(chloe, 'GET', requirements());
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.map((x) => x.id), [rootId, childId]);
+  assert.equal((await call(chloe, 'GET', requirementPath(rootId))).status, 200);
+  assert.equal((await call(chloe, 'GET', `${requirementPath(rootId)}/history`)).status, 200);
+});
+await check('chloé (lectrice) ne crée, ne modifie, ne change pas le statut ni ne supprime : 403', async () => {
+  assert.equal((await call(chloe, 'POST', requirements(), business())).status, 403);
+  assert.equal((await call(chloe, 'PATCH', requirementPath(rootId), { status: 'approved' })).status, 403);
+  assert.equal((await call(chloe, 'DELETE', requirementPath(childId))).status, 403);
+});
+await check('admin (non-membre) ne voit, ne crée ni ne modifie aucune exigence : 404', async () => {
+  assert.equal((await call(admin, 'GET', requirements())).status, 404);
+  assert.equal((await call(admin, 'GET', requirementPath(rootId))).status, 404);
+  assert.equal((await call(admin, 'GET', `${requirementPath(rootId)}/history`)).status, 404);
+  assert.equal((await call(admin, 'POST', requirements(), business())).status, 404);
+  assert.equal((await call(admin, 'PATCH', requirementPath(rootId), { status: 'rejected' })).status, 404);
+  assert.equal((await call(admin, 'DELETE', requirementPath(childId))).status, 404);
+});
+await check('palette et aperçu : chloé trouve l’exigence avec son type et son statut, admin (non-membre) non', async () => {
+  const mine = (await call(chloe, 'GET', '/references')).body.find((x) => x.id === childId);
+  assert.deepEqual([mine.category, mine.requirement], ['requirement', { type: 'solution', subtype: 'functional', status: 'proposed' }]);
+  assert.ok(!(await call(admin, 'GET', '/references')).body.some((x) => x.initiativeId === exInitiativeId));
+});
+await check('tout statut passe à tout autre ; l’historique garde qui, quand, ancienne et nouvelle valeur', async () => {
+  assert.equal((await call(bruno, 'PATCH', requirementPath(rootId), { status: 'approved' })).body.status, 'approved');
+  const r = await call(alice, 'PATCH', requirementPath(rootId), { status: 'proposed', stakeholderIds: [] });
+  assert.deepEqual([r.body.status, r.body.stakeholders, r.body.updatedBy.userId], ['proposed', [], alice.sub]);
+  const h = (await call(chloe, 'GET', `${requirementPath(rootId)}/history`)).body;
+  assert.deepEqual(h.map((v) => v.changedBy.userId), [bruno.sub, bruno.sub, alice.sub]);
+  assert.deepEqual(h.map((v) => v.snapshot.status), ['proposed', 'approved', 'proposed']);
+  assert.deepEqual(h.map((v) => v.snapshot.stakeholders.length), [1, 1, 0]);
+  // Rien à changer : pas de nouvelle version.
+  await call(alice, 'PATCH', requirementPath(rootId), { status: 'proposed' });
+  assert.equal((await call(chloe, 'GET', `${requirementPath(rootId)}/history`)).body.length, 3);
+});
+await check('boucle, ni besoin ni parente, sous-type incohérent : 400 avec le motif', async () => {
+  const cycle = await call(bruno, 'PATCH', requirementPath(rootId), { parentId: childId });
+  assert.deepEqual([cycle.status, cycle.body.refusal], [400, 'parentCycle']);
+  const self = await call(bruno, 'PATCH', requirementPath(rootId), { parentId: rootId });
+  assert.equal(self.body.refusal, 'parentCycle');
+  const origin = await call(bruno, 'PATCH', requirementPath(rootId), { needIds: [] });
+  assert.deepEqual([origin.status, origin.body.refusal], [400, 'originRequired']);
+  const orphan = await call(bruno, 'PATCH', requirementPath(childId), { parentId: null });
+  assert.equal(orphan.body.refusal, 'originRequired');
+  const subtype = await call(bruno, 'PATCH', requirementPath(rootId), { type: 'solution' });
+  assert.deepEqual([subtype.status, subtype.body.refusal], [400, 'subtypeMismatch']);
+});
+await check('parente, besoin ou source d’une autre initiative : 400', async () => {
+  const o = await call(bruno, 'POST', '/initiatives', { code: `${code.slice(0, 8)}EY`, name: 'Autre' });
+  otherExInitiativeId = o.body.id;
+  otherExNeedId = (await call(bruno, 'POST', `/initiatives/${otherExInitiativeId}/needs`, { title: 'Ailleurs', nature: 'problem' })).body.id;
+  otherExSourceId = (await call(bruno, 'POST', `/initiatives/${otherExInitiativeId}/stakeholders`, { name: 'Ailleurs', kind: 'person', roles: ['sponsor'] })).body.id;
+  otherRequirementId = (await call(bruno, 'POST', requirements(otherExInitiativeId), { ...business(), needIds: [otherExNeedId] })).body.id;
+  assert.equal((await call(bruno, 'PATCH', requirementPath(childId), { parentId: otherRequirementId })).body.refusal, 'unknownRequirement');
+  assert.equal((await call(bruno, 'PATCH', requirementPath(rootId), { needIds: [otherExNeedId] })).body.refusal, 'unknownNeed');
+  assert.equal((await call(bruno, 'PATCH', requirementPath(rootId), { stakeholderIds: [otherExSourceId] })).body.refusal, 'unknownStakeholder');
+});
+await check('une action est liée à des exigences ; exigence d’une autre initiative : 400', async () => {
+  const r = await call(bruno, 'POST', exActions(), { title: 'Atelier', taskId: '7.1', requirementIds: [childId] });
+  assert.equal(r.status, 201);
+  assert.deepEqual(r.body.requirements.map((x) => x.reference), [`${exCode}-${exAcronym}-002`]);
+  exActionId = r.body.id;
+  const p = await call(alice, 'PATCH', `${exActions()}/${exActionId}`, { requirementIds: [childId, rootId] });
+  assert.deepEqual(p.body.requirements.map((x) => x.id), [rootId, childId]);
+  const o = await call(bruno, 'PATCH', `${exActions()}/${exActionId}`, { requirementIds: [otherRequirementId] });
+  assert.deepEqual([o.status, o.body.refusal], [400, 'unknownRequirement']);
+  assert.equal((await call(chloe, 'PATCH', `${exActions()}/${exActionId}`, { requirementIds: [] })).status, 403);
+});
+await check('liées : ni l’exigence, ni sa parente, ni l’action, ni le besoin, ni la source ne se suppriment (409)', async () => {
+  assert.equal((await call(alice, 'PATCH', requirementPath(rootId), { stakeholderIds: [exSourceId] })).status, 200);
+  const linked = await call(alice, 'DELETE', requirementPath(childId));
+  assert.deepEqual([linked.status, linked.body.refusal], [409, 'requirementLinked']);
+  assert.equal((await call(alice, 'PATCH', `${exActions()}/${exActionId}`, { requirementIds: [] })).status, 200);
+  assert.equal((await call(alice, 'DELETE', requirementPath(rootId))).body.refusal, 'requirementLinked');
+  assert.equal((await call(alice, 'PATCH', `${exActions()}/${exActionId}`, { requirementIds: [rootId] })).status, 200);
+  assert.equal((await call(alice, 'DELETE', `${exActions()}/${exActionId}`)).body.refusal, 'linked');
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${exInitiativeId}/needs/${exNeedId}`)).body.refusal, 'needLinked');
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${exInitiativeId}/stakeholders/${exSourceId}`)).body.refusal, 'stakeholderLinked');
+});
+await check('liée à rien, une exigence se supprime avec son historique ; son numéro n’est pas réattribué', async () => {
+  assert.equal((await call(bruno, 'DELETE', requirementPath(childId))).status, 204);
+  assert.equal((await call(chloe, 'GET', `${requirementPath(childId)}/history`)).status, 404);
+  const r = await call(bruno, 'POST', requirements(), { ...business(), parentId: rootId });
+  assert.equal(r.body.reference, `${exCode}-${exAcronym}-003`);
+  childId = r.body.id;
+});
+await check('initiative archivée : exigences, statuts et liens en lecture seule', async () => {
+  assert.equal((await call(alice, 'PUT', `/initiatives/${exInitiativeId}/archive`)).status, 200);
+  assert.equal((await call(chloe, 'GET', requirements())).status, 200);
+  assert.equal((await call(chloe, 'GET', `${requirementPath(rootId)}/history`)).status, 200);
+  assert.equal((await call(alice, 'POST', requirements(), business())).status, 403);
+  assert.equal((await call(bruno, 'PATCH', requirementPath(rootId), { status: 'deferred' })).status, 403);
+  assert.equal((await call(alice, 'DELETE', requirementPath(childId))).status, 403);
+  assert.equal((await call(alice, 'PATCH', `${exActions()}/${exActionId}`, { requirementIds: [] })).status, 403);
+});
+
+console.log('\nExigences — barrière 2 : base de données (RLS, compte applicatif)');
+// L'initiative est encore archivée. Les vérifications de fin de transaction
+// (besoin ou parente, historique) sont avancées par SET CONSTRAINTS … IMMEDIATE.
+const IMMEDIATE = 'SET CONSTRAINTS requirement_finalize, requirement_need_finalize, requirement_stakeholder_finalize IMMEDIATE';
+const insertRequirementSql = `INSERT INTO requirement (id, initiative_id, reference, title, statement, type, parent_id)
+  VALUES (gen_random_uuid(), $1, 'FAUX-EX-999', 'Via SQL', 'Énoncé', 'business', $2) RETURNING id, reference, created_by, status`;
+const insertRequirement = (sub) => asUserInDb(sub, insertRequirementSql, [exInitiativeId, rootId]);
+await check('archivée : alice (propriétaire) : UPDATE et DELETE sans effet, INSERT refusé', async () => {
+  assert.equal((await asUserInDb(alice.sub, `UPDATE requirement SET status = 'deferred' WHERE id = $1`, [rootId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `DELETE FROM requirement WHERE id = $1`, [childId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `DELETE FROM action_requirement WHERE action_id = $1`, [exActionId])).rowCount, 0);
+  await assert.rejects(insertRequirement(alice.sub), /row-level security/);
+});
+await check('alice désarchive l’initiative : 200', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${exInitiativeId}/archive`)).status, 200);
+});
+await check('alice (propriétaire) : UPDATE, INSERT de liens et d’exigence acceptés', async () => {
+  assert.equal((await asUserInDb(alice.sub, `UPDATE requirement SET status = 'validated' WHERE id = $1`, [rootId])).rowCount, 1);
+  assert.equal((await asUserInDb(alice.sub, `INSERT INTO requirement_stakeholder VALUES ($1, $2, $3)`, [exInitiativeId, childId, exSourceId])).rowCount, 1);
+  assert.equal((await insertRequirement(alice.sub)).rows[0].created_by, alice.sub);
+});
+await check('chloé (lectrice) : INSERT refusés, UPDATE et DELETE sans effet', async () => {
+  await assert.rejects(insertRequirement(chloe.sub), /row-level security/);
+  assert.equal((await asUserInDb(chloe.sub, `UPDATE requirement SET status = 'rejected' WHERE id = $1`, [rootId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM requirement_need WHERE requirement_id = $1`, [rootId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM requirement_stakeholder WHERE requirement_id = $1`, [rootId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM action_requirement WHERE action_id = $1`, [exActionId])).rowCount, 0);
+  for (const [table, linkId] of [['requirement_need', exNeedId], ['requirement_stakeholder', exSourceId]]) {
+    await assert.rejects(asUserInDb(chloe.sub, `INSERT INTO ${table} VALUES ($1, $2, $3)`, [exInitiativeId, childId, linkId]), /row-level security/);
+  }
+  await assert.rejects(
+    asUserInDb(chloe.sub, `INSERT INTO action_requirement VALUES ($1, $2, $3)`, [exInitiativeId, exActionId, childId]),
+    /row-level security/,
+  );
+});
+await check('admin (non-membre) : aucune exigence, aucun lien, aucun historique visible ; aucune écriture', async () => {
+  for (const table of ['requirement', 'requirement_need', 'requirement_stakeholder', 'action_requirement', 'requirement_version']) {
+    assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM ${table} WHERE initiative_id = $1`, [exInitiativeId])).rowCount, 0, table);
+  }
+  assert.equal((await asUserInDb(admin.sub, `UPDATE requirement SET status = 'rejected' WHERE id = $1`, [rootId])).rowCount, 0);
+  await assert.rejects(insertRequirement(admin.sub), /row-level security/);
+});
+await check('bruno (contributeur) : INSERT accepté ; référence, statut, auteur et historique imposés par la base', async () => {
+  const r = await inDbTransaction([
+    { sub: bruno.sub, query: insertRequirementSql, params: [exInitiativeId, rootId] },
+    { sub: bruno.sub, query: IMMEDIATE },
+    { sub: bruno.sub, query: `SELECT r.reference, r.created_by, r.status, v.changed_by FROM requirement r JOIN requirement_version v ON v.requirement_id = r.id WHERE r.title = 'Via SQL' AND r.initiative_id = $1`, params: [exInitiativeId] },
+  ]);
+  assert.deepEqual(Object.values(r.rows[0]), [`${exCode}-${exAcronym}-004`, bruno.sub, 'proposed', bruno.sub]);
+});
+await check('ni besoin ni parente : refusé par la base en fin de transaction', async () => {
+  await assert.rejects(
+    inDbTransaction([
+      { sub: bruno.sub, query: insertRequirementSql, params: [exInitiativeId, null] },
+      { sub: bruno.sub, query: IMMEDIATE },
+    ]),
+    /au moins un besoin/,
+  );
+  await assert.rejects(
+    inDbTransaction([
+      { sub: bruno.sub, query: `DELETE FROM requirement_need WHERE requirement_id = $1`, params: [rootId] },
+      { sub: bruno.sub, query: IMMEDIATE },
+    ]),
+    /au moins un besoin/,
+  );
+});
+await check('bruno ne change ni la référence, ni l’auteur, ni l’initiative d’une exigence (déclencheur)', async () => {
+  const r = await asUserInDb(
+    bruno.sub,
+    `UPDATE requirement SET reference = 'FAUX-EX-001', created_by = $2 WHERE id = $1 RETURNING reference, created_by, updated_by`,
+    [rootId, chloe.sub],
+  );
+  assert.deepEqual(Object.values(r.rows[0]), [`${exCode}-${exAcronym}-001`, bruno.sub, bruno.sub]);
+  await assert.rejects(
+    asUserInDb(bruno.sub, `UPDATE requirement SET initiative_id = $2 WHERE id = $1`, [rootId, otherExInitiativeId]),
+    /ne change pas/,
+  );
+});
+await check('sous-type incohérent, statut inconnu, énoncé vide, boucle : refusés par la base', async () => {
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET type = 'solution' WHERE id = $1`, [rootId]), /check constraint/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET subtype = 'functional' WHERE id = $1`, [rootId]), /check constraint/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET status = 'piraté' WHERE id = $1`, [rootId]), /check constraint/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET statement = '' WHERE id = $1`, [rootId]), /check constraint/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET parent_id = $2 WHERE id = $1`, [rootId, childId]), /descend/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET parent_id = id WHERE id = $1`, [rootId]), /descend/);
+});
+await check('historique : modification en base enregistrée avec son auteur ; aucune écriture directe', async () => {
+  const r = await inDbTransaction([
+    { sub: bruno.sub, query: `UPDATE requirement SET status = 'verified' WHERE id = $1`, params: [rootId] },
+    { sub: bruno.sub, query: IMMEDIATE },
+    { sub: bruno.sub, query: `SELECT changed_by, snapshot->>'status' AS status FROM requirement_version WHERE requirement_id = $1 ORDER BY id DESC LIMIT 1`, params: [rootId] },
+  ]);
+  assert.deepEqual(Object.values(r.rows[0]), [bruno.sub, 'verified']);
+  await assert.rejects(
+    asUserInDb(alice.sub, `INSERT INTO requirement_version (initiative_id, requirement_id, changed_by, changed_at, snapshot) VALUES ($1, $2, $3, now(), '{}')`, [exInitiativeId, rootId, alice.sub]),
+    /row-level security/,
+  );
+  assert.equal((await asUserInDb(alice.sub, `UPDATE requirement_version SET changed_by = $2 WHERE requirement_id = $1`, [rootId, chloe.sub])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `DELETE FROM requirement_version WHERE requirement_id = $1`, [rootId])).rowCount, 0);
+  await assert.rejects(asUserInDb(alice.sub, `SELECT finalize_requirement($1)`, [rootId]), /permission denied/);
+});
+await check('liens vers une parente, un besoin, une source ou une exigence d’une autre initiative refusés (clé étrangère)', async () => {
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET parent_id = $2 WHERE id = $1`, [childId, otherRequirementId]), /foreign key/);
+  await assert.rejects(asUserInDb(bruno.sub, `INSERT INTO requirement_need VALUES ($1, $2, $3)`, [exInitiativeId, rootId, otherExNeedId]), /foreign key/);
+  await assert.rejects(asUserInDb(bruno.sub, `INSERT INTO requirement_stakeholder VALUES ($1, $2, $3)`, [exInitiativeId, rootId, otherExSourceId]), /foreign key/);
+  await assert.rejects(asUserInDb(bruno.sub, `INSERT INTO action_requirement VALUES ($1, $2, $3)`, [exInitiativeId, exActionId, otherRequirementId]), /foreign key/);
+});
+await check('liées : DELETE de l’exigence, de sa parente, du besoin et de la source refusés (clé étrangère)', async () => {
+  await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM requirement WHERE id = $1`, [rootId]), /foreign key/);
+  await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM need WHERE id = $1`, [exNeedId]), /foreign key/);
+  await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM stakeholder WHERE id = $1`, [exSourceId]), /foreign key/);
+});
+await check('bruno (contributeur) : DELETE d’une exigence liée à rien accepté, liens et historique compris', async () => {
+  assert.equal((await asUserInDb(bruno.sub, `DELETE FROM requirement WHERE id = $1`, [childId])).rowCount, 1);
+});
+
 console.log('\nNettoyage');
 await check('alice (propriétaire) supprime l’initiative des actions, et ses actions : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${actionsInitiativeId}`)).status, 204);
+});
+await check('alice supprime l’initiative des parties prenantes, avec actions et liens : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${shInitiativeId}`)).status, 204);
+});
+await check('bruno (propriétaire) supprime l’autre initiative des parties prenantes : 204', async () => {
+  assert.equal((await call(bruno, 'DELETE', `/initiatives/${otherShInitiativeId}`)).status, 204);
+});
+await check('alice supprime l’initiative des besoins, avec besoins, actions et liens : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${rbInitiativeId}`)).status, 204);
+});
+await check('bruno (propriétaire) supprime l’autre initiative des besoins : 204', async () => {
+  assert.equal((await call(bruno, 'DELETE', `/initiatives/${otherRbInitiativeId}`)).status, 204);
+});
+await check('alice supprime l’initiative des exigences, avec exigences, parentés, liens et historique : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${exInitiativeId}`)).status, 204);
+});
+await check('bruno (propriétaire) supprime l’autre initiative des exigences : 204', async () => {
+  assert.equal((await call(bruno, 'DELETE', `/initiatives/${otherExInitiativeId}`)).status, 204);
 });
 // Quoi qu'il soit arrivé plus haut, les comptes de test restent actifs.
 for (const u of [alice, chloe]) await call(admin, 'PATCH', account(u), { enabled: true });

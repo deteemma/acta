@@ -11,8 +11,11 @@ import {
   type InitiativeMemberDto,
   INITIATIVE_DESCRIPTION_MAX_LENGTH,
   type Locale,
+  type NeedDto,
   type OwnerDesignationDto,
+  type RequirementDto,
   sortByDueDate,
+  type StakeholderDto,
   updateInitiativeSchema,
 } from '@app/shared';
 import { type FormEvent, useEffect, useState } from 'react';
@@ -20,7 +23,10 @@ import { ActionList } from './action-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
+import { canEditNeeds, NeedList } from './need-panels';
 import { Panel, usePanels } from './panels';
+import { canEditRequirements, RequirementList } from './requirement-panels';
+import { TextWithReferences } from './rich-text';
 import { memberName, TeamSection } from './team-section';
 
 /** Date AAAA-MM-JJ ou horodatage, affiché dans la langue de l'interface. */
@@ -34,6 +40,9 @@ export function InitiativePanel({
   initiativeId,
   babok,
   actionsVersion,
+  stakeholdersVersion,
+  needsVersion,
+  requirementsVersion,
   onChanged,
   onDeleted,
   onClose,
@@ -42,15 +51,25 @@ export function InitiativePanel({
   babok: BabokDto | null;
   /** Change à chaque écriture sur une action : la liste des actions se recharge. */
   actionsVersion: number;
+  /** Change à chaque écriture sur une partie prenante. */
+  stakeholdersVersion: number;
+  /** Change à chaque écriture sur un besoin (le code peut aussi se figer). */
+  needsVersion: number;
+  /** Change à chaque écriture sur une exigence. */
+  requirementsVersion: number;
   onChanged: (initiative: InitiativeDto) => void;
   onDeleted: (initiativeId: string) => void;
   onClose: () => void;
 }) {
   const { t, locale } = useI18n();
+  const { open } = usePanels();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
   const [actions, setActions] = useState<ActionDto[]>([]);
+  const [stakeholders, setStakeholders] = useState<StakeholderDto[]>([]);
+  const [needs, setNeeds] = useState<NeedDto[]>([]);
+  const [requirements, setRequirements] = useState<RequirementDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
   // Rechargée après chaque changement de l'équipe : il peut changer mon rôle.
@@ -73,6 +92,21 @@ export function InitiativePanel({
   useEffect(() => {
     api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, actionsVersion]);
+
+  useEffect(() => {
+    api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, stakeholdersVersion]);
+
+  useEffect(() => {
+    api.listNeeds(initiativeId).then(setNeeds, (e: unknown) => setError(toUiError(e)));
+    // Le premier besoin fige le code : la fiche est relue.
+    api.getInitiative(initiativeId).then(changed, (e: unknown) => setError(toUiError(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initiativeId, needsVersion]);
+
+  useEffect(() => {
+    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, requirementsVersion]);
 
   function changed(next: InitiativeDto) {
     setInitiative(next);
@@ -101,6 +135,37 @@ export function InitiativePanel({
           <h3>{t('actions.section')}</h3>
           <ActionList actions={sortByDueDate(actions)} babok={babok} />
           {actions.length === 0 && <p>{t('actions.sectionEmpty')}</p>}
+          <div className="section-header">
+            <h3 title={englishTermTooltip(locale, 'stakeholders.section')}>{t('stakeholders.section')}</h3>
+            <button type="button" onClick={() => open({ kind: 'stakeholders', initiativeId })}>
+              {t('stakeholders.open')}
+            </button>
+          </div>
+          <p>
+            {stakeholders.length === 0
+              ? t('stakeholders.sectionEmpty')
+              : t('stakeholders.sectionCount', { count: stakeholders.length })}
+          </p>
+          <div className="section-header">
+            <h3 title={englishTermTooltip(locale, 'needs.section')}>{t('needs.section')}</h3>
+            {canEditNeeds(initiative) && (
+              <button type="button" onClick={() => open({ kind: 'need', initiativeId })}>
+                {t('needs.new')}
+              </button>
+            )}
+          </div>
+          <NeedList needs={needs} />
+          {needs.length === 0 && <p>{t('needs.sectionEmpty')}</p>}
+          <div className="section-header">
+            <h3 title={englishTermTooltip(locale, 'requirements.section')}>{t('requirements.section')}</h3>
+            {canEditRequirements(initiative) && (
+              <button type="button" onClick={() => open({ kind: 'requirement', initiativeId })}>
+                {t('requirements.new')}
+              </button>
+            )}
+          </div>
+          <RequirementList requirements={requirements} />
+          {requirements.length === 0 && <p>{t('requirements.sectionEmpty')}</p>}
           <TeamSection
             initiative={initiative}
             members={members}
@@ -145,7 +210,7 @@ function InitiativeDetails({ initiative }: { initiative: InitiativeDto }) {
       <dt>{t('initiative.name')}</dt>
       <dd>{initiative.name}</dd>
       <dt>{t('initiative.description')}</dt>
-      <dd className="multiline">{initiative.description ?? notSet}</dd>
+      <dd className="multiline">{initiative.description ? <TextWithReferences text={initiative.description} /> : notSet}</dd>
       <dt title={englishTermTooltip(locale, 'initiative.analysisApproach')}>{t('initiative.analysisApproach')}</dt>
       <dd>{initiative.analysisApproach ? <ApproachLabel approach={initiative.analysisApproach} /> : notSet}</dd>
       <dt>{t('initiative.startDate')}</dt>
@@ -159,7 +224,8 @@ function InitiativeDetails({ initiative }: { initiative: InitiativeDto }) {
 /** Fiche modifiable : propriétaire et contributeurs ; le code est réservé au propriétaire. */
 function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; onSaved: (i: InitiativeDto) => void }) {
   const { t, locale } = useI18n();
-  const canEditCode = can(initiative.myRole, 'editCode');
+  // Propriétaire seul, et tant qu'aucune référence n'a été attribuée.
+  const canEditCode = can(initiative.myRole, 'editCode') && !initiative.codeFrozen;
   const [code, setCode] = useState(initiative.code);
   const [name, setName] = useState(initiative.name);
   const [description, setDescription] = useState(initiative.description ?? '');
@@ -206,6 +272,7 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
         ) : (
           <input value={code} readOnly aria-readonly="true" />
         )}
+        {initiative.codeFrozen && <small>{t('initiative.codeFrozen')}</small>}
       </label>
       <label>
         {t('initiative.name')}

@@ -1,12 +1,25 @@
 // Palette de commandes (Ctrl+K / Cmd+K) : accès direct à la fiche d'une
-// initiative ou d'un élément du référentiel BABOK.
-import { type BabokDto, type BabokElementDto, type InitiativeDto, searchBabok, searchInitiatives } from '@app/shared';
+// initiative, d'un objet référencé (ticket 09) ou d'un élément du référentiel BABOK.
+import {
+  type BabokDto,
+  type BabokElementDto,
+  type InitiativeDto,
+  type ReferenceDto,
+  searchBabok,
+  searchInitiatives,
+  searchReferences,
+} from '@app/shared';
 import { type KeyboardEvent, useEffect, useState } from 'react';
+import { api } from './api';
 import { BabokName } from './babok-panels';
 import { useI18n } from './i18n';
 import { Panel, type PanelContent, usePanels } from './panels';
+import { referenceTarget } from './references';
 
-type Result = { kind: 'initiative'; item: InitiativeDto } | { kind: 'babok'; item: BabokElementDto };
+type Result =
+  | { kind: 'initiative'; item: InitiativeDto }
+  | { kind: 'reference'; item: ReferenceDto }
+  | { kind: 'babok'; item: BabokElementDto };
 
 export const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 
@@ -41,17 +54,29 @@ export function Palette({
   const { replace } = usePanels();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  // Les initiatives d'abord, puis le référentiel.
+  // Rechargées à chaque ouverture ; sans réponse, la palette garde les autres résultats.
+  const [references, setReferences] = useState<ReferenceDto[]>([]);
+  useEffect(() => {
+    api.listReferences().then(setReferences, () => undefined);
+  }, []);
+  // Les initiatives d'abord, puis les références, puis le référentiel.
   const results: Result[] = [
     ...searchInitiatives(initiatives, query).map((item) => ({ kind: 'initiative' as const, item })),
+    ...searchReferences(references, query).map((item) => ({ kind: 'reference' as const, item })),
     ...(babok ? searchBabok(babok, query) : []).map((item) => ({ kind: 'babok' as const, item })),
   ];
   const current = Math.min(active, results.length - 1);
 
-  const target = (result: Result): PanelContent =>
-    result.kind === 'initiative'
-      ? { kind: 'initiative', initiativeId: result.item.id }
-      : { kind: 'babokElement', elementId: result.item.id };
+  const target = (result: Result): PanelContent => {
+    switch (result.kind) {
+      case 'initiative':
+        return { kind: 'initiative', initiativeId: result.item.id };
+      case 'reference':
+        return referenceTarget(result.item);
+      case 'babok':
+        return { kind: 'babokElement', elementId: result.item.id };
+    }
+  };
   const optionId = (result: Result) => `palette-${result.kind}-${result.item.id}`;
   const select = (result: Result) => replace(target(result));
 
@@ -98,6 +123,12 @@ export function Palette({
               <>
                 <strong>{result.item.code}</strong> {result.item.name}
                 {result.item.archivedAt && <small> · {t('initiative.archived')}</small>}
+              </>
+            ) : result.kind === 'reference' ? (
+              <>
+                <strong>{result.item.reference}</strong> {result.item.title}{' '}
+                <small>· {t(`referenceCategory.${result.item.category}`)}</small>
+                {result.item.initiativeArchived && <small> · {t('initiative.archived')}</small>}
               </>
             ) : (
               <>

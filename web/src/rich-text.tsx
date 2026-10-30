@@ -1,15 +1,18 @@
 // Texte mis en forme d'une action (ticket 07) : affiché élément par élément
-// d'après l'arbre de @app/shared (rich-text.ts), saisi avec une barre d'outils.
+// d'après l'arbre de @app/shared (rich-text.ts), saisi avec une barre d'outils ;
+// les références citées sont reliées à leur objet (ticket 10).
 import {
   applyFormat,
   parseRichText,
   RICH_TEXT_FORMATS,
   type RichInline,
   type RichTextFormat,
+  splitReferences,
   type TextSelection,
 } from '@app/shared';
 import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import { useI18n } from './i18n';
+import { ReferenceMention } from './references';
 
 function Inlines({ nodes }: { nodes: RichInline[] }) {
   return nodes.map((node, index) => {
@@ -26,8 +29,15 @@ function Inlines({ nodes }: { nodes: RichInline[] }) {
             {node.text}
           </a>
         );
+      case 'reference':
+        return <ReferenceMention key={index} reference={node.reference} />;
     }
   });
+}
+
+/** Texte sans mise en forme dont les références citées sont reliées à leur objet (ticket 10). */
+export function TextWithReferences({ text }: { text: string }) {
+  return <Inlines nodes={splitReferences(text)} />;
 }
 
 /** Les titres commencent sous celui du panneau (h2). */

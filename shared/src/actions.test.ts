@@ -24,6 +24,9 @@ function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
     assignee: { ...person('alice'), eligible: true },
     dueDate: null,
     status: 'todo',
+    stakeholders: [],
+    needs: [],
+    requirements: [],
     createdAt: '2026-10-01T08:00:00.000Z',
     createdBy: person('alice'),
     updatedAt: '2026-10-01T08:00:00.000Z',
@@ -137,4 +140,12 @@ test('description : 20 000 caractères au plus ; vide = pas de description', () 
   assert.deepEqual(updateActionSchema.parse({ description: '  ' }), { description: null });
   assert.equal(updateActionSchema.safeParse({ description: 'x'.repeat(20000) }).success, true);
   assert.equal(updateActionSchema.safeParse({ description: 'x'.repeat(20001) }).success, false);
+});
+
+test('parties prenantes liées : une liste d’identifiants, chacun une seule fois, vidable', () => {
+  const id = '6f1c2e0a-9b1d-4c3e-8f6a-2d4b5c6e7f80';
+  assert.deepEqual(updateActionSchema.parse({ stakeholderIds: [id, id] }), { stakeholderIds: [id] });
+  assert.deepEqual(updateActionSchema.parse({ stakeholderIds: [] }), { stakeholderIds: [] });
+  assert.equal(updateActionSchema.safeParse({ stakeholderIds: ['Direction'] }).success, false);
+  assert.deepEqual(createActionSchema.parse({ title: 'Atelier', taskId: '4.2', stakeholderIds: [id] }).stakeholderIds, [id]);
 });

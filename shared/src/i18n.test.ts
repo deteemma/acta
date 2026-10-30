@@ -22,3 +22,12 @@ test('en français, le terme anglais du BABOK est proposé en info-bulle', () =>
   assert.equal(englishTermTooltip('fr', 'approach.adaptive'), 'Adaptive');
   assert.equal(englishTermTooltip('en', 'approach.adaptive'), undefined);
 });
+
+test('en français, le nom anglais d’un rôle de partie prenante du BABOK est proposé en info-bulle', () => {
+  assert.equal(translate('fr', 'stakeholderRole.domain_sme'), 'Expert métier du domaine');
+  assert.equal(englishTermTooltip('fr', 'stakeholderRole.domain_sme'), 'Domain Subject Matter Expert');
+});
+
+test('en français, le terme anglais « Needs » du BACCM est proposé en info-bulle', () => {
+  assert.equal(englishTermTooltip('fr', 'needs.section'), 'Needs');
+});

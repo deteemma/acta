@@ -7,7 +7,9 @@ export type RichInline =
   | { type: 'bold'; children: RichInline[] }
   | { type: 'italic'; children: RichInline[] }
   /** Adresse http, https ou mailto seulement. */
-  | { type: 'link'; href: string; text: string };
+  | { type: 'link'; href: string; text: string }
+  /** Référence écrite telle quelle (ticket 10, ex. CRM-EX-012), que l'affichage relie à son objet. */
+  | { type: 'reference'; reference: string };
 
 export type RichBlock =
   | { type: 'heading'; level: 1 | 2 | 3; content: RichInline[] }
@@ -52,8 +54,36 @@ export function parseRichText(source: string): RichBlock[] {
 
 const LINK = /^\[([^\]\n]+)\]\(([^)\s]+)\)/;
 const SAFE_HREF = /^(https?:\/\/|mailto:)/i;
+/** CODE-ACRONYME-NUMÉRO (references.ts), ni précédé ni suivi d'une lettre, d'un chiffre ou d'un tiret. */
+const REFERENCE = /^[A-Z][A-Z0-9]{1,9}-[A-Z]{2,4}-\d{3,}(?![\p{L}\p{N}_-])/u;
+const WORD_CHAR = /[\p{L}\p{N}_-]/u;
 
-/** `**gras**`, `*italique*`, `[texte](adresse)` ; une marque sans fin reste du texte. */
+/** Référence qui commence à la position `i` du texte, ou null. */
+function referenceAt(text: string, i: number): string | null {
+  if (i > 0 && WORD_CHAR.test(text[i - 1]!)) return null;
+  return REFERENCE.exec(text.slice(i))?.[0] ?? null;
+}
+
+/** Texte sans mise en forme (description d'une initiative) : les références y sont reconnues, le reste gardé tel quel. */
+export function splitReferences(text: string): Extract<RichInline, { type: 'text' | 'reference' }>[] {
+  const nodes: Extract<RichInline, { type: 'text' | 'reference' }>[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const reference = referenceAt(text, i);
+    if (reference) {
+      nodes.push({ type: 'reference', reference });
+      i += reference.length;
+      continue;
+    }
+    const last = nodes.at(-1);
+    if (last?.type === 'text') last.text += text[i];
+    else nodes.push({ type: 'text', text: text[i]! });
+    i++;
+  }
+  return nodes;
+}
+
+/** `**gras**`, `*italique*`, `[texte](adresse)`, références ; une marque sans fin reste du texte. */
 function parseInline(text: string): RichInline[] {
   const nodes: RichInline[] = [];
   const pushText = (chunk: string) => {
@@ -68,6 +98,12 @@ function parseInline(text: string): RichInline[] {
     if (link && SAFE_HREF.test(link[2])) {
       nodes.push({ type: 'link', href: link[2], text: link[1] });
       i += link[0].length;
+      continue;
+    }
+    const reference = referenceAt(text, i);
+    if (reference) {
+      nodes.push({ type: 'reference', reference });
+      i += reference.length;
       continue;
     }
     const marker = rest.startsWith('**') ? '**' : rest.startsWith('*') ? '*' : null;

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyFormat, parseRichText } from './rich-text.js';
+import { applyFormat, parseRichText, splitReferences } from './rich-text.js';
 
 const t = (text: string) => ({ type: 'text', text });
 
@@ -62,6 +62,23 @@ test('lien vers une adresse dangereuse : texte seul', () => {
   assert.deepEqual(inline('[clic](javascript:alert(1))'), [t('[clic](javascript:alert(1))')]);
 });
 
+test('une référence écrite telle quelle est reconnue, jusque dans le gras', () => {
+  assert.deepEqual(inline('Répond à CRM-BE-001 et **CRM-EX-1012**.'), [
+    t('Répond à '),
+    { type: 'reference', reference: 'CRM-BE-001' },
+    t(' et '),
+    { type: 'bold', children: [{ type: 'reference', reference: 'CRM-EX-1012' }] },
+    t('.'),
+  ]);
+});
+
+test('pas de référence au milieu d’un mot, avec moins de 3 chiffres ou dans un lien', () => {
+  assert.deepEqual(inline('voirCRM-BE-001 CRM-BE-01 CRM-BE-001A'), [t('voirCRM-BE-001 CRM-BE-01 CRM-BE-001A')]);
+  assert.deepEqual(inline('[CRM-BE-001](https://exemple.test/CRM-BE-001)'), [
+    { type: 'link', href: 'https://exemple.test/CRM-BE-001', text: 'CRM-BE-001' },
+  ]);
+});
+
 /** Texte et sélection notés avec [ ] : « un [mot] » = « mot » sélectionné. */
 function edit(marked: string, format: Parameters<typeof applyFormat>[2]): string {
   const start = marked.indexOf('[');
@@ -87,4 +104,12 @@ test('titre et listes : appliqués à chaque ligne sélectionnée, en entier', (
 
 test('lien : le texte sélectionné devient le libellé, l’adresse est sélectionnée', () => {
   assert.equal(edit('voir [la note]', 'link'), 'voir [la note]([https://])');
+});
+
+test('texte simple : les références sont reconnues, le reste est gardé tel quel, retours à la ligne compris', () => {
+  assert.deepEqual(splitReferences('Voir CRM-EX-012,\n*pas* du gras'), [
+    t('Voir '),
+    { type: 'reference', reference: 'CRM-EX-012' },
+    t(',\n*pas* du gras'),
+  ]);
 });

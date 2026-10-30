@@ -4,7 +4,10 @@
 import { z } from 'zod';
 import type { BabokDto, TechniqueDto } from './babok.js';
 import { hasAtLeast, type InitiativeRole } from './roles.js';
+import { needIdsSchema, type NeedRefDto } from './needs.js';
+import { requirementIdsSchema, type RequirementRefDto } from './requirements.js';
 import type { MemberNameDto } from './schemas.js';
+import { stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
 
 /** Statuts d'une action ; tout statut peut passer à tout autre. */
 export const ACTION_STATUSES = ['todo', 'in_progress', 'done', 'cancelled'] as const;
@@ -37,6 +40,9 @@ export const createActionSchema = z.object({
   assigneeId: z.string().min(1).optional(),
   dueDate: z.iso.date().nullable().optional(),
   description: actionDescriptionSchema.optional(),
+  stakeholderIds: stakeholderIdsSchema.optional(),
+  needIds: needIdsSchema.optional(),
+  requirementIds: requirementIdsSchema.optional(),
 });
 export type CreateActionInput = z.infer<typeof createActionSchema>;
 
@@ -50,6 +56,12 @@ export const updateActionSchema = z
     assigneeId: z.string().min(1),
     dueDate: z.iso.date().nullable(),
     status: actionStatusSchema,
+    /** Remplace l'ensemble des parties prenantes liées. */
+    stakeholderIds: stakeholderIdsSchema,
+    /** Remplace l'ensemble des besoins liés (ticket 09). */
+    needIds: needIdsSchema,
+    /** Remplace l'ensemble des exigences liées (ticket 10). */
+    requirementIds: requirementIdsSchema,
   })
   .partial();
 export type UpdateActionInput = z.infer<typeof updateActionSchema>;
@@ -70,6 +82,12 @@ export interface ActionDto {
   /** AAAA-MM-JJ */
   dueDate: string | null;
   status: ActionStatus;
+  /** Parties prenantes liées, par ordre alphabétique. */
+  stakeholders: StakeholderRefDto[];
+  /** Besoins liés, par référence. */
+  needs: NeedRefDto[];
+  /** Exigences liées, par référence. */
+  requirements: RequirementRefDto[];
   createdAt: string;
   createdBy: MemberNameDto;
   updatedAt: string;
