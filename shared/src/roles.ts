@@ -32,6 +32,8 @@ export const INITIATIVE_PERMISSIONS = {
   delete: 'owner',
   /** Créer, modifier et supprimer une action (ticket 07). */
   editActions: 'contributor',
+  /** Créer, modifier et supprimer une partie prenante (ticket 08). */
+  editStakeholders: 'contributor',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;

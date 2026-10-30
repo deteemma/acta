@@ -50,7 +50,9 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 
 | Français | Code (anglais) | Définition |
 |---|---|---|
-| Partie prenante | `stakeholder` | Personne ou groupe en relation avec le changement, le besoin ou la solution (BABOK). Objet d'analyse de l'initiative, distinct de l'utilisateur et du membre ; peut être reliée à un compte utilisateur, et un utilisateur peut être relié à plusieurs parties prenantes. |
+| Partie prenante | `stakeholder` | Personne ou groupe en relation avec le changement, le besoin ou la solution (BABOK). Objet d'analyse de l'initiative, distinct de l'utilisateur et du membre ; peut être reliée à un compte utilisateur, et un utilisateur est relié à au plus une partie prenante par initiative, mais peut l'être dans plusieurs initiatives. |
+| Rôle de partie prenante | `stakeholder_role` | L'un des 11 rôles du BABOK v3 (§2.4) : Analyste métier, Client, Expert métier du domaine, Utilisateur final, Expert de la mise en œuvre, Support opérationnel, Chef de projet, Régulateur, Sponsor, Fournisseur, Testeur. Une partie prenante en a au moins un. |
+| Matrice influence × intérêt | `stakeholder_matrix` | Positionnement des parties prenantes d'une initiative selon leur influence et leur intérêt (faible, moyen, fort). |
 | Besoin | `need` | Problème ou opportunité à traiter (concept du BACCM). |
 | Exigence | `requirement` | Représentation utilisable d'un besoin, d'un des types du BABOK : métier, partie prenante, solution (fonctionnelle ou non fonctionnelle), transition. Répond à au moins un besoin ou dérive d'une exigence parente. |
 | Statut d'exigence | `requirement_status` | Étape du cycle de vie d'une exigence : Proposée, Vérifiée, Validée, Approuvée, Différée, Rejetée ; liste extensible par l'administration. |

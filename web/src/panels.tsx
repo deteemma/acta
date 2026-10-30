@@ -26,7 +26,10 @@ export type PanelContent =
   | { kind: 'babokElement'; elementId: string }
   /** Création rapide ; l'initiative est proposée d'après le panneau d'où l'on vient. */
   | { kind: 'createAction'; initiativeId?: string }
-  | { kind: 'action'; initiativeId: string; actionId: string };
+  | { kind: 'action'; initiativeId: string; actionId: string }
+  | { kind: 'stakeholders'; initiativeId: string }
+  /** Sans `stakeholderId`, création d'une partie prenante. */
+  | { kind: 'stakeholder'; initiativeId: string; stakeholderId?: string };
 
 interface Entry {
   id: number;

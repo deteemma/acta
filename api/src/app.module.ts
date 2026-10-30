@@ -15,11 +15,21 @@ import { HealthController } from './health/health.controller.js';
 import { InitiativesController } from './initiatives/initiatives.controller.js';
 import { InitiativeRoleGuard } from './initiatives/initiative-role.guard.js';
 import { InitiativesService } from './initiatives/initiatives.service.js';
+import { StakeholdersController } from './stakeholders/stakeholders.controller.js';
+import { StakeholdersService } from './stakeholders/stakeholders.service.js';
 import { MeController } from './users/me.controller.js';
 import { UsersService } from './users/users.service.js';
 
 @Module({
-  controllers: [ActionsController, AdminController, BabokController, HealthController, InitiativesController, MeController],
+  controllers: [
+    ActionsController,
+    AdminController,
+    BabokController,
+    HealthController,
+    InitiativesController,
+    MeController,
+    StakeholdersController,
+  ],
   providers: [
     { provide: AppConfig, useFactory: () => new AppConfig() },
     DatabaseService,
@@ -31,6 +41,7 @@ import { UsersService } from './users/users.service.js';
     AdminService,
     BabokService,
     ActionsService,
+    StakeholdersService,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })

@@ -13,6 +13,7 @@ import {
   type Locale,
   type OwnerDesignationDto,
   sortByDueDate,
+  type StakeholderDto,
   updateInitiativeSchema,
 } from '@app/shared';
 import { type FormEvent, useEffect, useState } from 'react';
@@ -34,6 +35,7 @@ export function InitiativePanel({
   initiativeId,
   babok,
   actionsVersion,
+  stakeholdersVersion,
   onChanged,
   onDeleted,
   onClose,
@@ -42,15 +44,19 @@ export function InitiativePanel({
   babok: BabokDto | null;
   /** Change à chaque écriture sur une action : la liste des actions se recharge. */
   actionsVersion: number;
+  /** Change à chaque écriture sur une partie prenante. */
+  stakeholdersVersion: number;
   onChanged: (initiative: InitiativeDto) => void;
   onDeleted: (initiativeId: string) => void;
   onClose: () => void;
 }) {
   const { t, locale } = useI18n();
+  const { open } = usePanels();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
   const [actions, setActions] = useState<ActionDto[]>([]);
+  const [stakeholders, setStakeholders] = useState<StakeholderDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
   // Rechargée après chaque changement de l'équipe : il peut changer mon rôle.
@@ -73,6 +79,10 @@ export function InitiativePanel({
   useEffect(() => {
     api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, actionsVersion]);
+
+  useEffect(() => {
+    api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, stakeholdersVersion]);
 
   function changed(next: InitiativeDto) {
     setInitiative(next);
@@ -101,6 +111,17 @@ export function InitiativePanel({
           <h3>{t('actions.section')}</h3>
           <ActionList actions={sortByDueDate(actions)} babok={babok} />
           {actions.length === 0 && <p>{t('actions.sectionEmpty')}</p>}
+          <div className="section-header">
+            <h3 title={englishTermTooltip(locale, 'stakeholders.section')}>{t('stakeholders.section')}</h3>
+            <button type="button" onClick={() => open({ kind: 'stakeholders', initiativeId })}>
+              {t('stakeholders.open')}
+            </button>
+          </div>
+          <p>
+            {stakeholders.length === 0
+              ? t('stakeholders.sectionEmpty')
+              : t('stakeholders.sectionCount', { count: stakeholders.length })}
+          </p>
           <TeamSection
             initiative={initiative}
             members={members}

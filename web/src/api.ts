@@ -12,6 +12,9 @@ import type {
   MeDto,
   OrphanInitiativeDto,
   OwnerDesignationDto,
+  CreateStakeholderInput,
+  StakeholderDto,
+  UpdateStakeholderInput,
   UpdateAccountInput,
   UpdateInitiativeInput,
   UpdateMeInput,
@@ -80,6 +83,17 @@ export const api = {
     request<ActionDto>(`/initiatives/${id}/actions/${actionId}`, { method: 'PATCH', body: JSON.stringify(input) }),
   deleteAction: (id: string, actionId: string) =>
     request<void>(`/initiatives/${id}/actions/${actionId}`, { method: 'DELETE' }),
+  // Parties prenantes (ticket 08).
+  listStakeholders: (id: string) => request<StakeholderDto[]>(`/initiatives/${id}/stakeholders`),
+  createStakeholder: (id: string, input: CreateStakeholderInput) =>
+    request<StakeholderDto>(`/initiatives/${id}/stakeholders`, { method: 'POST', body: JSON.stringify(input) }),
+  updateStakeholder: (id: string, stakeholderId: string, input: UpdateStakeholderInput) =>
+    request<StakeholderDto>(`/initiatives/${id}/stakeholders/${stakeholderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  deleteStakeholder: (id: string, stakeholderId: string) =>
+    request<void>(`/initiatives/${id}/stakeholders/${stakeholderId}`, { method: 'DELETE' }),
   // Administration (rôle administrateur, ticket 05).
   listAccounts: () => request<AccountDto[]>('/admin/accounts'),
   createAccount: (input: CreateAccountInput) =>

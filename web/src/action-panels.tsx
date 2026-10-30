@@ -16,6 +16,7 @@ import {
   findBabokElement,
   type InitiativeDto,
   type InitiativeMemberDto,
+  type StakeholderDto,
   techniqueChoices,
   tasksOfKnowledgeArea,
   updateActionSchema,
@@ -27,6 +28,7 @@ import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { Panel, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
+import { StakeholderLink } from './stakeholder-panels';
 import { formatDateTime, memberName } from './team-section';
 
 const canEditActions = (action: Pick<ActionDto, 'initiative'>) =>
@@ -160,12 +162,15 @@ export function ActionPanel({
   babok,
   initiativeId,
   actionId,
+  stakeholdersVersion,
   onChanged,
   onClose,
 }: {
   babok: BabokDto;
   initiativeId: string;
   actionId: string;
+  /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
+  stakeholdersVersion: number;
   /** Une action a été modifiée ou supprimée : les listes se rechargent. */
   onChanged: () => void;
   onClose: () => void;
@@ -173,6 +178,7 @@ export function ActionPanel({
   const { t } = useI18n();
   const [action, setAction] = useState<ActionDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
+  const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
@@ -180,17 +186,22 @@ export function ActionPanel({
     api.listMembers(initiativeId).then(setMembers, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, actionId]);
 
+  useEffect(() => {
+    api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, stakeholdersVersion]);
+
   return (
     <Panel title={action ? `${action.initiative.code} · ${action.title}` : t('common.loading')} onClose={onClose}>
       <ErrorMessage error={error} />
       {action && (
         <>
           {action.initiative.archived && <p className="notice">{t('initiative.archived')}</p>}
-          {canEditActions(action) && members ? (
+          {canEditActions(action) && members && stakeholders ? (
             <ActionForm
               babok={babok}
               action={action}
               members={members}
+              stakeholders={stakeholders}
               onSaved={(saved) => {
                 setAction(saved);
                 onChanged();
@@ -243,6 +254,20 @@ function ActionDetails({ babok, action }: { babok: BabokDto; action: ActionDto }
       <dd><AssigneeName assignee={action.assignee} /></dd>
       <dt>{t('action.dueDate')}</dt>
       <dd>{action.dueDate ? formatDate(locale, action.dueDate) : t('action.noDueDate')}</dd>
+      <dt>{t('action.stakeholders')}</dt>
+      <dd>
+        {action.stakeholders.length === 0 ? (
+          <small>{t('action.noStakeholders')}</small>
+        ) : (
+          <ul className="links">
+            {action.stakeholders.map((s) => (
+              <li key={s.id}>
+                <StakeholderLink initiativeId={action.initiative.id} stakeholder={s} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </dd>
       <dt>{t('action.description')}</dt>
       <dd>{action.description ? <RichText source={action.description} /> : notSet}</dd>
     </dl>
@@ -253,11 +278,14 @@ function ActionForm({
   babok,
   action,
   members,
+  stakeholders,
   onSaved,
 }: {
   babok: BabokDto;
   action: ActionDto;
   members: InitiativeMemberDto[];
+  /** Parties prenantes de l'initiative, que l'on peut lier à l'action. */
+  stakeholders: StakeholderDto[];
   onSaved: (action: ActionDto) => void;
 }) {
   const { t } = useI18n();
@@ -268,8 +296,12 @@ function ActionForm({
   const [assigneeId, setAssigneeId] = useState(action.assignee.userId);
   const [dueDate, setDueDate] = useState(action.dueDate ?? '');
   const [description, setDescription] = useState(action.description ?? '');
+  const [stakeholderIds, setStakeholderIds] = useState<readonly string[]>(action.stakeholders.map((s) => s.id));
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const toggleStakeholder = (id: string) =>
+    setStakeholderIds((current) => (current.includes(id) ? current.filter((s) => s !== id) : [...current, id]));
 
   const task = findBabokElement(babok, taskId);
   const technique = techniqueId ? findBabokElement(babok, techniqueId) : undefined;
@@ -289,6 +321,7 @@ function ActionForm({
       ...(assigneeId !== action.assignee.userId ? { assigneeId } : {}),
       dueDate: dueDate || null,
       description,
+      stakeholderIds,
     });
     if (!parsed.success) {
       setError({ key: 'action.invalid' });
@@ -352,6 +385,16 @@ function ActionForm({
         {t('action.dueDate')}
         <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
       </label>
+      <fieldset>
+        <legend>{t('action.stakeholders')}</legend>
+        {stakeholders.length === 0 && <small>{t('stakeholders.sectionEmpty')}</small>}
+        {stakeholders.map((s) => (
+          <label key={s.id} className="inline">
+            <input type="checkbox" checked={stakeholderIds.includes(s.id)} onChange={() => toggleStakeholder(s.id)} />
+            {s.name}
+          </label>
+        ))}
+      </fieldset>
       <RichTextEditor
         label={t('action.description')}
         value={description}

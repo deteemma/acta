@@ -2,6 +2,7 @@ import {
   type AdminRefusal,
   isActionRefusal,
   isAdminRefusal,
+  isStakeholderRefusal,
   isTeamRefusal,
   type MessageKey,
   type TeamRefusal,
@@ -17,6 +18,7 @@ export function toUiError(error: unknown): UiError {
     if (isTeamRefusal(error.refusal)) return teamRefusalError(error.refusal);
     if (isAdminRefusal(error.refusal)) return adminRefusalError(error.refusal);
     if (isActionRefusal(error.refusal)) return { key: `action.refusal.${error.refusal}` };
+    if (isStakeholderRefusal(error.refusal)) return { key: `stakeholder.refusal.${error.refusal}` };
     return error.status === 409 ? { key: 'initiatives.codeTaken' } : { key: 'error.http', params: { status: error.status } };
   }
   return { raw: String(error) };

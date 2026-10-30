@@ -433,3 +433,33 @@ form.invite h4 {
 .audit {
   margin-top: 1rem;
 }
+/* Parties prenantes (ticket 08) */
+.stakeholder-views {
+  margin-top: 0;
+}
+.stakeholder-views button[aria-pressed='true'] {
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent);
+}
+.stakeholder-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+}
+.stakeholder-matrix {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.stakeholder-matrix :is(th, td) {
+  padding: 0.25rem;
+  border: 1px solid var(--panel-border);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.stakeholder-matrix thead th:first-child {
+  font-weight: normal;
+}
+.stakeholder-matrix .links {
+  margin: 0;
+}
