@@ -9,6 +9,7 @@ import {
   DEFAULT_MY_ACTIONS_STATUSES,
   type InitiativeDto,
   selectMyActions,
+  toggleActionStatus,
 } from '@app/shared';
 import { useEffect, useState } from 'react';
 import { ActionList } from './action-panels';
@@ -36,10 +37,7 @@ export function MyActions({
     api.listMyActions().then(setActions, (e: unknown) => setError(toUiError(e)));
   }, [version]);
 
-  const toggle = (status: ActionStatus) =>
-    setStatuses((current) =>
-      current.includes(status) ? current.filter((s) => s !== status) : ACTION_STATUSES.filter((s) => s === status || current.includes(s)),
-    );
+  const toggle = (status: ActionStatus) => setStatuses((current) => toggleActionStatus(current, status));
   const shown = selectMyActions(actions, { statuses, initiativeId: initiativeId || null });
 
   return (

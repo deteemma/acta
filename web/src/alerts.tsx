@@ -1,13 +1,12 @@
 // Alertes dans l'application (ticket 15), sans courriel : badge des nouvelles
 // alertes et panneau qui les liste. Règles dans @app/shared (alerts.ts).
-import { type ActionDto, type Alert, alertKey, localDate, type MeDto, myAlerts } from '@app/shared';
+import { memberName, type ActionDto, type Alert, alertKey, localDate, type MeDto, myAlerts } from '@app/shared';
 import { useEffect, useState } from 'react';
 import { api } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { Panel, usePanels } from './panels';
-import { memberName } from './team-section';
 
 /** Relecture de mes actions : une attribution par un autre membre ou un changement de jour fait naître une alerte. */
 const REFRESH_MS = 60_000;

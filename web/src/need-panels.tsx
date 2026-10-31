@@ -1,6 +1,7 @@
 // Besoins (ticket 09) : liste d'une initiative, fiche d'un besoin dans un
 // panneau latéral. Règles dans @app/shared (needs.ts, references.ts, roles.ts).
 import {
+  memberName,
   type ActionDto,
   type BabokDto,
   can,
@@ -25,7 +26,7 @@ import { Panel, usePanels } from './panels';
 import { RequirementList } from './requirement-panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
-import { formatDateTime, memberName } from './team-section';
+import { formatDateTime } from './team-section';
 
 export const canEditNeeds = (initiative: InitiativeDto) =>
   can(initiative.myRole, 'editNeeds', { archived: initiative.archivedAt != null });

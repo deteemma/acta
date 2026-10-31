@@ -2,6 +2,7 @@
 // initiative, fiche d'une partie prenante dans un panneau latéral. Règles dans
 // @app/shared (stakeholders.ts, roles.ts).
 import {
+  memberName,
   type ActionDto,
   type BabokDto,
   can,
@@ -36,7 +37,7 @@ import { NeedList } from './need-panels';
 import { RequirementList } from './requirement-panels';
 import { Panel, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
-import { formatDateTime, memberName } from './team-section';
+import { formatDateTime } from './team-section';
 
 const canEditStakeholders = (initiative: InitiativeDto) =>
   can(initiative.myRole, 'editStakeholders', { archived: initiative.archivedAt != null });

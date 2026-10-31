@@ -1,6 +1,6 @@
 // Langue de l'interface (ADR-0013) : proposée d'après le téléphone, puis
 // remplacée par celle enregistrée sur le compte dès la connexion.
-import { LOCALES, type Locale, type MessageKey, pickLocale, translate } from '@app/shared';
+import { isActionRefusal, LOCALES, type Locale, type MessageKey, pickLocale, translate } from '@app/shared';
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { type Api, ApiError } from './api';
@@ -58,6 +58,7 @@ export function useI18n(): I18n {
 /** Message d'une erreur d'appel à l'API, dans la langue de l'interface. */
 export function describeError(t: I18n['t'], error: unknown): string {
   if (error instanceof ApiError) {
+    if (isActionRefusal(error.refusal)) return t(`action.refusal.${error.refusal}`);
     return error.status === 409 ? t('initiatives.codeTaken') : t('error.http', { status: error.status });
   }
   return String(error);

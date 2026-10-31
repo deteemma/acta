@@ -4,9 +4,11 @@ import {
   ACTION_DESCRIPTION_MAX_LENGTH,
   type ActionDto,
   canBeAssignee,
+  canCreateActionIn,
   createActionSchema,
   selectMyActions,
   techniqueChoices,
+  toggleActionStatus,
   updateActionSchema,
 } from './actions.js';
 import type { BabokDto } from './babok.js';
@@ -150,4 +152,17 @@ test('parties prenantes liées : une liste d’identifiants, chacun une seule fo
   assert.deepEqual(updateActionSchema.parse({ stakeholderIds: [] }), { stakeholderIds: [] });
   assert.equal(updateActionSchema.safeParse({ stakeholderIds: ['Direction'] }).success, false);
   assert.deepEqual(createActionSchema.parse({ title: 'Atelier', taskId: '4.2', stakeholderIds: [id] }).stakeholderIds, [id]);
+});
+
+test('filtre de « Mes actions » : cocher ou décocher un statut garde l’ordre des statuts', () => {
+  assert.deepEqual(toggleActionStatus(['todo', 'in_progress'], 'in_progress'), ['todo']);
+  assert.deepEqual(toggleActionStatus(['cancelled'], 'todo'), ['todo', 'cancelled']);
+  assert.deepEqual(toggleActionStatus(['todo', 'cancelled'], 'done'), ['todo', 'done', 'cancelled']);
+});
+
+test('création rapide : initiatives où l’on peut créer une action (propriétaire ou contributeur, non archivée)', () => {
+  assert.equal(canCreateActionIn({ myRole: 'owner', archivedAt: null }), true);
+  assert.equal(canCreateActionIn({ myRole: 'contributor', archivedAt: null }), true);
+  assert.equal(canCreateActionIn({ myRole: 'reader', archivedAt: null }), false);
+  assert.equal(canCreateActionIn({ myRole: 'owner', archivedAt: '2026-10-01T08:00:00.000Z' }), false);
 });

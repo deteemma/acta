@@ -119,6 +119,9 @@ export interface MemberNameDto {
   displayName: string | null;
 }
 
+/** Nom affiché d'un membre : son nom, à défaut son courriel, à défaut son identifiant. */
+export const memberName = (member: MemberNameDto) => member.displayName ?? member.email ?? member.userId;
+
 export const localeSchema = z.enum(LOCALES);
 
 export const updateMeSchema = z.object({

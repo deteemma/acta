@@ -1,5 +1,6 @@
 // Contenu des panneaux : fiche d'une initiative, membre, création rapide.
 import {
+  memberName,
   type ActionDto,
   ANALYSIS_APPROACHES,
   type BabokDto,
@@ -27,7 +28,7 @@ import { canEditNeeds, NeedList } from './need-panels';
 import { Panel, usePanels } from './panels';
 import { canEditRequirements, ExportRequirementsButton, RequirementList } from './requirement-panels';
 import { TextWithReferences } from './rich-text';
-import { memberName, TeamSection } from './team-section';
+import { TeamSection } from './team-section';
 
 /** Date AAAA-MM-JJ ou horodatage, affiché dans la langue de l'interface. */
 export function formatDate(locale: Locale, date: string): string {

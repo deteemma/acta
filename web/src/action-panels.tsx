@@ -1,6 +1,7 @@
 // Actions (ticket 07) : fiche d'une action dans un panneau latéral, création
 // rapide, liste. Règles dans @app/shared (actions.ts, roles.ts).
 import {
+  memberName,
   ACTION_DESCRIPTION_MAX_LENGTH,
   ACTION_STATUSES,
   ACTION_TITLE_MAX_LENGTH,
@@ -11,6 +12,7 @@ import {
   babokEnglishName,
   can,
   canBeAssignee,
+  canCreateActionIn,
   createActionSchema,
   englishTermTooltip,
   findBabokElement,
@@ -41,7 +43,7 @@ import { RequirementLink } from './requirement-panels';
 import { Panel, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
-import { formatDateTime, memberName } from './team-section';
+import { formatDateTime } from './team-section';
 
 const canEditActions = (action: Pick<ActionDto, 'initiative'>) =>
   can(action.initiative.myRole, 'editActions', { archived: action.initiative.archived });
@@ -576,7 +578,7 @@ function DeleteAction({ action, onDeleted }: { action: ActionDto; onDeleted: () 
 export function NewActionButton({ initiative, from }: { initiative: InitiativeDto; from: AnalysisObjectRef }) {
   const { t } = useI18n();
   const { open } = usePanels();
-  if (!can(initiative.myRole, 'editActions', { archived: initiative.archivedAt != null })) return null;
+  if (!canCreateActionIn(initiative)) return null;
   return (
     <button type="button" onClick={() => open({ kind: 'createAction', initiativeId: initiative.id, from })}>
       {t('actions.new')}
@@ -636,7 +638,7 @@ export function CreateActionPanel({
 }) {
   const { t, locale } = useI18n();
   const { replace } = usePanels();
-  const editable = initiatives.filter((i) => can(i.myRole, 'editActions', { archived: i.archivedAt != null }));
+  const editable = initiatives.filter(canCreateActionIn);
   const proposed = editable.find((i) => i.id === initiativeId);
   // Sans droit d'écriture sur l'initiative de l'objet, on ne part pas de cet objet.
   const originObject = proposed ? from : undefined;

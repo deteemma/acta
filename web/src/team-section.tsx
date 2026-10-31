@@ -11,7 +11,7 @@ import {
   type InitiativeMemberDto,
   type InitiativeRole,
   type Locale,
-  type MemberNameDto,
+  memberName,
   type OwnerDesignationDto,
   type TeamChange,
   teamControls,
@@ -21,8 +21,6 @@ import { api } from './api';
 import { ErrorMessage, teamRefusalError, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { usePanels } from './panels';
-
-export const memberName = (member: MemberNameDto) => member.displayName ?? member.email ?? member.userId;
 
 /** Date et heure d'une désignation, dans la langue de l'interface. */
 export const formatDateTime = (locale: Locale, date: string) =>

@@ -3,6 +3,7 @@
 // (ticket 11). Les contrôles proposés et les refus suivent les règles de
 // @app/shared (admin.ts, references.ts, requirement-statuses.ts).
 import {
+  memberName,
   type AccountDto,
   type AdminRequirementStatusDto,
   checkAccountChange,
@@ -29,7 +30,6 @@ import { adminRefusalError, ErrorMessage, toUiError, type UiError } from './erro
 import { useI18n } from './i18n';
 import { Panel } from './panels';
 import { setRequirementStatuses } from './requirement-statuses';
-import { memberName } from './team-section';
 
 /**
  * Erreur de l'administration : ses refus d'abord (certains portent le même nom

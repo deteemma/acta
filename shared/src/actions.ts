@@ -3,10 +3,10 @@
 // par la base (migration 0010).
 import { z } from 'zod';
 import type { BabokDto, TechniqueDto } from './babok.js';
-import { hasAtLeast, type InitiativeRole } from './roles.js';
+import { can, hasAtLeast, type InitiativeRole } from './roles.js';
 import { needIdsSchema, type NeedRefDto } from './needs.js';
 import { requirementIdsSchema, type RequirementRefDto } from './requirements.js';
-import type { MemberNameDto } from './schemas.js';
+import type { InitiativeDto, MemberNameDto } from './schemas.js';
 import { stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
 
 /** Statuts d'une action ; tout statut peut passer à tout autre. */
@@ -114,6 +114,13 @@ export interface MyActionsFilter {
   initiativeId?: string | null;
 }
 
+/** Filtre de « Mes actions » : coche ou décoche un statut, dans l'ordre des statuts. */
+export function toggleActionStatus(current: readonly ActionStatus[], status: ActionStatus): ActionStatus[] {
+  return current.includes(status)
+    ? current.filter((s) => s !== status)
+    : ACTION_STATUSES.filter((s) => s === status || current.includes(s));
+}
+
 /**
  * Actions de l'écran « Mes actions », filtrées. Celles d'une initiative archivée
  * n'apparaissent que si l'on filtre sur cette initiative.
@@ -140,6 +147,11 @@ export function sortByDueDate(actions: readonly ActionDto[]): ActionDto[] {
 /** Responsable possible d'une action : un membre propriétaire ou contributeur de l'initiative. */
 export function canBeAssignee(role: InitiativeRole | null | undefined): boolean {
   return hasAtLeast(role, 'contributor');
+}
+
+/** Initiative proposée à la création d'une action : on peut y écrire des actions (propriétaire ou contributeur, non archivée). */
+export function canCreateActionIn(initiative: Pick<InitiativeDto, 'myRole' | 'archivedAt'>): boolean {
+  return can(initiative.myRole, 'editActions', { archived: initiative.archivedAt != null });
 }
 
 /**

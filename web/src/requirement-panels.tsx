@@ -2,6 +2,7 @@
 // panneau latéral, avec son historique. Règles dans @app/shared
 // (requirements.ts, requirement-statuses.ts, references.ts, roles.ts).
 import {
+  memberName,
   type ActionDto,
   type BabokDto,
   can,
@@ -41,7 +42,7 @@ import { Panel, usePanels } from './panels';
 import { setRequirementStatuses, StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
-import { formatDateTime, memberName } from './team-section';
+import { formatDateTime } from './team-section';
 
 export const canEditRequirements = (initiative: InitiativeDto) =>
   can(initiative.myRole, 'editRequirements', { archived: initiative.archivedAt != null });
