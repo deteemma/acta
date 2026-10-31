@@ -57,6 +57,11 @@ const REQUIREMENT_STATUS_TASKS: Partial<Record<RequirementStatus, TaskSuggestion
   validated: { taskId: '5.5', reason: 'requirementValidated' },
 };
 
+/** Tâche proposée pour une exigence de ce statut (7.2, 7.3, 5.5) ; reprise par l'encart « Actions suggérées » (R11 à R13). */
+export function requirementStatusTask(status: RequirementStatus): string | undefined {
+  return REQUIREMENT_STATUS_TASKS[status]?.taskId;
+}
+
 /** Tâches proposées selon l'origine de la création, la première d'abord. */
 export function suggestTasks(origin: ActionOrigin): TaskSuggestion[] {
   switch (origin.kind) {

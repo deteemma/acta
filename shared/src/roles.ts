@@ -38,6 +38,8 @@ export const INITIATIVE_PERMISSIONS = {
   editNeeds: 'contributor',
   /** Créer, modifier (statut compris) et supprimer une exigence (ticket 10). */
   editRequirements: 'contributor',
+  /** Écarter une suggestion de l'encart « Actions suggérées », pour toute l'équipe (ticket 14). */
+  dismissSuggestedActions: 'contributor',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;

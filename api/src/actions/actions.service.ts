@@ -18,10 +18,14 @@ import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js
 import { needRefusal } from '../needs/needs.service.js';
 import { requirementRefusal } from '../requirements/requirements.service.js';
 import { stakeholderRefusal } from '../stakeholders/stakeholders.service.js';
+import { SuggestedActionsService } from '../suggested-actions/suggested-actions.service.js';
 
 @Injectable()
 export class ActionsService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly suggestedActions: SuggestedActionsService,
+  ) {}
 
   /** « Mes actions » : celles dont je suis responsable, dans les initiatives dont je suis membre (RLS). */
   listMine(userId: string): Promise<ActionDto[]> {
@@ -51,6 +55,10 @@ export class ActionsService {
     const assigneeId = input.assigneeId ?? userId;
     return this.database.asUser(userId, async (tx) => {
       await this.checkAssignee(tx, initiativeId, assigneeId);
+      // Une origine inventée masquerait une suggestion sans raison (G6).
+      if (input.suggestionKey && !(await this.suggestedActions.isOffered(tx, initiativeId, input.suggestionKey))) {
+        throw actionRefusal('suggestionNotOffered');
+      }
       if (input.stakeholderIds) await this.checkStakeholders(tx, initiativeId, input.stakeholderIds);
       if (input.needIds) await this.checkNeeds(tx, initiativeId, input.needIds);
       if (input.requirementIds) await this.checkRequirements(tx, initiativeId, input.requirementIds);
@@ -66,12 +74,14 @@ export class ActionsService {
             technique_id: input.techniqueId ?? null,
             assignee_id: assigneeId,
             due_date: input.dueDate ?? null,
+            suggestion_key: input.suggestionKey ?? null,
           })
           .execute(),
       );
       if (input.stakeholderIds) await this.linkStakeholders(tx, initiativeId, id, input.stakeholderIds);
       if (input.needIds) await this.linkNeeds(tx, initiativeId, id, input.needIds);
       if (input.requirementIds) await this.linkRequirements(tx, initiativeId, id, input.requirementIds);
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
       return this.loadAction(tx, userId, initiativeId, id);
     });
   }
@@ -131,6 +141,7 @@ export class ActionsService {
           .where('initiative_id', '=', initiativeId)
           .execute(),
       );
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
       return this.loadAction(tx, userId, initiativeId, actionId);
     });
   }
@@ -274,6 +285,7 @@ export class ActionsService {
         if (isForeignKeyViolation(error)) throw actionRefusal('linked');
         throw error;
       }
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
     });
   }
 

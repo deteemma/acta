@@ -8,6 +8,7 @@ import { needIdsSchema, type NeedRefDto } from './needs.js';
 import { requirementIdsSchema, type RequirementRefDto } from './requirements.js';
 import type { MemberNameDto } from './schemas.js';
 import { stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
+import { suggestionKeySchema } from './suggested-actions.js';
 
 /** Statuts d'une action ; tout statut peut passer à tout autre. */
 export const ACTION_STATUSES = ['todo', 'in_progress', 'done', 'cancelled'] as const;
@@ -43,6 +44,8 @@ export const createActionSchema = z.object({
   stakeholderIds: stakeholderIdsSchema.optional(),
   needIds: needIdsSchema.optional(),
   requirementIds: requirementIdsSchema.optional(),
+  /** Suggestion de l'encart d'où l'action est créée (ticket 14) ; ne change plus. */
+  suggestionKey: suggestionKeySchema.optional(),
 });
 export type CreateActionInput = z.infer<typeof createActionSchema>;
 
@@ -147,8 +150,9 @@ export function techniqueChoices(babok: BabokDto, taskId: string): { ofTask: Tec
  * Refus d'une écriture sur une action, renvoyés par l'API (`refusal`) :
  * - `assigneeNotEligible` : le responsable choisi n'est pas propriétaire ou contributeur ;
  * - `unknownBabokElement` : tâche ou technique absente du référentiel ;
- * - `linked` : l'action est liée à un autre objet ; utiliser le statut Annulée.
+ * - `linked` : l'action est liée à un autre objet ; utiliser le statut Annulée ;
+ * - `suggestionNotOffered` : créée depuis une suggestion que l'encart ne propose pas (ou plus).
  */
-export const ACTION_REFUSALS = ['assigneeNotEligible', 'unknownBabokElement', 'linked'] as const;
+export const ACTION_REFUSALS = ['assigneeNotEligible', 'unknownBabokElement', 'linked', 'suggestionNotOffered'] as const;
 export type ActionRefusal = (typeof ACTION_REFUSALS)[number];
 export const isActionRefusal = (value: unknown): value is ActionRefusal => ACTION_REFUSALS.some((r) => r === value);

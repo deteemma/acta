@@ -401,6 +401,29 @@ details.dashboard-task.uncovered summary .badge {
   border-color: #c62828;
   color: #c62828;
 }
+/* Encart « Actions suggérées » (ticket 14) */
+.suggested-actions {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+}
+.suggested-actions h3 {
+  margin: 0.25rem 0;
+}
+.suggested-actions li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+.suggested-action-head,
+.suggested-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
 /* Aperçu au survol ou au focus d'une tâche ou d'une technique. */
 .babok-preview {
   position: relative;

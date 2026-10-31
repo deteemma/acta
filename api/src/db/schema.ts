@@ -76,10 +76,20 @@ export interface ActionTable {
   /** Colonne « date » : lue en texte AAAA-MM-JJ (voir ActionsService). */
   due_date: Optional<string>;
   status: Generated<ActionStatus>;
+  /** Suggestion d'où l'action est créée (migration 0015) ; fixée à la création. */
+  suggestion_key: Optional<string>;
   created_by: ColumnType<string, never, never>;
   created_at: ColumnType<Date, never, never>;
   updated_by: ColumnType<string, never, never>;
   updated_at: ColumnType<Date, never, never>;
+}
+
+/** Suggestion écartée par l'équipe (migration 0015). */
+export interface SuggestionDismissalTable {
+  initiative_id: string;
+  suggestion_key: string;
+  dismissed_by: Generated<string>;
+  dismissed_at: Generated<Date>;
 }
 
 /** Partie prenante (migration 0011) : auteurs et dates écrits par un déclencheur. */
@@ -241,4 +251,5 @@ export interface Database {
   requirement_stakeholder: RequirementStakeholderTable;
   requirement_version: RequirementVersionTable;
   stakeholder: StakeholderTable;
+  suggestion_dismissal: SuggestionDismissalTable;
 }

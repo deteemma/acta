@@ -70,6 +70,8 @@ function Shell({ user }: { user: User }) {
   // De même pour les exigences.
   const [requirementsVersion, setRequirementsVersion] = useState(0);
   const requirementsChanged = () => setRequirementsVersion((v) => v + 1);
+  // De même pour la fiche d'une initiative (approche, date de fin prévue : ticket 14).
+  const [initiativeVersion, setInitiativeVersion] = useState(0);
   usePaletteShortcut();
 
   useEffect(() => {
@@ -159,7 +161,10 @@ function Shell({ user }: { user: User }) {
                     stakeholdersVersion={stakeholdersVersion}
                     needsVersion={needsVersion}
                     requirementsVersion={requirementsVersion}
-                    onChanged={(changed) => setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)))}
+                    onChanged={(changed) => {
+                      setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)));
+                      setInitiativeVersion((v) => v + 1);
+                    }}
                     onDeleted={(id) => setInitiatives((list) => list.filter((i) => i.id !== id))}
                     onClose={close}
                   />
@@ -171,6 +176,8 @@ function Shell({ user }: { user: User }) {
                       initiativeId={content.initiativeId}
                       babok={babok}
                       actionsVersion={actionsVersion}
+                      dataVersion={[actionsVersion, stakeholdersVersion, needsVersion, requirementsVersion, initiativeVersion].join('-')}
+                      onActionCreated={actionsChanged}
                       onClose={close}
                     />
                   )

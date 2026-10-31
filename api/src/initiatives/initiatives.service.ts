@@ -19,10 +19,14 @@ import { sql } from 'kysely';
 import { referenceRefusal } from '../admin/reference-categories.service.js';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isUniqueViolation } from '../db/pg-errors.js';
+import { SuggestedActionsService } from '../suggested-actions/suggested-actions.service.js';
 
 @Injectable()
 export class InitiativesService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly suggestedActions: SuggestedActionsService,
+  ) {}
 
   /** Initiatives visibles par l'utilisateur : la RLS filtre, la jointure donne son rôle. */
   list(userId: string): Promise<InitiativeDto[]> {
@@ -95,6 +99,8 @@ export class InitiativesService {
         }
         throw error;
       }
+      // L'approche d'analyse et la date de fin prévue font naître ou disparaître des suggestions.
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
       return toDto(await this.loadInitiative(tx, userId, initiativeId));
     });
   }

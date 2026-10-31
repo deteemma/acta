@@ -79,3 +79,10 @@ test('propriétaire et contributeurs écrivent les exigences, statut compris ; l
   assert.equal(can('reader', 'editRequirements'), false);
   assert.equal(can('contributor', 'editRequirements', { archived: true }), false);
 });
+
+test('propriétaire et contributeurs écartent une suggestion ; lecteurs non ; archivée : refusé', () => {
+  assert.equal(can('owner', 'dismissSuggestedActions'), true);
+  assert.equal(can('contributor', 'dismissSuggestedActions'), true);
+  assert.equal(can('reader', 'dismissSuggestedActions'), false);
+  assert.equal(can('contributor', 'dismissSuggestedActions', { archived: true }), false);
+});

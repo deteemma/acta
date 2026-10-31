@@ -16,12 +16,16 @@ import {
 import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js';
+import { SuggestedActionsService } from '../suggested-actions/suggested-actions.service.js';
 import { needRefusal } from '../needs/needs.service.js';
 import { stakeholderRefusal } from '../stakeholders/stakeholders.service.js';
 
 @Injectable()
 export class RequirementsService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly suggestedActions: SuggestedActionsService,
+  ) {}
 
   listForInitiative(userId: string, initiativeId: string): Promise<RequirementDto[]> {
     return this.database.asUser(userId, async (tx) => {
@@ -80,6 +84,7 @@ export class RequirementsService {
       await this.linkStakeholders(tx, initiativeId, id, stakeholderIds);
       await this.linkNeeds(tx, initiativeId, id, needIds);
       await finalize(tx);
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
       return this.loadRequirement(tx, initiativeId, id);
     });
   }
@@ -146,6 +151,7 @@ export class RequirementsService {
           .execute(),
       );
       await finalize(tx);
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
       return this.loadRequirement(tx, initiativeId, requirementId);
     });
   }
@@ -167,6 +173,7 @@ export class RequirementsService {
         if (isForeignKeyViolation(error)) throw requirementRefusal('requirementLinked');
         throw error;
       }
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
     });
   }
 

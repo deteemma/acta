@@ -26,6 +26,7 @@ import type {
   UpdateNeedInput,
   UpdateReferenceCategoryInput,
   StakeholderDto,
+  SuggestedAction,
   UpdateStakeholderInput,
   UpdateAccountInput,
   UpdateInitiativeInput,
@@ -96,6 +97,10 @@ export const api = {
     request<ActionDto>(`/initiatives/${id}/actions/${actionId}`, { method: 'PATCH', body: JSON.stringify(input) }),
   deleteAction: (id: string, actionId: string) =>
     request<void>(`/initiatives/${id}/actions/${actionId}`, { method: 'DELETE' }),
+  // Encart « Actions suggérées » (ticket 14).
+  listSuggestedActions: (id: string) => request<SuggestedAction[]>(`/initiatives/${id}/suggested-actions`),
+  dismissSuggestedAction: (id: string, key: string) =>
+    request<void>(`/initiatives/${id}/suggested-actions/${encodeURIComponent(key)}/dismissal`, { method: 'PUT' }),
   // Parties prenantes (ticket 08).
   listStakeholders: (id: string) => request<StakeholderDto[]>(`/initiatives/${id}/stakeholders`),
   createStakeholder: (id: string, input: CreateStakeholderInput) =>
