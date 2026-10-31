@@ -28,7 +28,7 @@ import {
   type StakeholderDto,
 } from '@app/shared';
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
-import { ActionList } from './action-panels';
+import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
@@ -198,7 +198,10 @@ export function RequirementPanel({
               <h3>{t('requirement.children')}</h3>
               <RequirementList requirements={children} />
               {children.length === 0 && <p>{t('requirement.noChildren')}</p>}
-              <h3>{t('requirement.actions')}</h3>
+              <div className="section-header">
+                <h3>{t('requirement.actions')}</h3>
+                <NewActionButton initiative={initiative} from={{ kind: 'requirement', id: requirement.id }} />
+              </div>
               <ActionList actions={linkedActions} babok={babok} />
               {linkedActions.length === 0 && <p>{t('requirement.noActions')}</p>}
               <History versions={versions} />

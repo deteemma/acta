@@ -1,10 +1,11 @@
-import { type BabokDto, findBabokElement, type InitiativeDto, type MeDto } from '@app/shared';
+import { type AnalysisObjectRef, type BabokDto, findBabokElement, type InitiativeDto, type MeDto } from '@app/shared';
 import type { User } from 'oidc-client-ts';
 import { useEffect, useState } from 'react';
 import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
 import { api } from './api';
 import { BabokElementPanel, BabokPanel } from './babok-panels';
+import { DashboardPanel } from './dashboard-panel';
 import { login, logout } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
@@ -13,7 +14,7 @@ import { MyActions } from './my-actions';
 import { NeedPanel } from './need-panels';
 import { StakeholderPanel, StakeholdersPanel } from './stakeholder-panels';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
-import { FabContext, PanelHost, PanelsProvider, usePanels } from './panels';
+import { FabContext, PanelHost, type PanelContent, PanelsProvider, usePanels } from './panels';
 import { ReferencesProvider } from './references';
 import { RequirementPanel } from './requirement-panels';
 
@@ -80,11 +81,9 @@ function Shell({ user }: { user: User }) {
 
   const active = initiatives.filter((i) => !i.archivedAt);
   const archived = initiatives.filter((i) => i.archivedAt);
-  // Initiative du panneau le plus haut qui en montre une, proposée à la création rapide.
-  const currentInitiativeId = stack
-    .map((e) => e.content)
-    .findLast((c) => c.kind === 'initiative' || c.kind === 'action')
-    ?.initiativeId;
+  // Panneau le plus haut qui montre une initiative ou l'un de ses objets : la
+  // création rapide propose cette initiative, et part de cet objet (ticket 13).
+  const fabOrigin = stack.map((e) => actionOrigin(e.content)).findLast((origin) => origin !== undefined);
   const fab = (
     <button
       type="button"
@@ -92,7 +91,7 @@ function Shell({ user }: { user: User }) {
       aria-label={t('actions.new')}
       title={t('actions.new')}
       disabled={!babok}
-      onClick={() => open({ kind: 'createAction', initiativeId: currentInitiativeId })}
+      onClick={() => open({ kind: 'createAction', ...fabOrigin })}
     >
       + {t('actions.fab')}
     </button>
@@ -165,6 +164,17 @@ function Shell({ user }: { user: User }) {
                     onClose={close}
                   />
                 );
+              case 'dashboard':
+                return (
+                  babok && (
+                    <DashboardPanel
+                      initiativeId={content.initiativeId}
+                      babok={babok}
+                      actionsVersion={actionsVersion}
+                      onClose={close}
+                    />
+                  )
+                );
               case 'member':
                 return <MemberPanel member={content.member} onClose={close} />;
               case 'admin':
@@ -182,6 +192,7 @@ function Shell({ user }: { user: User }) {
                       babok={babok}
                       initiatives={active}
                       initiativeId={content.initiativeId}
+                      from={content.from}
                       onCreated={actionsChanged}
                       onClose={close}
                     />
@@ -251,6 +262,28 @@ function Shell({ user }: { user: User }) {
       </FabContext.Provider>
     </ReferencesProvider>
   );
+}
+
+/** Initiative, et objet éventuel, d'où le bouton « + Action » crée l'action depuis ce panneau. */
+function actionOrigin(content: PanelContent): { initiativeId: string; from?: AnalysisObjectRef } | undefined {
+  switch (content.kind) {
+    case 'initiative':
+    case 'dashboard':
+    case 'action':
+    case 'stakeholders':
+      return { initiativeId: content.initiativeId };
+    case 'stakeholder':
+      return { initiativeId: content.initiativeId, ...(content.stakeholderId && { from: { kind: 'stakeholder', id: content.stakeholderId } }) };
+    case 'need':
+      return { initiativeId: content.initiativeId, ...(content.needId && { from: { kind: 'need', id: content.needId } }) };
+    case 'requirement':
+      return {
+        initiativeId: content.initiativeId,
+        ...(content.requirementId && { from: { kind: 'requirement', id: content.requirementId } }),
+      };
+    default:
+      return undefined;
+  }
 }
 
 function InitiativeList({ initiatives }: { initiatives: InitiativeDto[] }) {

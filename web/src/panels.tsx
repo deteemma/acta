@@ -12,7 +12,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { InitiativeMemberDto } from '@app/shared';
+import type { AnalysisObjectRef, InitiativeMemberDto } from '@app/shared';
 import { useI18n } from './i18n';
 
 /** Ce qu'un panneau peut afficher. */
@@ -20,12 +20,16 @@ export type PanelContent =
   | { kind: 'palette' }
   | { kind: 'createInitiative' }
   | { kind: 'initiative'; initiativeId: string }
+  | { kind: 'dashboard'; initiativeId: string }
   | { kind: 'member'; member: InitiativeMemberDto }
   | { kind: 'admin' }
   | { kind: 'babok' }
   | { kind: 'babokElement'; elementId: string }
-  /** Création rapide ; l'initiative est proposée d'après le panneau d'où l'on vient. */
-  | { kind: 'createAction'; initiativeId?: string }
+  /**
+   * Création rapide ; l'initiative est proposée d'après le panneau d'où l'on
+   * vient. Avec `from`, l'action est créée depuis cet objet et liée à lui (ticket 13).
+   */
+  | { kind: 'createAction'; initiativeId?: string; from?: AnalysisObjectRef }
   | { kind: 'action'; initiativeId: string; actionId: string }
   | { kind: 'stakeholders'; initiativeId: string }
   /** Sans `stakeholderId`, création d'une partie prenante. */

@@ -74,6 +74,8 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 | Action | `action` | Type de ticket : unité de travail d'un BA, toujours rattachée à une tâche BABOK, éventuellement à une technique. Statuts : À faire, En cours, Terminée, Annulée. _À éviter_ : tâche (réservé aux tâches BABOK). |
 | Responsable d'une action | `assignee` | Membre propriétaire ou contributeur chargé d'une action. Il le reste s'il quitte ensuite l'initiative ou devient lecteur, signalé, jusqu'à réattribution. |
 | « Mes actions » | `my_actions` | Écran d'accueil : les actions dont je suis responsable, toutes initiatives confondues. |
+| Tableau de bord | `dashboard` | Vue d'une initiative : ses actions classées par domaine de connaissance puis par tâche BABOK, avec le nombre d'actions par statut. |
+| Tâche couverte | `covered` | Tâche BABOK qui a au moins une action dans l'initiative, quel qu'en soit le statut (Annulée comprise). Un domaine est couvert dès qu'une de ses tâches l'est. |
 | Question | `question` | Type de ticket : point ouvert d'élicitation posé à des parties prenantes. Statuts : Ouverte, Répondue, Close. |
 | Décision | `decision` | Type de ticket : arbitrage obtenu. Statuts : Proposée, Actée. |
 | Risque | `risk` | Type de ticket : risque identifié sur le changement (tâche BABOK 6.3). Statuts : Identifié, Traité, Clos. |
