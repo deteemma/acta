@@ -14,17 +14,26 @@ import { BabokName } from './babok-panels';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { Panel } from './panels';
+import { SuggestedActions } from './suggested-actions';
 
 export function DashboardPanel({
   initiativeId,
   babok,
   actionsVersion,
+  dataVersion,
+  onActionCreated,
   onClose,
 }: {
   initiativeId: string;
   babok: BabokDto;
   /** Change à chaque écriture sur une action : le tableau se recharge. */
   actionsVersion: number;
+  /**
+   * Change à chaque écriture sur l'initiative ou ses objets d'analyse : la fiche
+   * et les actions suggérées se rechargent.
+   */
+  dataVersion: string;
+  onActionCreated: () => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
@@ -34,7 +43,7 @@ export function DashboardPanel({
 
   useEffect(() => {
     api.getInitiative(initiativeId).then(setInitiative, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId]);
+  }, [initiativeId, dataVersion]);
 
   useEffect(() => {
     api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
@@ -43,6 +52,13 @@ export function DashboardPanel({
   return (
     <Panel title={initiative ? t('dashboard.title', { code: initiative.code }) : t('common.loading')} onClose={onClose}>
       <ErrorMessage error={error} />
+      {initiative && (
+        <SuggestedActions
+          initiative={initiative}
+          babok={babok}
+          onActionCreated={onActionCreated}
+        />
+      )}
       {actions &&
         initiativeDashboard(babok, actions).map(({ knowledgeArea, tasks, coveredTaskCount }) => (
           <section key={knowledgeArea.id} className="dashboard-area">

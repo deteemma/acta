@@ -1,5 +1,6 @@
 export * from './actions.js';
 export * from './admin.js';
+export * from './alerts.js';
 export * from './babok.js';
 export * from './dashboard.js';
 export * from './i18n.js';
@@ -11,5 +12,6 @@ export * from './roles.js';
 export * from './schemas.js';
 export * from './search.js';
 export * from './stakeholders.js';
+export * from './suggested-actions.js';
 export * from './suggestions.js';
 export * from './team.js';

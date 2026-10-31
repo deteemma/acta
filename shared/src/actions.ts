@@ -26,6 +26,9 @@ export const actionDescriptionSchema = z
   .transform((text) => text || null)
   .nullable();
 
+/** Clé d'une suggestion de l'encart « Actions suggérées » (ticket 14) : R1 à R15, R14 suivie du domaine (`R14:5`). */
+export const suggestionKeySchema = z.string().regex(/^R(?:[1-9]|1[0-35]|14:\d+)$/);
+
 /** Identifiant d'une tâche (`4.1`) ou d'une technique (`10.33`) du référentiel BABOK. */
 const babokIdSchema = z.string().regex(/^\d+\.\d+$/);
 
@@ -43,6 +46,8 @@ export const createActionSchema = z.object({
   stakeholderIds: stakeholderIdsSchema.optional(),
   needIds: needIdsSchema.optional(),
   requirementIds: requirementIdsSchema.optional(),
+  /** Suggestion de l'encart d'où l'action est créée (ticket 14) ; ne change plus. */
+  suggestionKey: suggestionKeySchema.optional(),
 });
 export type CreateActionInput = z.infer<typeof createActionSchema>;
 
@@ -79,6 +84,9 @@ export interface ActionDto {
   techniqueId: string | null;
   /** `eligible` : encore propriétaire ou contributeur de l'initiative. */
   assignee: MemberNameDto & { eligible: boolean };
+  /** Auteur et date de la dernière attribution (ticket 15). */
+  assignedBy: MemberNameDto;
+  assignedAt: string;
   /** AAAA-MM-JJ */
   dueDate: string | null;
   status: ActionStatus;
@@ -93,6 +101,9 @@ export interface ActionDto {
   updatedAt: string;
   updatedBy: MemberNameDto;
 }
+
+/** Action ouverte : ni Terminée ni Annulée. */
+export const isOpenAction = (action: Pick<ActionDto, 'status'>) => action.status === 'todo' || action.status === 'in_progress';
 
 /** Statuts montrés par défaut dans « Mes actions ». */
 export const DEFAULT_MY_ACTIONS_STATUSES: readonly ActionStatus[] = ['todo', 'in_progress'];
@@ -147,8 +158,9 @@ export function techniqueChoices(babok: BabokDto, taskId: string): { ofTask: Tec
  * Refus d'une écriture sur une action, renvoyés par l'API (`refusal`) :
  * - `assigneeNotEligible` : le responsable choisi n'est pas propriétaire ou contributeur ;
  * - `unknownBabokElement` : tâche ou technique absente du référentiel ;
- * - `linked` : l'action est liée à un autre objet ; utiliser le statut Annulée.
+ * - `linked` : l'action est liée à un autre objet ; utiliser le statut Annulée ;
+ * - `suggestionNotOffered` : créée depuis une suggestion que l'encart ne propose pas (ou plus).
  */
-export const ACTION_REFUSALS = ['assigneeNotEligible', 'unknownBabokElement', 'linked'] as const;
+export const ACTION_REFUSALS = ['assigneeNotEligible', 'unknownBabokElement', 'linked', 'suggestionNotOffered'] as const;
 export type ActionRefusal = (typeof ACTION_REFUSALS)[number];
 export const isActionRefusal = (value: unknown): value is ActionRefusal => ACTION_REFUSALS.some((r) => r === value);

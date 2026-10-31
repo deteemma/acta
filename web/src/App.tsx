@@ -3,6 +3,7 @@ import type { User } from 'oidc-client-ts';
 import { useEffect, useState } from 'react';
 import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
+import { AlertsButton, AlertsPanel, useMyAlerts } from './alerts';
 import { api } from './api';
 import { BabokElementPanel, BabokPanel } from './babok-panels';
 import { DashboardPanel } from './dashboard-panel';
@@ -70,7 +71,10 @@ function Shell({ user }: { user: User }) {
   // De même pour les exigences.
   const [requirementsVersion, setRequirementsVersion] = useState(0);
   const requirementsChanged = () => setRequirementsVersion((v) => v + 1);
+  // De même pour la fiche d'une initiative (approche, date de fin prévue : ticket 14).
+  const [initiativeVersion, setInitiativeVersion] = useState(0);
   usePaletteShortcut();
+  const alerts = useMyAlerts(me, actionsVersion);
 
   useEffect(() => {
     api.listInitiatives().then(setInitiatives, (e: unknown) => setError(toUiError(e)));
@@ -111,6 +115,7 @@ function Shell({ user }: { user: User }) {
               <button type="button" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
                 {t('babok.open')}
               </button>{' '}
+              <AlertsButton alerts={alerts} />{' '}
               {me?.isAdmin && (
                 <>
                   <button type="button" onClick={() => open({ kind: 'admin' })}>
@@ -159,7 +164,10 @@ function Shell({ user }: { user: User }) {
                     stakeholdersVersion={stakeholdersVersion}
                     needsVersion={needsVersion}
                     requirementsVersion={requirementsVersion}
-                    onChanged={(changed) => setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)))}
+                    onChanged={(changed) => {
+                      setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)));
+                      setInitiativeVersion((v) => v + 1);
+                    }}
                     onDeleted={(id) => setInitiatives((list) => list.filter((i) => i.id !== id))}
                     onClose={close}
                   />
@@ -171,10 +179,14 @@ function Shell({ user }: { user: User }) {
                       initiativeId={content.initiativeId}
                       babok={babok}
                       actionsVersion={actionsVersion}
+                      dataVersion={[actionsVersion, stakeholdersVersion, needsVersion, requirementsVersion, initiativeVersion].join('-')}
+                      onActionCreated={actionsChanged}
                       onClose={close}
                     />
                   )
                 );
+              case 'alerts':
+                return <AlertsPanel alerts={alerts} onSeen={setMe} onClose={close} />;
               case 'member':
                 return <MemberPanel member={content.member} onClose={close} />;
               case 'admin':

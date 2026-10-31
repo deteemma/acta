@@ -25,6 +25,10 @@ export interface AppUserTable {
   email: string | null;
   display_name: string | null;
   locale: Generated<Locale | null>;
+  /** Dernière ouverture du panneau des alertes, ou date de référence (migration 0016). */
+  alerts_seen_at: Generated<Date>;
+  /** Alertes listées à la dernière ouverture ; null avant la première. */
+  alerts_seen_keys: Generated<string[] | null>;
   /** Compte désactivé dans Keycloak ; écrit par admin_set_user_deactivated (migration 0007). */
   deactivated_at: ColumnType<Date | null, undefined, never>;
   created_at: Timestamp;
@@ -73,13 +77,26 @@ export interface ActionTable {
   task_id: string;
   technique_id: Optional<string>;
   assignee_id: string;
+  /** Dernière attribution (migration 0016) : écrite par un déclencheur. */
+  assigned_by: ColumnType<string, never, never>;
+  assigned_at: ColumnType<Date, never, never>;
   /** Colonne « date » : lue en texte AAAA-MM-JJ (voir ActionsService). */
   due_date: Optional<string>;
   status: Generated<ActionStatus>;
+  /** Suggestion d'où l'action est créée (migration 0015) ; fixée à la création. */
+  suggestion_key: Optional<string>;
   created_by: ColumnType<string, never, never>;
   created_at: ColumnType<Date, never, never>;
   updated_by: ColumnType<string, never, never>;
   updated_at: ColumnType<Date, never, never>;
+}
+
+/** Suggestion écartée par l'équipe (migration 0015). */
+export interface SuggestionDismissalTable {
+  initiative_id: string;
+  suggestion_key: string;
+  dismissed_by: Generated<string>;
+  dismissed_at: Generated<Date>;
 }
 
 /** Partie prenante (migration 0011) : auteurs et dates écrits par un déclencheur. */
@@ -241,4 +258,5 @@ export interface Database {
   requirement_stakeholder: RequirementStakeholderTable;
   requirement_version: RequirementVersionTable;
   stakeholder: StakeholderTable;
+  suggestion_dismissal: SuggestionDismissalTable;
 }

@@ -23,6 +23,8 @@ import { RequirementsController } from './requirements/requirements.controller.j
 import { RequirementsService } from './requirements/requirements.service.js';
 import { StakeholdersController } from './stakeholders/stakeholders.controller.js';
 import { StakeholdersService } from './stakeholders/stakeholders.service.js';
+import { SuggestedActionsController } from './suggested-actions/suggested-actions.controller.js';
+import { SuggestedActionsService } from './suggested-actions/suggested-actions.service.js';
 import { MeController } from './users/me.controller.js';
 import { UsersService } from './users/users.service.js';
 
@@ -38,6 +40,7 @@ import { UsersService } from './users/users.service.js';
     ReferenceCategoriesController,
     RequirementsController,
     StakeholdersController,
+    SuggestedActionsController,
   ],
   providers: [
     { provide: AppConfig, useFactory: () => new AppConfig() },
@@ -54,6 +57,7 @@ import { UsersService } from './users/users.service.js';
     NeedsService,
     ReferenceCategoriesService,
     RequirementsService,
+    SuggestedActionsService,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })

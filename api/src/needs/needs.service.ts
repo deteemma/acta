@@ -12,11 +12,15 @@ import {
 } from '@app/shared';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js';
+import { SuggestedActionsService } from '../suggested-actions/suggested-actions.service.js';
 import { stakeholderRefusal } from '../stakeholders/stakeholders.service.js';
 
 @Injectable()
 export class NeedsService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly suggestedActions: SuggestedActionsService,
+  ) {}
 
   listForInitiative(userId: string, initiativeId: string): Promise<NeedDto[]> {
     return this.database.asUser(userId, async (tx) => {
@@ -84,6 +88,7 @@ export class NeedsService {
         })
         .execute();
       if (input.stakeholderIds) await this.linkStakeholders(tx, initiativeId, id, input.stakeholderIds);
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
       return this.loadNeed(tx, initiativeId, id);
     });
   }
@@ -115,6 +120,7 @@ export class NeedsService {
         .where('id', '=', needId)
         .where('initiative_id', '=', initiativeId)
         .execute();
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
       return this.loadNeed(tx, initiativeId, needId);
     });
   }
@@ -129,6 +135,7 @@ export class NeedsService {
         if (isForeignKeyViolation(error)) throw needRefusal('needLinked');
         throw error;
       }
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
     });
   }
 

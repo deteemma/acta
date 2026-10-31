@@ -134,7 +134,20 @@ export interface MeDto {
   locale: z.infer<typeof localeSchema> | null;
   /** Porte le rôle administrateur de l'application (ADR-0005). */
   isAdmin: boolean;
+  /**
+   * Dernière ouverture du panneau des alertes (ticket 15) ; avant la première,
+   * date de référence : déploiement des alertes ou création du compte.
+   */
+  alertsSeenAt: string;
+  /** Alertes (alertKey) de la liste à la dernière ouverture ; null avant la première. */
+  alertsSeenKeys: string[] | null;
 }
+
+/** Ouverture du panneau des alertes : les alertes alors listées (alertKey). */
+export const markAlertsSeenSchema = z.object({
+  alertKeys: z.array(z.string().max(100)).max(1000),
+});
+export type MarkAlertsSeenInput = z.infer<typeof markAlertsSeenSchema>;
 
 /**
  * Création d'un compte par l'administrateur (ticket 05). Le mot de passe est

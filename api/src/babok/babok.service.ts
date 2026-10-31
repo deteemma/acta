@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { BabokDto, TechniqueCounts } from '@app/shared';
 import { sql } from 'kysely';
-import { DatabaseService } from '../db/database.service.js';
+import { DatabaseService, type Tx } from '../db/database.service.js';
 
 const ELEMENT_COLUMNS = ['id', 'section', 'name_en', 'name_fr', 'summary_en', 'summary_fr'] as const;
 
@@ -27,35 +27,38 @@ export class BabokService {
   constructor(private readonly database: DatabaseService) {}
 
   get(userId: string): Promise<BabokDto> {
-    return this.database.asUser(userId, async (tx) => {
-      const knowledgeAreas = await tx
-        .selectFrom('babok_knowledge_area')
-        .select(ELEMENT_COLUMNS)
-        .orderBy('position')
-        .execute();
-      const tasks = await tx
-        .selectFrom('babok_task')
-        .select([...ELEMENT_COLUMNS, 'knowledge_area_id'])
-        .orderBy('position')
-        .execute();
-      const techniques = await tx.selectFrom('babok_technique').select(ELEMENT_COLUMNS).orderBy('position').execute();
-      const links = await tx
-        .selectFrom('babok_task_technique as l')
-        .innerJoin('babok_technique as t', 't.id', 'l.technique_id')
-        .select(['l.task_id', 'l.technique_id'])
-        .orderBy('t.position')
-        .execute();
-      return {
-        knowledgeAreas: knowledgeAreas.map((row) => ({ kind: 'knowledgeArea' as const, ...element(row) })),
-        tasks: tasks.map((row) => ({
-          kind: 'task' as const,
-          ...element(row),
-          knowledgeAreaId: row.knowledge_area_id,
-          techniqueIds: links.filter((l) => l.task_id === row.id).map((l) => l.technique_id),
-        })),
-        techniques: techniques.map((row) => ({ kind: 'technique' as const, ...element(row) })),
-      };
-    });
+    return this.database.asUser(userId, (tx) => this.load(tx));
+  }
+
+  /** Le référentiel, lu dans la transaction en cours. */
+  async load(tx: Tx): Promise<BabokDto> {
+    const knowledgeAreas = await tx
+      .selectFrom('babok_knowledge_area')
+      .select(ELEMENT_COLUMNS)
+      .orderBy('position')
+      .execute();
+    const tasks = await tx
+      .selectFrom('babok_task')
+      .select([...ELEMENT_COLUMNS, 'knowledge_area_id'])
+      .orderBy('position')
+      .execute();
+    const techniques = await tx.selectFrom('babok_technique').select(ELEMENT_COLUMNS).orderBy('position').execute();
+    const links = await tx
+      .selectFrom('babok_task_technique as l')
+      .innerJoin('babok_technique as t', 't.id', 'l.technique_id')
+      .select(['l.task_id', 'l.technique_id'])
+      .orderBy('t.position')
+      .execute();
+    return {
+      knowledgeAreas: knowledgeAreas.map((row) => ({ kind: 'knowledgeArea' as const, ...element(row) })),
+      tasks: tasks.map((row) => ({
+        kind: 'task' as const,
+        ...element(row),
+        knowledgeAreaId: row.knowledge_area_id,
+        techniqueIds: links.filter((l) => l.task_id === row.id).map((l) => l.technique_id),
+      })),
+      techniques: techniques.map((row) => ({ kind: 'technique' as const, ...element(row) })),
+    };
   }
 
   /**

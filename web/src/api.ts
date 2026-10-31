@@ -9,6 +9,7 @@ import type {
   CreateInitiativeInput,
   InitiativeDto,
   InitiativeMemberDto,
+  MarkAlertsSeenInput,
   MeDto,
   OrphanInitiativeDto,
   OwnerDesignationDto,
@@ -26,6 +27,7 @@ import type {
   UpdateNeedInput,
   UpdateReferenceCategoryInput,
   StakeholderDto,
+  SuggestedAction,
   UpdateStakeholderInput,
   UpdateAccountInput,
   UpdateInitiativeInput,
@@ -64,6 +66,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   me: () => request<MeDto>('/me'),
   updateMe: (input: UpdateMeInput) => request<MeDto>('/me', { method: 'PATCH', body: JSON.stringify(input) }),
+  markAlertsSeen: (input: MarkAlertsSeenInput) =>
+    request<MeDto>('/me/alerts-seen', { method: 'PUT', body: JSON.stringify(input) }),
   babok: () => request<BabokDto>('/babok'),
   techniqueUsage: () => request<TechniqueCounts>('/babok/technique-usage'),
   listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
@@ -96,6 +100,10 @@ export const api = {
     request<ActionDto>(`/initiatives/${id}/actions/${actionId}`, { method: 'PATCH', body: JSON.stringify(input) }),
   deleteAction: (id: string, actionId: string) =>
     request<void>(`/initiatives/${id}/actions/${actionId}`, { method: 'DELETE' }),
+  // Encart « Actions suggérées » (ticket 14).
+  listSuggestedActions: (id: string) => request<SuggestedAction[]>(`/initiatives/${id}/suggested-actions`),
+  dismissSuggestedAction: (id: string, key: string) =>
+    request<void>(`/initiatives/${id}/suggested-actions/${encodeURIComponent(key)}/dismissal`, { method: 'PUT' }),
   // Parties prenantes (ticket 08).
   listStakeholders: (id: string) => request<StakeholderDto[]>(`/initiatives/${id}/stakeholders`),
   createStakeholder: (id: string, input: CreateStakeholderInput) =>

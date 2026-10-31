@@ -11,10 +11,14 @@ import {
 import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js';
+import { SuggestedActionsService } from '../suggested-actions/suggested-actions.service.js';
 
 @Injectable()
 export class StakeholdersService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly suggestedActions: SuggestedActionsService,
+  ) {}
 
   listForInitiative(userId: string, initiativeId: string): Promise<StakeholderDto[]> {
     return this.database.asUser(userId, async (tx) => {
@@ -48,6 +52,7 @@ export class StakeholdersService {
           })
           .execute(),
       );
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
       return this.loadStakeholder(tx, initiativeId, id);
     });
   }
@@ -84,6 +89,7 @@ export class StakeholdersService {
           .where('initiative_id', '=', initiativeId)
           .execute(),
       );
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
       return this.loadStakeholder(tx, initiativeId, stakeholderId);
     });
   }
@@ -102,6 +108,7 @@ export class StakeholdersService {
         if (isForeignKeyViolation(error)) throw stakeholderRefusal('stakeholderLinked');
         throw error;
       }
+      await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
     });
   }
 
