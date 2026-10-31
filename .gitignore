@@ -10,3 +10,5 @@ mobile/android/
 .vite/
 coverage/
 reference/
+# Réglages personnels de l’éditeur
+.vscode/
