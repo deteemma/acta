@@ -77,6 +77,7 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 | Tableau de bord | `dashboard` | Vue d'une initiative : ses actions classées par domaine de connaissance puis par tâche BABOK, avec le nombre d'actions par statut. |
 | Tâche couverte | `covered` | Tâche BABOK qui a au moins une action dans l'initiative, quel qu'en soit le statut (Annulée comprise). Un domaine est couvert dès qu'une de ses tâches l'est. |
 | Action suggérée | `suggested_action` | Action que le tableau de bord propose selon l'état de l'initiative, par une règle fixe (R1 à R15), avec sa justification ; créée en un clic. L'action créée garde la suggestion d'origine (`suggestion_key`). |
+| Alerte | `alert` | Signal dans l'application, sans courriel, sur une de mes actions ni Terminée ni Annulée, hors initiative archivée : action attribuée par un autre membre, ou échéance dépassée. Elle disparaît dès que sa situation cesse ; elle est « nouvelle » jusqu'à l'ouverture suivante du panneau des alertes. |
 | Écarter une suggestion | `dismissal` | Masquer une action suggérée pour toute l'équipe ; elle ne revient que si sa situation disparaît puis réapparaît. |
 | Question | `question` | Type de ticket : point ouvert d'élicitation posé à des parties prenantes. Statuts : Ouverte, Répondue, Close. |
 | Décision | `decision` | Type de ticket : arbitrage obtenu. Statuts : Proposée, Actée. |

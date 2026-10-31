@@ -22,6 +22,8 @@ function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
     taskId: '4.1',
     techniqueId: null,
     assignee: { ...person('alice'), eligible: true },
+    assignedBy: person('alice'),
+    assignedAt: '2026-10-01T08:00:00.000Z',
     dueDate: null,
     status: 'todo',
     stakeholders: [],

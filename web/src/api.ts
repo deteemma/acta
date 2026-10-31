@@ -9,6 +9,7 @@ import type {
   CreateInitiativeInput,
   InitiativeDto,
   InitiativeMemberDto,
+  MarkAlertsSeenInput,
   MeDto,
   OrphanInitiativeDto,
   OwnerDesignationDto,
@@ -65,6 +66,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   me: () => request<MeDto>('/me'),
   updateMe: (input: UpdateMeInput) => request<MeDto>('/me', { method: 'PATCH', body: JSON.stringify(input) }),
+  markAlertsSeen: (input: MarkAlertsSeenInput) =>
+    request<MeDto>('/me/alerts-seen', { method: 'PUT', body: JSON.stringify(input) }),
   babok: () => request<BabokDto>('/babok'),
   techniqueUsage: () => request<TechniqueCounts>('/babok/technique-usage'),
   listInitiatives: () => request<InitiativeDto[]>('/initiatives'),

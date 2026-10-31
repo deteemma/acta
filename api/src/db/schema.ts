@@ -25,6 +25,10 @@ export interface AppUserTable {
   email: string | null;
   display_name: string | null;
   locale: Generated<Locale | null>;
+  /** Dernière ouverture du panneau des alertes, ou date de référence (migration 0016). */
+  alerts_seen_at: Generated<Date>;
+  /** Alertes listées à la dernière ouverture ; null avant la première. */
+  alerts_seen_keys: Generated<string[] | null>;
   /** Compte désactivé dans Keycloak ; écrit par admin_set_user_deactivated (migration 0007). */
   deactivated_at: ColumnType<Date | null, undefined, never>;
   created_at: Timestamp;
@@ -73,6 +77,9 @@ export interface ActionTable {
   task_id: string;
   technique_id: Optional<string>;
   assignee_id: string;
+  /** Dernière attribution (migration 0016) : écrite par un déclencheur. */
+  assigned_by: ColumnType<string, never, never>;
+  assigned_at: ColumnType<Date, never, never>;
   /** Colonne « date » : lue en texte AAAA-MM-JJ (voir ActionsService). */
   due_date: Optional<string>;
   status: Generated<ActionStatus>;

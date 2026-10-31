@@ -321,6 +321,7 @@ export class ActionsService {
         join.onRef('am.initiative_id', '=', 'a.initiative_id').onRef('am.user_id', '=', 'a.assignee_id'),
       )
       .leftJoin('app_user as au', 'au.id', 'a.assignee_id')
+      .leftJoin('app_user as bu', 'bu.id', 'a.assigned_by')
       .leftJoin('app_user as cu', 'cu.id', 'a.created_by')
       .leftJoin('app_user as uu', 'uu.id', 'a.updated_by')
       .select([
@@ -338,6 +339,10 @@ export class ActionsService {
         'au.email as assignee_email',
         'au.display_name as assignee_display_name',
         'am.role as assignee_role',
+        'a.assigned_by',
+        'bu.email as assigned_by_email',
+        'bu.display_name as assigned_by_display_name',
+        'a.assigned_at',
         // Sans conversion, pg renverrait un Date à minuit local (décalage de fuseau).
         sql<string | null>`a.due_date::text`.as('due_date'),
         'a.status',
@@ -383,6 +388,8 @@ function toDto(
       displayName: r.assignee_display_name,
       eligible: canBeAssignee(r.assignee_role),
     },
+    assignedBy: { userId: r.assigned_by, email: r.assigned_by_email, displayName: r.assigned_by_display_name },
+    assignedAt: r.assigned_at.toISOString(),
     dueDate: r.due_date,
     status: r.status,
     stakeholders,

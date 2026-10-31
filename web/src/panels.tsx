@@ -21,6 +21,7 @@ export type PanelContent =
   | { kind: 'createInitiative' }
   | { kind: 'initiative'; initiativeId: string }
   | { kind: 'dashboard'; initiativeId: string }
+  | { kind: 'alerts' }
   | { kind: 'member'; member: InitiativeMemberDto }
   | { kind: 'admin' }
   | { kind: 'babok' }

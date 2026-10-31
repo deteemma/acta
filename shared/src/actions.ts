@@ -8,7 +8,6 @@ import { needIdsSchema, type NeedRefDto } from './needs.js';
 import { requirementIdsSchema, type RequirementRefDto } from './requirements.js';
 import type { MemberNameDto } from './schemas.js';
 import { stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
-import { suggestionKeySchema } from './suggested-actions.js';
 
 /** Statuts d'une action ; tout statut peut passer à tout autre. */
 export const ACTION_STATUSES = ['todo', 'in_progress', 'done', 'cancelled'] as const;
@@ -26,6 +25,9 @@ export const actionDescriptionSchema = z
   .max(ACTION_DESCRIPTION_MAX_LENGTH)
   .transform((text) => text || null)
   .nullable();
+
+/** Clé d'une suggestion de l'encart « Actions suggérées » (ticket 14) : R1 à R15, R14 suivie du domaine (`R14:5`). */
+export const suggestionKeySchema = z.string().regex(/^R(?:[1-9]|1[0-35]|14:\d+)$/);
 
 /** Identifiant d'une tâche (`4.1`) ou d'une technique (`10.33`) du référentiel BABOK. */
 const babokIdSchema = z.string().regex(/^\d+\.\d+$/);
@@ -82,6 +84,9 @@ export interface ActionDto {
   techniqueId: string | null;
   /** `eligible` : encore propriétaire ou contributeur de l'initiative. */
   assignee: MemberNameDto & { eligible: boolean };
+  /** Auteur et date de la dernière attribution (ticket 15). */
+  assignedBy: MemberNameDto;
+  assignedAt: string;
   /** AAAA-MM-JJ */
   dueDate: string | null;
   status: ActionStatus;
@@ -96,6 +101,9 @@ export interface ActionDto {
   updatedAt: string;
   updatedBy: MemberNameDto;
 }
+
+/** Action ouverte : ni Terminée ni Annulée. */
+export const isOpenAction = (action: Pick<ActionDto, 'status'>) => action.status === 'todo' || action.status === 'in_progress';
 
 /** Statuts montrés par défaut dans « Mes actions ». */
 export const DEFAULT_MY_ACTIONS_STATUSES: readonly ActionStatus[] = ['todo', 'in_progress'];

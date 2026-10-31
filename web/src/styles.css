@@ -401,6 +401,21 @@ details.dashboard-task.uncovered summary .badge {
   border-color: #c62828;
   color: #c62828;
 }
+/* Alertes (ticket 15) */
+.alert-badge {
+  margin-inline-start: 0.35rem;
+  padding: 0 0.4rem;
+  border-radius: 0.75rem;
+  background: #c62828;
+  color: #fff;
+  font-size: 0.85em;
+}
+.alert-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
 /* Encart « Actions suggérées » (ticket 14) */
 .suggested-actions {
   padding: 0.5rem 1rem;

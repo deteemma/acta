@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { suggestionKeySchema } from './actions.js';
 import type { BabokDto } from './babok.js';
 import {
   currentSituations,
   requirementStatusSince,
   suggestedActionInput,
   suggestedActionText,
-  suggestionKeySchema,
   type SuggestedAction,
   suggestActions,
   type SuggestionContext,

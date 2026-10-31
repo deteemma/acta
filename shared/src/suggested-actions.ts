@@ -2,8 +2,7 @@
 // proposées selon l'état de l'initiative, par des règles fixes et explicables.
 // Règles validées par la responsable fonctionnelle le 30.10.2026
 // (.scratch/phase-1/14-regles-actions-suggerees.md), écrites une seule fois ici.
-import { z } from 'zod';
-import type { ActionStatus, CreateActionInput } from './actions.js';
+import { type ActionStatus, type CreateActionInput, isOpenAction } from './actions.js';
 import type { BabokDto } from './babok.js';
 import { type Locale, type MessageKey, translate } from './i18n.js';
 import type { AnalysisApproach } from './schemas.js';
@@ -184,7 +183,7 @@ const isOnObjects = (s: SuggestedAction) => s.count != null;
 export function suggestActions(babok: BabokDto, context: SuggestionContext): SuggestedAction[] {
   if (context.initiative.archived) return [];
   const inProgress = new Set(
-    context.actions.filter((a) => a.status === 'todo' || a.status === 'in_progress').map((a) => a.suggestionKey),
+    context.actions.filter(isOpenAction).map((a) => a.suggestionKey),
   );
   const visible = currentSituations(babok, context).filter(
     (s) => !context.dismissedKeys.includes(s.key) && !inProgress.has(s.key),
@@ -201,9 +200,6 @@ export function suggestActions(babok: BabokDto, context: SuggestionContext): Sug
   const taskOrder = (s: SuggestedAction) => babok.tasks.findIndex((t) => t.id === s.taskId);
   return [...byTask.values()].sort((a, b) => taskOrder(a) - taskOrder(b));
 }
-
-/** Clé d'une suggestion : R1 à R15, R14 suivie du domaine (`R14:5`). */
-export const suggestionKeySchema = z.string().regex(/^R(?:[1-9]|1[0-35]|14:\d+)$/);
 
 /** Titre de l'Action à créer (G9) et justification affichée, dans la langue de l'interface (G12). */
 export function suggestedActionText(

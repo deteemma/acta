@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { APP_ADMIN_ROLE, type MeDto, type UpdateMeInput } from '@app/shared';
+import { APP_ADMIN_ROLE, type MarkAlertsSeenInput, type MeDto, type UpdateMeInput } from '@app/shared';
 import { sql } from 'kysely';
 import type { AuthenticatedUser } from '../auth/authenticated-user.js';
 import { DatabaseService, type Tx } from '../db/database.service.js';
@@ -48,10 +48,22 @@ export class UsersService {
     });
   }
 
+  /** Ouverture du panneau des alertes : elles ne sont plus nouvelles (ticket 15). */
+  markAlertsSeen(user: AuthenticatedUser, input: MarkAlertsSeenInput): Promise<MeDto> {
+    return this.database.asUser(user.id, async (tx) => {
+      await tx
+        .updateTable('app_user')
+        .set({ alerts_seen_at: sql`now()`, alerts_seen_keys: input.alertKeys })
+        .where('id', '=', user.id)
+        .execute();
+      return this.selectMe(tx, user);
+    });
+  }
+
   private async selectMe(tx: Tx, user: AuthenticatedUser): Promise<MeDto> {
     const row = await tx
       .selectFrom('app_user')
-      .select(['id', 'email', 'display_name', 'locale'])
+      .select(['id', 'email', 'display_name', 'locale', 'alerts_seen_at', 'alerts_seen_keys'])
       .where('id', '=', user.id)
       .executeTakeFirst();
     if (!row) throw new NotFoundException();
@@ -61,6 +73,8 @@ export class UsersService {
       displayName: row.display_name,
       locale: row.locale,
       isAdmin: user.appRoles.includes(APP_ADMIN_ROLE),
+      alertsSeenAt: row.alerts_seen_at.toISOString(),
+      alertsSeenKeys: row.alerts_seen_keys,
     };
   }
 }

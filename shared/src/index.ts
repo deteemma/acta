@@ -1,5 +1,6 @@
 export * from './actions.js';
 export * from './admin.js';
+export * from './alerts.js';
 export * from './babok.js';
 export * from './dashboard.js';
 export * from './i18n.js';
