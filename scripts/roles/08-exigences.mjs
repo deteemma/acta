@@ -230,7 +230,7 @@ await check('bruno ne change ni la référence, ni l’auteur, ni l’initiative
 await check('sous-type incohérent, statut inconnu, énoncé vide, boucle : refusés par la base', async () => {
   await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET type = 'solution' WHERE id = $1`, [rootId]), /check constraint/);
   await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET subtype = 'functional' WHERE id = $1`, [rootId]), /check constraint/);
-  await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET status = 'piraté' WHERE id = $1`, [rootId]), /check constraint/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET status = 'piraté' WHERE id = $1`, [rootId]), /requirement_status_fkey/);
   await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET statement = '' WHERE id = $1`, [rootId]), /check constraint/);
   await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET parent_id = $2 WHERE id = $1`, [rootId, childId]), /descend/);
   await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET parent_id = id WHERE id = $1`, [rootId]), /descend/);

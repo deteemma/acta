@@ -1,6 +1,7 @@
 import type {
   AccountDto,
   ActionDto,
+  AdminRequirementStatusDto,
   CreateActionInput,
   UpdateActionInput,
   AddMemberInput,
@@ -15,11 +16,14 @@ import type {
   OwnerDesignationDto,
   CreateNeedInput,
   CreateRequirementInput,
+  CreateRequirementStatusInput,
   CreateStakeholderInput,
   NeedDto,
   RequirementDto,
+  RequirementStatusDto,
   RequirementVersionDto,
   UpdateRequirementInput,
+  UpdateRequirementStatusInput,
   ReferenceCategory,
   ReferenceCategoryDto,
   ReferenceDto,
@@ -139,7 +143,20 @@ export const api = {
     }),
   deleteRequirement: (id: string, requirementId: string) =>
     request<void>(`/initiatives/${id}/requirements/${requirementId}`, { method: 'DELETE' }),
-  // Administration (rôle administrateur, tickets 05 et 09).
+  requirementStatuses: () => request<RequirementStatusDto[]>('/requirement-statuses'),
+  // Administration (rôle administrateur, tickets 05, 09 et 11).
+  listRequirementStatuses: () => request<AdminRequirementStatusDto[]>('/admin/requirement-statuses'),
+  addRequirementStatus: (input: CreateRequirementStatusInput) =>
+    request<AdminRequirementStatusDto[]>('/admin/requirement-statuses', { method: 'POST', body: JSON.stringify(input) }),
+  updateRequirementStatus: (code: string, input: UpdateRequirementStatusInput) =>
+    request<AdminRequirementStatusDto[]>(`/admin/requirement-statuses/${encodeURIComponent(code)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  deleteRequirementStatus: (code: string) =>
+    request<AdminRequirementStatusDto[]>(`/admin/requirement-statuses/${encodeURIComponent(code)}`, {
+      method: 'DELETE',
+    }),
   listReferenceCategories: () => request<ReferenceCategoryDto[]>('/admin/reference-categories'),
   updateReferenceCategory: (category: ReferenceCategory, input: UpdateReferenceCategoryInput) =>
     request<ReferenceCategoryDto[]>(`/admin/reference-categories/${category}`, {

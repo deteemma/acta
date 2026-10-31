@@ -19,6 +19,7 @@ const SECTIONS = [
   '09-usage-des-techniques',
   '10-actions-suggerees',
   '11-alertes',
+  '12-statuts-d-exigence',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);
@@ -31,6 +32,7 @@ const { exInitiativeId, otherExInitiativeId } = run['08-exigences'];
 const { usageInitiativeId } = run['09-usage-des-techniques'];
 const { saInitiativeId } = run['10-actions-suggerees'];
 const { alInitiativeId } = run['11-alertes'];
+const { stInitiativeId } = run['12-statuts-d-exigence'];
 
 console.log('\nNettoyage');
 await check('alice (propriétaire) supprime l’initiative des actions, et ses actions : 204', async () => {
@@ -62,6 +64,9 @@ await check('alice supprime l’initiative des actions suggérées, archivée, a
 });
 await check('alice supprime l’initiative des alertes, et ses actions : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${alInitiativeId}`)).status, 204);
+});
+await check('alice supprime l’initiative des statuts d’exigence, avec son exigence : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${stInitiativeId}`)).status, 204);
 });
 // Quoi qu'il soit arrivé plus haut, les comptes de test restent actifs.
 for (const u of [alice, chloe]) await call(admin, 'PATCH', account(u), { enabled: true });

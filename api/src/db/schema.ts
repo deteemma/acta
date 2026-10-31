@@ -136,6 +136,16 @@ export interface ReferenceAcronymTable {
   category: ReferenceCategory;
 }
 
+/** Statut d'exigence (migration 0017) : écrit seulement par les fonctions admin_*. */
+export interface RequirementStatusTable {
+  code: RequirementStatus;
+  babok: boolean;
+  label_fr: string | null;
+  label_en: string | null;
+  active: boolean;
+  created_at: Date | null;
+}
+
 /** Besoin (migration 0012) : référence, auteurs et dates écrits par un déclencheur. */
 export interface NeedTable {
   id: string;
@@ -255,6 +265,7 @@ export interface Database {
   reference_category: ReferenceCategoryTable;
   requirement: RequirementTable;
   requirement_need: RequirementNeedTable;
+  requirement_status: RequirementStatusTable;
   requirement_stakeholder: RequirementStakeholderTable;
   requirement_version: RequirementVersionTable;
   stakeholder: StakeholderTable;

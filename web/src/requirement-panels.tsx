@@ -1,6 +1,6 @@
 // Exigences (ticket 10) : liste d'une initiative, fiche d'une exigence dans un
 // panneau latéral, avec son historique. Règles dans @app/shared
-// (requirements.ts, references.ts, roles.ts).
+// (requirements.ts, requirement-statuses.ts, references.ts, roles.ts).
 import {
   type ActionDto,
   type BabokDto,
@@ -12,18 +12,19 @@ import {
   INITIAL_REQUIREMENT_STATUS,
   type NeedDto,
   REQUIREMENT_STATEMENT_MAX_LENGTH,
-  REQUIREMENT_STATUSES,
   REQUIREMENT_SUBTYPES,
   REQUIREMENT_TITLE_MAX_LENGTH,
   REQUIREMENT_TYPES,
   type RequirementChange,
   type RequirementDto,
   requirementHistory,
+  requirementStatusLabel,
   type RequirementRefDto,
   type RequirementStatus,
   type RequirementSubtype,
   type RequirementType,
   type RequirementVersionDto,
+  selectableStatuses,
   sortByDueDate,
   type StakeholderDto,
 } from '@app/shared';
@@ -34,6 +35,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-panels';
 import { Panel, usePanels } from './panels';
+import { StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
 import { formatDateTime, memberName } from './team-section';
@@ -64,11 +66,6 @@ function TypeLabel({ type, subtype }: { type: RequirementType; subtype: Requirem
       {subtype && ` (${t(`requirementSubtype.${subtype}`)})`}
     </span>
   );
-}
-
-function StatusLabel({ status }: { status: RequirementStatus }) {
-  const { t, locale } = useI18n();
-  return <span title={englishTermTooltip(locale, `requirementStatus.${status}`)}>{t(`requirementStatus.${status}`)}</span>;
 }
 
 /** Exigences, dans l'ordre reçu (par référence), avec leur type et leur statut. */
@@ -301,7 +298,8 @@ function RequirementForm({
   requirements: RequirementDto[];
   onSaved: (requirement: RequirementDto) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const statuses = useRequirementStatuses({ fresh: true });
   const [title, setTitle] = useState(requirement?.title ?? '');
   const [type, setType] = useState<RequirementType>(requirement?.type ?? 'business');
   const [subtype, setSubtype] = useState<RequirementSubtype>(requirement?.subtype ?? 'functional');
@@ -391,14 +389,15 @@ function RequirementForm({
           </select>
         </label>
       )}
-      {/* À la création, le statut est Proposée. */}
+      {/* À la création, le statut est Proposée. Un statut désactivé n'est plus
+          proposé, sauf celui que l'exigence porte. */}
       {requirement && (
         <label>
           {t('requirement.status')}
           <select value={status} onChange={(e) => setStatus(e.target.value as RequirementStatus)}>
-            {REQUIREMENT_STATUSES.map((v) => (
-              <option key={v} value={v}>
-                {t(`requirementStatus.${v}`)}
+            {selectableStatuses(statuses, requirement.status).map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.labels[locale]}
               </option>
             ))}
           </select>
@@ -498,7 +497,8 @@ const FIELD_LABELS = {
 } as const satisfies Record<RequirementChange['field'], Parameters<ReturnType<typeof useI18n>['t']>[0]>;
 
 function ChangeLine({ change }: { change: RequirementChange }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const statuses = useRequirementStatuses();
   const empty = <em>{t('requirement.historyEmpty')}</em>;
   const label = t(FIELD_LABELS[change.field]);
   // L'énoncé, souvent long, s'affiche en entier à la demande.
@@ -531,7 +531,7 @@ function ChangeLine({ change }: { change: RequirementChange }) {
           change.to ? t(`requirementSubtype.${change.to}`) : empty,
         ];
       case 'status':
-        return [t(`requirementStatus.${change.from}`), t(`requirementStatus.${change.to}`)];
+        return [requirementStatusLabel(statuses, change.from, locale), requirementStatusLabel(statuses, change.to, locale)];
       case 'stakeholders':
         return [
           change.from.length ? change.from.map((s) => s.name).join(', ') : empty,

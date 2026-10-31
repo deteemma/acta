@@ -7,7 +7,7 @@ import type { BabokDto } from './babok.js';
 import { type Locale, type MessageKey, translate } from './i18n.js';
 import type { AnalysisApproach } from './schemas.js';
 import type { StakeholderLevel, StakeholderRole } from './stakeholders.js';
-import type { RequirementStatus } from './requirements.js';
+import type { RequirementStatus } from './requirement-statuses.js';
 import { requirementStatusTask } from './suggestions.js';
 
 /** G1 : nombre de suggestions affichées avant « voir tout ». */
