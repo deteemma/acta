@@ -4,7 +4,7 @@
 
 **Blocked by:** 10 — Exigences
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 31.10.2026)
 
 - [x] Tout membre de l'initiative peut exporter ses exigences au format Excel.
 - [x] Le fichier contient une ligne par exigence avec ses champs : référence, titre, énoncé, type, sous-type, statut, sources, besoins liés, exigence parente.
@@ -22,7 +22,7 @@ Réalisation :
 - Web : bouton « Exporter (Excel) » dans l'en-tête de la section « Exigences » de la fiche Initiative, pour tout membre ; les exigences et les statuts sont relus au clic, le fichier est enregistré par le navigateur.
 - Aucune route ni table nouvelle : l'export lit `GET /api/initiatives/:id/requirements` (guard `view`), déjà couverte par `scripts/roles/08-exigences.mjs` pour chaque rôle et le non-membre.
 
-Points à valider (choix de présentation non demandés) :
+Points gardés tels que livrés, avec la validation du ticket (31.10.2026) :
 - Le bouton n'apparaît que si l'initiative a au moins une exigence.
 - Nom du fichier : `CRM-exigences-2026-10-31.xlsx` (`CRM-requirements-…` en anglais) ; feuille « Exigences » (« Requirements »).
 - En-têtes en gras et figés au défilement ; largeurs de colonnes fixes ; cellules alignées en haut, texte renvoyé à la ligne.
