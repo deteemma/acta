@@ -4,7 +4,7 @@
 
 **Blocked by:** 10 — Exigences
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 31.10.2026)
 
 - [x] L'administrateur ajoute un statut avec un libellé obligatoire en français et en anglais.
 - [x] Les 6 statuts du BABOK ne peuvent être ni supprimés ni renommés.
@@ -28,3 +28,7 @@ Réalisation :
 - API : `GET /api/requirement-statuses` (tout utilisateur connecté) ; `GET|POST /api/admin/requirement-statuses`, `PATCH|DELETE /api/admin/requirement-statuses/:code` (rôle administrateur) ; refus `inactiveStatus` et `unknownStatus` à la modification d'une exigence.
 - Web : section « Statuts d'exigence » dans l'administration (ajout, renommage, désactivation, réactivation, suppression) ; la fiche d'une exigence propose les statuts actifs et celui qu'elle porte ; libellés des statuts ajoutés dans la fiche, l'historique et l'aperçu des références.
 - Section `scripts/roles/12-statuts-d-exigence.mjs` : lecture par tous, administration réservée à l'administrateur, statuts du BABOK verrouillés, statut désactivé ou utilisé, sur les deux barrières. Les statuts portés par une exigence ne sont créés qu'en base, dans une transaction annulée, pour ne rien laisser dans la base de développement.
+
+Points gardés tels que livrés, avec la validation du ticket (31.10.2026) :
+- Pastilles « Actif / Désactivé · utilisé » et texte d'aide sous le titre de la section.
+- En base, l'unicité des libellés ne tient compte que des majuscules ; la règle complète (accents ignorés, BABOK compris) est appliquée par l'application.
