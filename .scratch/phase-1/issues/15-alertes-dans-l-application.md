@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 — Actions et « Mes actions »
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 31.10.2026)
 
 - [x] Un badge signale les nouvelles alertes ; la liste des alertes s'ouvre en panneau, et chaque alerte ouvre l'Action concernée.
 - [x] Une alerte est créée quand une Action m'est attribuée par un autre membre ; aucune alerte quand je me l'attribue moi-même.
@@ -29,6 +29,6 @@ Réalisation :
 - Section `scripts/roles/11-alertes.mjs` : attribution tracée par la base, lecture par rôle, alertes vues propres à chacun, initiative archivée.
 - Terme « Alerte » ajouté au glossaire `CONTEXT.md`.
 
-Points à valider par la responsable fonctionnelle :
-- Ajouts non demandés : la ligne sous chaque alerte (« Échéance dépassée : 29 octobre 2026 », « Attribuée par Bruno le 31 octobre 2026 ») ; l'ordre de la liste ; la relecture chaque minute.
+Points gardés tels que livrés, avec la validation du ticket (31.10.2026) :
+- Ajouts gardés : la ligne sous chaque alerte (« Échéance dépassée : 29 octobre 2026 », « Attribuée par Bruno le 31 octobre 2026 ») ; l'ordre de la liste ; la relecture chaque minute.
 - Une action à la fois attribuée par un autre et en retard donne deux alertes.
