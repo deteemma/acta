@@ -335,6 +335,11 @@ form.invite h4 {
   gap: 1rem;
   margin-top: 2rem;
 }
+.section-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 .action-filters {
   display: flex;
   flex-wrap: wrap;

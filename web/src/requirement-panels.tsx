@@ -10,6 +10,7 @@ import {
   englishTermTooltip,
   type InitiativeDto,
   INITIAL_REQUIREMENT_STATUS,
+  localDate,
   type NeedDto,
   REQUIREMENT_STATEMENT_MAX_LENGTH,
   REQUIREMENT_SUBTYPES,
@@ -18,6 +19,8 @@ import {
   type RequirementChange,
   type RequirementDto,
   requirementHistory,
+  requirementsFileName,
+  requirementsWorkbook,
   requirementStatusLabel,
   type RequirementRefDto,
   type RequirementStatus,
@@ -35,7 +38,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-panels';
 import { Panel, usePanels } from './panels';
-import { StatusLabel, useRequirementStatuses } from './requirement-statuses';
+import { setRequirementStatuses, StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
 import { formatDateTime, memberName } from './team-section';
@@ -86,6 +89,52 @@ export function RequirementList({ requirements }: { requirements: RequirementDto
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Export tableur (ticket 16), pour tout membre : les exigences et les statuts
+ * relus au clic, enregistrés dans un fichier Excel par le navigateur.
+ */
+export function ExportRequirementsButton({
+  initiative,
+  onError,
+}: {
+  initiative: InitiativeDto;
+  onError: (error: UiError) => void;
+}) {
+  const { t, locale } = useI18n();
+  const [busy, setBusy] = useState(false);
+
+  const exportRequirements = async () => {
+    setBusy(true);
+    try {
+      const [requirements, statuses] = await Promise.all([
+        api.listRequirements(initiative.id),
+        api.requirementStatuses(),
+      ]);
+      setRequirementStatuses(statuses);
+      const bytes = requirementsWorkbook(requirements, statuses, locale);
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = requirementsFileName(initiative.code, locale, localDate(new Date().toISOString()));
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      onError(toUiError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button type="button" disabled={busy} onClick={() => void exportRequirements()}>
+      {t('requirements.export')}
+    </button>
   );
 }
 

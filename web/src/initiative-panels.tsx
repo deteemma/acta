@@ -25,7 +25,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { canEditNeeds, NeedList } from './need-panels';
 import { Panel, usePanels } from './panels';
-import { canEditRequirements, RequirementList } from './requirement-panels';
+import { canEditRequirements, ExportRequirementsButton, RequirementList } from './requirement-panels';
 import { TextWithReferences } from './rich-text';
 import { memberName, TeamSection } from './team-section';
 
@@ -163,11 +163,14 @@ export function InitiativePanel({
           {needs.length === 0 && <p>{t('needs.sectionEmpty')}</p>}
           <div className="section-header">
             <h3 title={englishTermTooltip(locale, 'requirements.section')}>{t('requirements.section')}</h3>
-            {canEditRequirements(initiative) && (
-              <button type="button" onClick={() => open({ kind: 'requirement', initiativeId })}>
-                {t('requirements.new')}
-              </button>
-            )}
+            <div className="section-buttons">
+              {requirements.length > 0 && <ExportRequirementsButton initiative={initiative} onError={setError} />}
+              {canEditRequirements(initiative) && (
+                <button type="button" onClick={() => open({ kind: 'requirement', initiativeId })}>
+                  {t('requirements.new')}
+                </button>
+              )}
+            </div>
           </div>
           <RequirementList requirements={requirements} />
           {requirements.length === 0 && <p>{t('requirements.sectionEmpty')}</p>}
