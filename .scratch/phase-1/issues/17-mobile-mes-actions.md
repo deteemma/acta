@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 — Actions et « Mes actions »
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 31.10.2026)
 
 - [x] L'écran d'accueil mobile est « Mes actions », avec les mêmes filtres que sur le web.
 - [x] Une Action s'ouvre en plein écran, glissée depuis le bas.
@@ -21,7 +21,7 @@ Réalisation :
 - Shared : `toggleActionStatus` (filtre des statuts), `canCreateActionIn` (initiatives proposées à la création) et `memberName`, désormais utilisés aussi par le web ; avec tests.
 - Aucune route ni table nouvelle : routes et guards du ticket 07, déjà couverts par `scripts/roles/`.
 
-Points à valider (choix de présentation non demandés) :
+Points gardés tels que livrés, avec la validation du ticket (31.10.2026) :
 - La fiche d'une action est en consultation seulement sur le mobile : on ne peut pas encore y changer le statut, le responsable, l'échéance ni la description (à faire depuis le web). Faut-il permettre la modification sur le mobile ?
 - Pas de choix de technique à la création rapide (le ticket demande initiative, titre, tâche) ; elle s'ajoute depuis le web.
 - Tâche BABOK : les tâches proposées en tête, puis toutes les tâches groupées par domaine de connaissance, à toucher.
