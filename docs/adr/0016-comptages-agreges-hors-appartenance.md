@@ -1,7 +1,7 @@
 # ADR-0016 — Comptages agrégés sur toutes les initiatives, sans appartenance
 
-- **Statut** : proposé
-- **Date** : 2026-10-30
+- **Statut** : accepté
+- **Date** : 2026-10-31
 
 ## Contexte
 
@@ -35,6 +35,6 @@ Première application : `technique_usage_counts()` (migration 0014), servie par
   d'une technique ; avec très peu d'initiatives, un nombre peut laisser deviner
   l'activité d'une autre équipe.
 - Les initiatives archivées sont comptées (lecture littérale de « toute
-  l'application »), point à confirmer par la responsable fonctionnelle.
+  l'application »), confirmé par la responsable fonctionnelle.
 - Tout nouveau comptage hors appartenance doit respecter ces conditions ;
   au-delà (un détail, un filtre par initiative), il faut un nouvel ADR.
