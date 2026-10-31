@@ -4,7 +4,7 @@
 
 **Blocked by:** 12 — Tableau de bord de l'initiative ; 13 — Suggestions de technique et de tâche ; validation par la responsable fonctionnelle de la liste des règles
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 31.10.2026)
 
 - [x] La liste complète des règles est rédigée dans un document et validée par la responsable fonctionnelle avant tout développement : `.scratch/phase-1/14-regles-actions-suggerees.md` (validé le 30.10.2026).
 - [x] Seules les règles validées sont mises en œuvre ; chaque suggestion affiche sa justification et permet de créer l'Action en un clic.
@@ -24,7 +24,7 @@ Réalisation :
 - Section `scripts/roles/10-actions-suggerees.mjs` : lecture, écart et création par rôle, sur les deux barrières, initiative archivée.
 - Termes « Action suggérée » et « Écarter une suggestion » ajoutés au glossaire `CONTEXT.md`.
 
-Points à valider par la responsable fonctionnelle :
-- R15, date de fin prévue aujourd'hui : le texte validé donne « La date de fin prévue est dans 0 jour(s). » Garder, ou un autre texte ?
+Points gardés tels que livrés, avec la validation du ticket (31.10.2026) :
+- R15, date de fin prévue aujourd'hui : le texte validé donne « La date de fin prévue est dans 0 jour(s). »
 - R15 : la date du jour est celle du serveur ; à minuit, le décompte peut avoir un jour d'écart avec l'heure suisse si le serveur n'est pas réglé sur ce fuseau.
-- Ajouts non demandés, à garder ou retirer : le lien « Voir moins » après « Voir tout » ; le message « Aucune action suggérée. » quand l'encart est vide ; le refus d'une création depuis une suggestion qui n'est plus proposée (« Cette suggestion n'est plus proposée : l'encart a été actualisé. »).
+- Ajouts gardés : le lien « Voir moins » après « Voir tout » ; le message « Aucune action suggérée. » quand l'encart est vide ; le refus d'une création depuis une suggestion qui n'est plus proposée (« Cette suggestion n'est plus proposée : l'encart a été actualisé. »).
