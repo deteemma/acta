@@ -50,7 +50,17 @@ export function DashboardPanel({
   }, [initiativeId, actionsVersion]);
 
   return (
-    <Panel title={initiative ? t('dashboard.title', { code: initiative.code }) : t('common.loading')} onClose={onClose}>
+    <Panel
+      title={initiative ? initiative.name : t('common.loading')}
+      kicker={
+        initiative && (
+          <>
+            {t('dashboard.kicker')} <span className="code">{initiative.code}</span>
+          </>
+        )
+      }
+      onClose={onClose}
+    >
       <ErrorMessage error={error} />
       {initiative && (
         <SuggestedActions
@@ -59,36 +69,47 @@ export function DashboardPanel({
           onActionCreated={onActionCreated}
         />
       )}
+      {actions && <h3 className="group-title">{t('dashboard.coverageGroup')}</h3>}
       {actions &&
-        initiativeDashboard(babok, actions).map(({ knowledgeArea, tasks, coveredTaskCount }) => (
-          <section key={knowledgeArea.id} className="dashboard-area">
-            <h3>
-              <strong>{knowledgeArea.section}</strong> <BabokName element={knowledgeArea} />
-            </h3>
-            <p>
-              <small>{t('dashboard.coverage', { covered: coveredTaskCount, total: tasks.length })}</small>
-            </p>
-            {tasks.map(({ task, actions: ofTask, countByStatus, covered }) => (
-              <details key={task.id} className={`dashboard-task${covered ? '' : ' uncovered'}`}>
-                <summary>
-                  <span>
-                    <strong>{task.section}</strong> <BabokName element={task} />
-                  </span>
-                  <span className="action-meta">
-                    {covered ? (
-                      ACTION_STATUSES.filter((status) => countByStatus[status] > 0).map((status) => (
-                        <StatusLabel key={status} status={status} count={countByStatus[status]} />
-                      ))
-                    ) : (
-                      <span className="badge tone-negative">{t('dashboard.uncovered')}</span>
-                    )}
-                  </span>
-                </summary>
-                {ofTask.length > 0 ? <ActionList actions={ofTask} babok={babok} /> : <p>{t('dashboard.noActions')}</p>}
-              </details>
-            ))}
-          </section>
-        ))}
+        initiativeDashboard(babok, actions).map(({ knowledgeArea, tasks, coveredTaskCount }) => {
+          const coverage = t('dashboard.coverage', { covered: coveredTaskCount, total: tasks.length });
+          return (
+            <section key={knowledgeArea.id} className="dashboard-area">
+              <div className="dashboard-area-head">
+                <h4>
+                  <span className="code">{knowledgeArea.section}</span> <BabokName element={knowledgeArea} />
+                </h4>
+                <small>{coverage}</small>
+              </div>
+              {/* Barre de couverture (refonte du design, ticket 04) : part des tâches couvertes. */}
+              <div className="coverage-bar" role="img" aria-label={coverage}>
+                <span style={{ width: `${tasks.length ? (100 * coveredTaskCount) / tasks.length : 0}%` }} />
+              </div>
+              <div className="dashboard-tasks">
+                {tasks.map(({ task, actions: ofTask, countByStatus, covered }) => (
+                  <details key={task.id} className="dashboard-task">
+                    <summary>
+                      <span className="code">{task.section}</span>
+                      <span className="dashboard-task-name">
+                        <BabokName element={task} />
+                      </span>
+                      <span className="action-meta">
+                        {covered ? (
+                          ACTION_STATUSES.filter((status) => countByStatus[status] > 0).map((status) => (
+                            <StatusLabel key={status} status={status} count={countByStatus[status]} />
+                          ))
+                        ) : (
+                          <span className="badge tone-negative">{t('dashboard.uncovered')}</span>
+                        )}
+                      </span>
+                    </summary>
+                    {ofTask.length > 0 ? <ActionList actions={ofTask} babok={babok} /> : <p>{t('dashboard.noActions')}</p>}
+                  </details>
+                ))}
+              </div>
+            </section>
+          );
+        })}
     </Panel>
   );
 }
