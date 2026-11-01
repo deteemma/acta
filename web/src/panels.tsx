@@ -171,7 +171,11 @@ export function Panel({
     // `autoFocus` de React n'agit pas sur un <dialog> encore fermé.
     dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus();
     // Fermeture par le navigateur (Échap) : on retire le panneau de la pile.
-    const handleClose = () => onCloseRef.current();
+    // L'événement arrive en différé : celui d'une fermeture suivie d'une
+    // réouverture (double montage de React en développement) est ignoré.
+    const handleClose = () => {
+      if (!dialog.open) onCloseRef.current();
+    };
     dialog.addEventListener('close', handleClose);
     return () => {
       dialog.removeEventListener('close', handleClose);
