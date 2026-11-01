@@ -84,7 +84,9 @@ export function TeamSection({
 
   return (
     <section className="team">
-      <h3>{t('initiative.members')}</h3>
+      <h4>
+        {t('initiative.members')} <span className="count">{members.length}</span>
+      </h4>
       <ErrorMessage error={error} />
       {confirmingRemoval && (
         <div role="alertdialog" aria-labelledby="removal-confirm" className="confirm">

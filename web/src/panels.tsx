@@ -129,6 +129,8 @@ const WIDE_SCREEN = '(min-width: 80rem)';
 export function Panel({
   title,
   titleTooltip,
+  kicker,
+  badges,
   variant = 'side',
   showFab = true,
   onClose,
@@ -137,6 +139,10 @@ export function Panel({
   title: string;
   /** Info-bulle du titre (ex. nom anglais d'un élément du BABOK). */
   titleTooltip?: string;
+  /** Au-dessus du titre : nature et code de l'objet (refonte du design, ticket 04). */
+  kicker?: ReactNode;
+  /** Sous le titre : badges (rôle, statut…). */
+  badges?: ReactNode;
   variant?: 'side' | 'palette';
   /** Faux pour le panneau que le bouton flottant ouvre lui-même. */
   showFab?: boolean;
@@ -220,9 +226,13 @@ export function Panel({
         onPointerCancel={endDrag}
       >
         <span className="panel-handle" aria-hidden="true" />
-        <h2 id={titleId} title={titleTooltip}>
-          {title}
-        </h2>
+        <div className="panel-title">
+          {kicker && <div className="panel-kicker">{kicker}</div>}
+          <h2 id={titleId} title={titleTooltip}>
+            {title}
+          </h2>
+          {badges && <div className="panel-badges">{badges}</div>}
+        </div>
         <button type="button" className="panel-close" aria-label={t('panel.close')} onClick={onClose}>
           ×
         </button>

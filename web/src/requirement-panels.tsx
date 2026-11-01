@@ -131,7 +131,7 @@ export function ExportRequirementsButton({
   };
 
   return (
-    <button type="button" disabled={busy} onClick={() => void exportRequirements()}>
+    <button type="button" className="ghost" disabled={busy} onClick={() => void exportRequirements()}>
       {t('requirements.export')}
     </button>
   );
