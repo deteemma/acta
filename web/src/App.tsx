@@ -20,6 +20,7 @@ import { IS_MAC, Palette, usePaletteShortcut } from './palette';
 import { FabContext, PanelHost, type PanelContent, PanelsProvider, usePanels } from './panels';
 import { ReferencesProvider } from './references';
 import { RequirementPanel } from './requirement-panels';
+import { ResizeHandle, SIDEBAR } from './resize';
 
 export function App({ user }: { user: User | null }) {
   return (
@@ -157,6 +158,7 @@ function Shell({ user }: { user: User }) {
           {/* Barre latérale (refonte du design, ticket 03) : repliable, le choix est retenu sur ce navigateur. */}
           {!navHidden && (
             <nav id="sidebar" className="sidebar" aria-label={t('shell.navigation')}>
+              <ResizeHandle area={SIDEBAR} label={t('shell.resizeNav')} className="sidebar-resize" />
               <span className="logotype">{t('app.title')}</span>
               <span className="nav-item" aria-current="page">
                 <ListChecks />

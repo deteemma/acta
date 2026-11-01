@@ -116,13 +116,23 @@ export function NeedPanel({
 
   return (
     <Panel
-      title={need ? `${need.reference} · ${need.title}` : needId ? t('common.loading') : t('needs.new')}
+      title={need ? need.title : needId ? t('common.loading') : t('needs.new')}
+      kicker={
+        need && (
+          <>
+            {t('need.kicker')} <span className="code">{need.reference}</span>
+          </>
+        )
+      }
+      badges={need && <span className="badge">{t(`needNature.${need.nature}`)}</span>}
       onClose={onClose}
     >
       <ErrorMessage error={error} />
       {ready && (
         <>
           {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
+          {/* Groupes Fiche et Analyse (refonte du design, validé le 01.11.2026). */}
+          <h3 className="group-title">{t('initiative.groupSheet')}</h3>
           {canEditNeeds(initiative) ? (
             <NeedForm
               initiativeId={initiativeId}
@@ -139,13 +149,18 @@ export function NeedPanel({
           )}
           {need && (
             <>
+              <h3 className="group-title">{t('initiative.groupAnalysis')}</h3>
               <div className="section-header">
-                <h3>{t('need.actions')}</h3>
+                <h4>
+                  {t('need.actions')} <span className="count">{linkedActions.length}</span>
+                </h4>
                 <NewActionButton initiative={initiative} from={{ kind: 'need', id: need.id }} />
               </div>
               <ActionList actions={linkedActions} babok={babok} />
               {linkedActions.length === 0 && <p>{t('need.noActions')}</p>}
-              <h3>{t('need.requirements')}</h3>
+              <h4 className="section-title">
+                {t('need.requirements')} <span className="count">{linkedRequirements.length}</span>
+              </h4>
               <RequirementList requirements={linkedRequirements} />
               {linkedRequirements.length === 0 && <p>{t('need.noRequirements')}</p>}
               <AuditTrail need={need} />
@@ -245,21 +260,24 @@ function NeedForm({
 
   return (
     <form className="stacked" onSubmit={(e) => void save(e)} onChange={() => setSaved(false)}>
-      {need && (
+      {/* Référence et titre sur une ligne (ticket 04, lot 1). */}
+      <div className="field-row reference-title">
+        {need && (
+          <label>
+            {t('need.reference')}
+            <input value={need.reference} readOnly aria-readonly="true" />
+          </label>
+        )}
         <label>
-          {t('need.reference')}
-          <input value={need.reference} readOnly aria-readonly="true" />
+          {t('need.title')}
+          <input
+            data-autofocus={need ? undefined : true}
+            value={title}
+            maxLength={NEED_TITLE_MAX_LENGTH}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </label>
-      )}
-      <label>
-        {t('need.title')}
-        <input
-          data-autofocus={need ? undefined : true}
-          value={title}
-          maxLength={NEED_TITLE_MAX_LENGTH}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </label>
+      </div>
       <label>
         {t('need.nature')}
         <select value={nature} onChange={(e) => setNature(e.target.value as NeedNature)}>

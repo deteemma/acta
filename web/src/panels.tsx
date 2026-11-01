@@ -18,6 +18,7 @@ import {
 } from 'react';
 import type { AnalysisObjectRef, InitiativeMemberDto } from '@app/shared';
 import { useI18n } from './i18n';
+import { DOCKED_PANEL, ResizeHandle } from './resize';
 
 /** Ce qu'un panneau peut afficher. */
 export type PanelContent =
@@ -223,6 +224,8 @@ export function Panel({
       aria-labelledby={titleId}
       onKeyDown={closeOnEscape}
     >
+      {/* Panneau ancré : largeur réglable (validé le 01.11.2026). */}
+      {docked && <ResizeHandle area={DOCKED_PANEL} label={t('panel.resize')} className="panel-resize" />}
       <header
         className="panel-header"
         onPointerDown={startDrag}

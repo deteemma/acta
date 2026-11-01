@@ -247,7 +247,7 @@ button.ghost {
 .sidebar {
   position: sticky;
   top: 0;
-  flex: 0 0 15rem;
+  flex: 0 0 var(--sidebar-current-width);
   box-sizing: border-box;
   height: 100dvh;
   overflow-y: auto;
@@ -406,6 +406,11 @@ button.ghost {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* Plus précis que .panel-side, écrit plus bas. */
+.panel-side.panel-docked {
+  width: var(--docked-current-width);
+  max-width: none;
+}
 /* L'en-tête (titre, fermeture) reste visible au défilement. */
 .panel-side .panel-header {
   position: sticky;
@@ -414,7 +419,56 @@ button.ghost {
   background: var(--surface);
 }
 body:has(.panel-docked[open]) .shell-main {
-  margin-inline-end: var(--panel-width);
+  margin-inline-end: var(--docked-current-width);
+}
+/*
+ * Largeurs réglables (resize.tsx) : la poignée règle --sidebar-width et
+ * --docked-panel-width ; les bornes valent aussi si la fenêtre change de taille.
+ */
+:root {
+  --sidebar-current-width: clamp(12rem, var(--sidebar-width, 15rem), 24rem);
+  --docked-current-width: clamp(24rem, var(--docked-panel-width, 32rem), 60vw);
+}
+.resize-handle {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 0.5rem;
+  cursor: col-resize;
+  touch-action: none;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  background: transparent;
+}
+.resize-handle:hover::after,
+.resize-handle:focus-visible::after,
+body.resizing .resize-handle::after {
+  background: var(--accent);
+}
+.resize-handle:focus-visible {
+  outline: none;
+}
+.sidebar-resize {
+  left: calc(var(--sidebar-current-width) - 0.25rem);
+}
+.panel-resize {
+  right: calc(var(--docked-current-width) - 0.25rem);
+}
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+@media (max-width: 48rem) {
+  .sidebar-resize {
+    display: none;
+  }
 }
 body:has(.panel-docked[open]) .shell > .fab {
   display: none;
@@ -1135,10 +1189,22 @@ details.dashboard-task .dense-list {
   color: var(--text);
   font-weight: 600;
 }
-.stakeholder-list li {
-  display: flex;
-  flex-wrap: wrap;
+/* Ligne d'une partie prenante : nom et rôles à gauche, nature et niveaux à droite (ticket 04, lot 1). */
+.stakeholder-list li.stakeholder-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-1) var(--space-3);
+}
+.stakeholder-levels {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+.stakeholder-roles {
+  grid-column: 1;
 }
 .stakeholder-matrix {
   width: 100%;
@@ -1160,6 +1226,35 @@ details.dashboard-task .dense-list {
 }
 .stakeholder-matrix .links {
   margin: 0;
+}
+/* Matrice : grille neutre, noms en pastilles cliquables. */
+.stakeholder-matrix td {
+  height: 5rem;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+.stakeholder-matrix th {
+  color: var(--muted);
+  font-weight: 600;
+}
+.matrix-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.matrix-names li {
+  padding: 0;
+}
+.matrix-names button.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.625rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: var(--text-small);
 }
 /* Exigences (ticket 10) */
 .reference-mention {
@@ -1183,12 +1278,80 @@ details.dashboard-task .dense-list {
   box-shadow: var(--shadow-popover);
   font-weight: normal;
 }
-.requirement-history ol {
-  padding-inline-start: var(--space-6);
+/* Historique d'une exigence : frise, tableau Avant / Après (ticket 04, lot 1). */
+.section-title {
+  margin: var(--space-6) 0 var(--space-2);
+  font-size: var(--text-section-title);
+  font-weight: 600;
 }
-.requirement-history ul {
-  margin: var(--space-1) 0 var(--space-2);
-  padding-inline-start: var(--space-4);
+.group-title + .section-title {
+  margin-top: 0;
+}
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  border-inline-start: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.timeline > li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.timeline > li::before {
+  content: '';
+  position: absolute;
+  top: 0.3rem;
+  left: calc(-1 * var(--space-4) - 7px);
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface);
+}
+.timeline-when {
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+.change-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  font-size: var(--text-small);
+}
+.change-table :is(th, td) {
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.change-table thead th {
+  border-top: none;
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.change-table tbody th {
+  width: 7rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+.change-before {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.change-statement {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }
 /* Suggestions à la création d'une action (ticket 13) */
 .suggestions ul {
@@ -1353,4 +1516,22 @@ main.signed-out {
   .signed-out-art {
     display: none;
   }
+}
+/* Champs côte à côte dans une fiche (ticket 04, lot 1) : passent à la ligne si le panneau est étroit. */
+form.stacked .field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+form.stacked .field-row > label {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+form.stacked .reference-title > label:last-child {
+  flex: 3 1 14rem;
+}
+form.stacked input[readonly] {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  background: var(--bg);
 }
