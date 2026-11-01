@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Composants de base
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 01.11.2026 ; les deux points ci-dessous n'ont pas pu être testés)
 
 - [x] Maquette de la coque dans Claude Design, validée.
 - [x] Barre latérale repliable : Mes actions, initiatives (actives, archivées), administration pour l'administrateur.
