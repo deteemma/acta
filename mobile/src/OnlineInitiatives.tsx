@@ -1,13 +1,16 @@
 import type { InitiativeDto } from '@app/shared';
+import { Folder } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { FlatList, Text } from 'react-native';
+import { FlatList } from 'react-native';
 import type { Api } from './api';
 import { describeError, useI18n } from './i18n';
-import { InitiativeForm, styles } from './InitiativeForm';
+import { InitiativeForm, InitiativeRow } from './InitiativeForm';
+import { EmptyState, Text, useUiStyles } from './ui';
 
 /** Mode connecté : lectures et écritures directement via l'API. */
 export function OnlineInitiatives({ api }: { api: Api }) {
   const { t } = useI18n();
+  const ui = useUiStyles();
   const [initiatives, setInitiatives] = useState<InitiativeDto[]>([]);
   const [error, setError] = useState<unknown>(null);
 
@@ -23,16 +26,19 @@ export function OnlineInitiatives({ api }: { api: Api }) {
   return (
     <>
       <InitiativeForm onCreate={create} />
-      {error != null && <Text style={styles.error}>{describeError(t, error)}</Text>}
+      {error != null && <Text style={ui.error}>{describeError(t, error)}</Text>}
       <FlatList
         data={initiatives}
         keyExtractor={(p) => p.id}
-        renderItem={({ item }) => (
-          <Text style={styles.item}>
-            {item.code} {item.name} <Text style={styles.role}>{t(`role.${item.myRole}`)}</Text>
-          </Text>
+        renderItem={({ item, index }) => (
+          <InitiativeRow
+            initiative={item}
+            role={t(`role.${item.myRole}`)}
+            first={index === 0}
+            last={index === initiatives.length - 1}
+          />
         )}
-        ListEmptyComponent={<Text>{t('initiatives.empty')}</Text>}
+        ListEmptyComponent={<EmptyState icon={Folder} title={t('initiatives.empty')} hint={t('empty.initiativesHint')} />}
       />
     </>
   );

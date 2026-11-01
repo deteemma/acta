@@ -1,8 +1,17 @@
-// Éléments d'interface communs aux écrans des actions.
-import { type BabokElementDto, babokEnglishName, type Locale } from '@app/shared';
+// Éléments d'interface communs aux écrans des actions. Couleurs, police et
+// espacements du thème (refonte du design, ticket 06).
+import { type BabokElementDto, babokEnglishName, type Locale, type StatusTone } from '@app/shared';
+import { type LucideIcon, X } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, Text as RNText, SafeAreaView, ScrollView, StyleSheet, type TextProps, View } from 'react-native';
 import { useI18n } from './i18n';
+import { useStyles, useTheme } from './theme';
+
+/** Texte dans la police et la couleur du thème ; à utiliser à la place de celui de React Native. */
+export function Text({ style, ...props }: TextProps) {
+  const ui = useUiStyles();
+  return <RNText {...props} style={[ui.text, style]} />;
+}
 
 /**
  * Écran plein écran glissé depuis le bas ; le bouton retour d'Android le ferme.
@@ -10,27 +19,49 @@ import { useI18n } from './i18n';
  * pendant qu'une autre se ferme (création rapide, puis fiche de l'action).
  */
 export function SheetModal({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: ReactNode }) {
+  const ui = useUiStyles();
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
-      <SafeAreaView style={styles.sheet}>{children}</SafeAreaView>
+      <SafeAreaView style={ui.sheet}>{children}</SafeAreaView>
     </Modal>
   );
 }
 
-/** Contenu d'un écran de SheetModal : titre, bouton Fermer, corps défilant. */
-export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+/**
+ * Contenu d'un écran de SheetModal : sur-titre (nature, code), titre, badges,
+ * bouton Fermer, corps défilant.
+ */
+export function Sheet({
+  kicker,
+  title,
+  badges,
+  onClose,
+  children,
+}: {
+  kicker?: ReactNode;
+  title: string;
+  badges?: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   const { t } = useI18n();
+  const ui = useUiStyles();
+  const theme = useTheme();
   return (
     <>
-      <View style={styles.sheetHeader}>
-        <Text style={styles.sheetTitle} accessibilityRole="header">
-          {title}
-        </Text>
-        <Pressable onPress={onClose} accessibilityRole="button" hitSlop={12}>
-          <Text style={styles.close}>{t('panel.close')}</Text>
+      <View style={ui.sheetHeader}>
+        <View style={ui.sheetHeading}>
+          {kicker && <Text style={ui.kicker}>{kicker}</Text>}
+          <Text style={ui.sheetTitle} accessibilityRole="header">
+            {title}
+          </Text>
+          {badges && <View style={ui.chips}>{badges}</View>}
+        </View>
+        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={t('panel.close')} style={ui.iconButton}>
+          <X color={theme.colors.text} size={24} strokeWidth={1.75} />
         </Pressable>
       </View>
-      <ScrollView contentContainerStyle={styles.sheetBody} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={ui.sheetBody} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>
     </>
@@ -39,15 +70,45 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
 
 /** Choix à cocher (filtre, initiative, tâche). */
 export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const ui = useUiStyles();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      style={[styles.chip, selected && styles.chipSelected]}
+      style={[ui.chip, selected && ui.chipSelected]}
     >
-      <Text style={selected ? styles.chipTextSelected : undefined}>{label}</Text>
+      <Text style={selected ? ui.chipTextSelected : ui.chipText}>{label}</Text>
     </Pressable>
+  );
+}
+
+/** Badge d'un statut, coloré selon sa famille (@app/shared). */
+export function StatusBadge({ tone, label }: { tone: StatusTone; label: string }) {
+  const ui = useUiStyles();
+  const colors = useTheme().tone(tone);
+  return (
+    <View
+      style={[ui.badge, { backgroundColor: colors.background }, colors.border ? { borderWidth: 1, borderColor: colors.border } : null]}
+    >
+      <View style={[ui.badgeDot, { backgroundColor: colors.color }]} />
+      <Text style={[ui.badgeText, { color: colors.color }]}>{label}</Text>
+    </View>
+  );
+}
+
+/** Liste vide : l'icône du sujet, le texte actuel et l'aide (refonte du design, ticket 05). */
+export function EmptyState({ icon: Icon, title, hint }: { icon: LucideIcon; title: string; hint: string }) {
+  const ui = useUiStyles();
+  const theme = useTheme();
+  return (
+    <View style={ui.empty}>
+      <View style={ui.emptyIcon}>
+        <Icon color={theme.colors.accent} size={32} strokeWidth={1.5} />
+      </View>
+      <Text style={ui.emptyTitle}>{title}</Text>
+      <Text style={ui.muted}>{hint}</Text>
+    </View>
   );
 }
 
@@ -71,24 +132,110 @@ export function formatDate(locale: Locale, date: string): string {
   );
 }
 
-export const styles = StyleSheet.create({
-  sheet: { flex: 1 },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  sheetTitle: { flex: 1, fontSize: 18, fontWeight: '600' },
-  close: { color: '#1565c0', fontSize: 16 },
-  sheetBody: { padding: 16, gap: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderColor: '#999', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
-  chipSelected: { backgroundColor: '#1565c0', borderColor: '#1565c0' },
-  chipTextSelected: { color: '#fff' },
-  label: { fontWeight: '600', marginTop: 4 },
-  muted: { opacity: 0.6 },
-  error: { color: '#c62828', marginVertical: 8 },
-});
+/** Styles communs, dans le thème du téléphone. */
+export function useUiStyles() {
+  return useStyles(({ colors, space, radius, text, fonts }) =>
+    StyleSheet.create({
+    text: { color: colors.text, fontFamily: fonts.regular, fontSize: text.body },
+    sheet: { flex: 1, backgroundColor: colors.bg },
+    sheetHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: space[2],
+      paddingVertical: space[3],
+      paddingLeft: space[4],
+      paddingRight: space[2],
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    sheetHeading: { flex: 1, gap: space[1] },
+    kicker: { color: colors.muted, fontSize: text.small },
+    sheetTitle: { fontFamily: fonts.semibold, fontSize: text.panelTitle },
+    iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
+    sheetBody: { padding: space[4], gap: space[3] },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
+    chip: {
+      minHeight: 36,
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      paddingHorizontal: space[3],
+      backgroundColor: colors.surface,
+    },
+    chipSelected: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+    chipText: { fontSize: text.body },
+    chipTextSelected: { fontSize: text.body, fontFamily: fonts.semibold, color: colors.accentStrong },
+    label: {
+      fontFamily: fonts.semibold,
+      fontSize: text.label,
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+      color: colors.muted,
+      marginTop: space[1],
+    },
+    muted: { color: colors.muted, fontSize: text.small },
+    code: { fontFamily: fonts.mono, fontSize: text.code, color: colors.muted },
+    error: { color: colors.danger, marginVertical: space[2] },
+    card: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      padding: space[3],
+      gap: space[3],
+    },
+    input: {
+      minHeight: 48,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      paddingHorizontal: space[3],
+      backgroundColor: colors.surface,
+      color: colors.text,
+      fontFamily: fonts.regular,
+      fontSize: text.body,
+    },
+    primary: {
+      minHeight: 52,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.lg,
+      backgroundColor: colors.accent,
+    },
+    primaryDisabled: { opacity: 0.5 },
+    primaryText: { color: colors.onAccent, fontFamily: fonts.semibold, fontSize: text.sectionTitle },
+    badge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      height: 24,
+      paddingHorizontal: space[2],
+      borderRadius: radius.md,
+    },
+    badgeDot: { width: 6, height: 6, borderRadius: 3 },
+    badgeText: { fontFamily: fonts.semibold, fontSize: text.badge },
+    empty: {
+      alignItems: 'center',
+      gap: space[2],
+      paddingVertical: space[8],
+      paddingHorizontal: space[4],
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+    },
+    emptyIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.accentSoft,
+    },
+    emptyTitle: { fontFamily: fonts.semibold, textAlign: 'center' },
+    }),
+  );
+}

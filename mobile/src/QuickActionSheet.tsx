@@ -13,10 +13,11 @@ import {
   tasksOfKnowledgeArea,
 } from '@app/shared';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { type Api, ApiError } from './api';
 import { describeError, useI18n } from './i18n';
-import { babokLabel, Chip, Sheet, styles as ui } from './ui';
+import { type AppTheme, useStyles, useTheme } from './theme';
+import { babokLabel, Chip, Sheet, Text, useUiStyles } from './ui';
 
 export function QuickActionSheet({
   api,
@@ -32,6 +33,9 @@ export function QuickActionSheet({
   onClose: () => void;
 }) {
   const { t, locale } = useI18n();
+  const ui = useUiStyles();
+  const styles = useStyles(makeStyles);
+  const theme = useTheme();
   const editable = initiatives.filter(canCreateActionIn);
   // Initiative choisie ; à défaut, la première proposée (la liste peut arriver après l'ouverture).
   const [initiativeChoice, setChosenInitiative] = useState<string | null>(null);
@@ -91,7 +95,8 @@ export function QuickActionSheet({
           </View>
           <Text style={ui.label}>{t('action.title')}</Text>
           <TextInput
-            style={styles.input}
+            style={ui.input}
+            placeholderTextColor={theme.colors.muted}
             value={title}
             onChangeText={setTitle}
             maxLength={ACTION_TITLE_MAX_LENGTH}
@@ -143,7 +148,14 @@ export function QuickActionSheet({
           {failure != null && (
             <Text style={ui.error}>{isInvalid(failure) ? t('action.invalid') : describeError(t, failure)}</Text>
           )}
-          <Button title={t('action.create')} disabled={saving} onPress={() => void create()} />
+          <Pressable
+            style={[ui.primary, saving && ui.primaryDisabled]}
+            disabled={saving}
+            onPress={() => void create()}
+            accessibilityRole="button"
+          >
+            <Text style={ui.primaryText}>{t('action.create')}</Text>
+          </Pressable>
         </>
       )}
     </Sheet>
@@ -152,8 +164,8 @@ export function QuickActionSheet({
 
 const isInvalid = (failure: unknown) => (failure as { invalid?: boolean }).invalid === true;
 
-const styles = StyleSheet.create({
-  input: { borderWidth: 1, borderColor: '#999', borderRadius: 4, padding: 8 },
-  suggestion: { gap: 4 },
-  area: { gap: 4 },
-});
+const makeStyles = ({ space }: AppTheme) =>
+  StyleSheet.create({
+    suggestion: { gap: space[1] },
+    area: { gap: space[1] },
+  });
