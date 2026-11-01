@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Fondations visuelles
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 01.11.2026, sans test approfondi dans l'application)
 
 - [x] Maquette des composants et de leurs états dans le système de design ACTA (Claude Design), validée.
 - [x] Boutons : principal, secondaire, discret, danger ; états survol, focus, désactivé, en cours.
