@@ -4,16 +4,16 @@
 
 **Blocked by:** 03 — Coque de navigation
 
-**Status:** en cours — trois écrans validés le 01.11.2026 ; lot 1 (parties prenantes, besoins, exigences) codé, à valider ; lot 2 (référentiel, alertes, administration) à maquetter
+**Status:** en cours — trois écrans validés le 01.11.2026 ; lot 1 (parties prenantes, besoins, exigences) validé le 01.11.2026 ; lot 2 (référentiel, alertes, administration) à maquetter
 
 Un passage par écran, chacun maquetté dans Claude Design puis validé (les six derniers en deux lots, validé le 01.11.2026) :
 
 - [x] Mes actions (validé)
 - [x] Fiche initiative et équipe (validé)
 - [x] Tableau de bord et actions suggérées (validé)
-- [x] Parties prenantes (liste et matrice) — lot 1, à valider
-- [x] Besoins — lot 1, à valider
-- [x] Exigences (liste, fiche, historique) — lot 1, à valider
+- [x] Parties prenantes (liste et matrice) — lot 1, validé le 01.11.2026
+- [x] Besoins — lot 1, validé le 01.11.2026
+- [x] Exigences (liste, fiche, historique) — lot 1, validé le 01.11.2026
 - [ ] Référentiel BABOK
 - [ ] Alertes
 - [ ] Administration
