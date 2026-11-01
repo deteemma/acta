@@ -988,17 +988,18 @@ form.invite h4 {
   border-radius: 3px;
   background: var(--accent);
 }
-.dashboard-tasks {
+.dashboard-tasks,
+.disclosure-list {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
 }
-details.dashboard-task {
+:is(details.dashboard-task, details.disclosure) {
   border-top: 1px solid var(--border);
 }
-details.dashboard-task:first-child {
+:is(details.dashboard-task, details.disclosure):first-child {
   border-top: none;
 }
-details.dashboard-task summary {
+:is(details.dashboard-task, details.disclosure) summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1008,32 +1009,33 @@ details.dashboard-task summary {
   padding: var(--space-2) var(--space-3);
   list-style: none;
 }
-details.dashboard-task summary::-webkit-details-marker {
+:is(details.dashboard-task, details.disclosure) summary::-webkit-details-marker {
   display: none;
 }
 /* Flèche : repliée, dépliée. */
-details.dashboard-task summary::before {
+:is(details.dashboard-task, details.disclosure) summary::before {
   content: '▸';
   color: var(--muted);
 }
-details.dashboard-task[open] summary::before {
+:is(details.dashboard-task, details.disclosure)[open] summary::before {
   content: '▾';
 }
-details.dashboard-task summary:hover,
-details.dashboard-task[open] summary {
+:is(details.dashboard-task, details.disclosure) summary:hover,
+:is(details.dashboard-task, details.disclosure)[open] summary {
   background: var(--bg);
 }
-.dashboard-task-name {
+.dashboard-task-name,
+.disclosure-name {
   flex: 1;
   min-width: 12rem;
 }
-details.dashboard-task .links,
-details.dashboard-task > p {
+:is(details.dashboard-task, details.disclosure) .links,
+:is(details.dashboard-task, details.disclosure) > p {
   margin: 0;
   padding: var(--space-1) var(--space-3) var(--space-2) var(--space-8);
   background: var(--bg);
 }
-details.dashboard-task .dense-list {
+:is(details.dashboard-task, details.disclosure) .dense-list {
   border: none;
   border-radius: 0;
 }
@@ -1045,12 +1047,6 @@ details.dashboard-task .dense-list {
   background: var(--danger-solid);
   color: var(--on-danger);
   font-size: var(--text-small);
-}
-.alert-list li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
 }
 /* Encart « Actions suggérées » (ticket 14) */
 /* Carte */
@@ -1534,4 +1530,99 @@ form.stacked input[readonly] {
   font-family: var(--font-mono);
   font-size: var(--text-small);
   background: var(--bg);
+}
+/* Onglets génériques (référentiel, administration : ticket 04, lot 2). */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.tabs [role='tab'] {
+  gap: var(--space-2);
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+}
+.tabs [role='tab'][aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Pastilles cliquables : éléments liés du référentiel. */
+.pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+:is(details.dashboard-task, details.disclosure) .pill-list {
+  padding: var(--space-2) var(--space-3) var(--space-3) var(--space-8);
+  background: var(--bg);
+}
+button.link.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.625rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: var(--text-small);
+}
+button.link.pill:hover {
+  border-color: var(--accent);
+  text-decoration: none;
+}
+.babok-area h4 {
+  margin: var(--space-4) 0 var(--space-2);
+}
+.babok-summary {
+  max-width: 75ch;
+  line-height: 1.6;
+}
+/* Alertes : icône de la nature, ligne nouvelle surlignée. */
+.alert-list li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: start;
+}
+.alert-list li.is-new,
+.alert-list li.is-new:hover {
+  background: var(--accent-soft);
+}
+.alert-icon {
+  grid-row: 1 / span 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+}
+.alert-overdue {
+  background: var(--tone-attention-bg);
+  color: var(--tone-attention-fg);
+}
+.alert-assigned {
+  background: var(--tone-progress-bg);
+  color: var(--tone-progress-fg);
+}
+.alert-detail {
+  grid-column: 2 / span 2;
 }
