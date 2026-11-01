@@ -1,16 +1,19 @@
 // Actions (ticket 07) : fiche d'une action dans un panneau latéral, création
 // rapide, liste. Règles dans @app/shared (actions.ts, roles.ts).
 import {
+  memberName,
   ACTION_DESCRIPTION_MAX_LENGTH,
   ACTION_STATUSES,
   ACTION_TITLE_MAX_LENGTH,
   type ActionDto,
   type ActionStatus,
+  actionStatusTone,
   type BabokDto,
   type BabokElementDto,
   babokEnglishName,
   can,
   canBeAssignee,
+  canCreateActionIn,
   createActionSchema,
   englishTermTooltip,
   findBabokElement,
@@ -41,7 +44,7 @@ import { RequirementLink } from './requirement-panels';
 import { Panel, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
-import { formatDateTime, memberName } from './team-section';
+import { formatDateTime } from './team-section';
 
 const canEditActions = (action: Pick<ActionDto, 'initiative'>) =>
   can(action.initiative.myRole, 'editActions', { archived: action.initiative.archived });
@@ -82,7 +85,7 @@ export function StatusLabel({ status, count }: { status: ActionStatus; count?: n
   const { t } = useI18n();
   const label = t(`actionStatus.${status}`);
   return (
-    <span className={`badge status-${status}`}>
+    <span className={`badge status tone-${actionStatusTone(status)}`}>
       {count === undefined ? label : t('dashboard.statusCount', { status: label, count })}
     </span>
   );
@@ -99,32 +102,47 @@ export function ActionList({
   showInitiative?: boolean;
 }) {
   const { t, locale } = useI18n();
-  const { open } = usePanels();
+  const { stack, open } = usePanels();
+  // Action ouverte dans le dernier panneau : sa ligne est mise en évidence (refonte, ticket 04).
+  const top = stack.at(-1)?.content;
+  const openedId = top?.kind === 'action' ? top.actionId : undefined;
+  if (actions.length === 0) return null;
   return (
-    <ul className="links action-list">
+    <ul className={`links dense-list action-list${showInitiative ? ' with-initiative' : ''}`}>
+      {/* En-têtes de colonnes, sur grand écran ; chaque cellule reste lisible seule. */}
+      <li className="action-row list-head" aria-hidden="true">
+        {showInitiative && <span>{t('action.initiative')}</span>}
+        <span>{t('action.title')}</span>
+        <span>{t('action.task')}</span>
+        {!showInitiative && <span>{t('action.assignee')}</span>}
+        <span>{t('action.dueDate')}</span>
+        <span>{t('action.status')}</span>
+      </li>
       {actions.map((a) => {
         const task = babok && findBabokElement(babok, a.taskId);
         return (
-          <li key={a.id}>
+          <li key={a.id} className={`action-row${a.id === openedId ? ' selected' : ''}`}>
+            {showInitiative && <span className="code">{a.initiative.code}</span>}
             <button
               type="button"
-              className="link"
+              className="link action-title"
               onClick={() => open({ kind: 'action', initiativeId: a.initiative.id, actionId: a.id })}
             >
-              {showInitiative && <strong>{a.initiative.code} </strong>}
               {a.title}
             </button>
-            <span className="action-meta">
+            <span className="action-task">{task && <BabokPreview element={task} />}</span>
+            {/* Liste d'une initiative : le responsable, signalé s'il ne peut plus l'être. */}
+            {!showInitiative && (
+              <small>
+                <AssigneeName assignee={a.assignee} />
+              </small>
+            )}
+            <small className="due">
+              {a.dueDate ? formatDate(locale, a.dueDate) : t('action.noDueDate')}
+              {showInitiative && a.initiative.archived && ` · ${t('initiative.archived')}`}
+            </small>
+            <span>
               <StatusLabel status={a.status} />
-              <small>{a.dueDate ? formatDate(locale, a.dueDate) : t('action.noDueDate')}</small>
-              {showInitiative && a.initiative.archived && <small>{t('initiative.archived')}</small>}
-              {/* Liste d'une initiative : le responsable, signalé s'il ne peut plus l'être. */}
-              {!showInitiative && (
-                <small>
-                  <AssigneeName assignee={a.assignee} />
-                </small>
-              )}
-              {task && <BabokPreview element={task} />}
             </span>
           </li>
         );
@@ -576,7 +594,7 @@ function DeleteAction({ action, onDeleted }: { action: ActionDto; onDeleted: () 
 export function NewActionButton({ initiative, from }: { initiative: InitiativeDto; from: AnalysisObjectRef }) {
   const { t } = useI18n();
   const { open } = usePanels();
-  if (!can(initiative.myRole, 'editActions', { archived: initiative.archivedAt != null })) return null;
+  if (!canCreateActionIn(initiative)) return null;
   return (
     <button type="button" onClick={() => open({ kind: 'createAction', initiativeId: initiative.id, from })}>
       {t('actions.new')}
@@ -636,7 +654,7 @@ export function CreateActionPanel({
 }) {
   const { t, locale } = useI18n();
   const { replace } = usePanels();
-  const editable = initiatives.filter((i) => can(i.myRole, 'editActions', { archived: i.archivedAt != null }));
+  const editable = initiatives.filter(canCreateActionIn);
   const proposed = editable.find((i) => i.id === initiativeId);
   // Sans droit d'écriture sur l'initiative de l'objet, on ne part pas de cet objet.
   const originObject = proposed ? from : undefined;

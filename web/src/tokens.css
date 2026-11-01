@@ -1,0 +1,18 @@
+/*
+ * Polices d'ACTA (ADR-0017), embarquées par @fontsource. Les couleurs,
+ * espacements, rayons, ombres et tailles de texte sont écrits une seule fois
+ * dans shared/src/design-tokens.ts (ADR-0018) et installés par theme.ts.
+ */
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+:root {
+  color-scheme: light dark;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  --leading-body: 1.45;
+}

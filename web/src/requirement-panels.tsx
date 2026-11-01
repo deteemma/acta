@@ -1,7 +1,8 @@
 // Exigences (ticket 10) : liste d'une initiative, fiche d'une exigence dans un
 // panneau latéral, avec son historique. Règles dans @app/shared
-// (requirements.ts, references.ts, roles.ts).
+// (requirements.ts, requirement-statuses.ts, references.ts, roles.ts).
 import {
+  memberName,
   type ActionDto,
   type BabokDto,
   can,
@@ -10,23 +11,28 @@ import {
   englishTermTooltip,
   type InitiativeDto,
   INITIAL_REQUIREMENT_STATUS,
+  localDate,
   type NeedDto,
   REQUIREMENT_STATEMENT_MAX_LENGTH,
-  REQUIREMENT_STATUSES,
   REQUIREMENT_SUBTYPES,
   REQUIREMENT_TITLE_MAX_LENGTH,
   REQUIREMENT_TYPES,
   type RequirementChange,
   type RequirementDto,
   requirementHistory,
+  requirementsFileName,
+  requirementsWorkbook,
+  requirementStatusLabel,
   type RequirementRefDto,
   type RequirementStatus,
   type RequirementSubtype,
   type RequirementType,
   type RequirementVersionDto,
+  selectableStatuses,
   sortByDueDate,
   type StakeholderDto,
 } from '@app/shared';
+import { Download } from 'lucide-react';
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
@@ -34,9 +40,10 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-panels';
 import { Panel, usePanels } from './panels';
+import { setRequirementStatuses, StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
-import { formatDateTime, memberName } from './team-section';
+import { formatDateTime } from './team-section';
 
 export const canEditRequirements = (initiative: InitiativeDto) =>
   can(initiative.myRole, 'editRequirements', { archived: initiative.archivedAt != null });
@@ -66,15 +73,10 @@ function TypeLabel({ type, subtype }: { type: RequirementType; subtype: Requirem
   );
 }
 
-function StatusLabel({ status }: { status: RequirementStatus }) {
-  const { t, locale } = useI18n();
-  return <span title={englishTermTooltip(locale, `requirementStatus.${status}`)}>{t(`requirementStatus.${status}`)}</span>;
-}
-
 /** Exigences, dans l'ordre reçu (par référence), avec leur type et leur statut. */
 export function RequirementList({ requirements }: { requirements: RequirementDto[] }) {
   return (
-    <ul className="links action-list">
+    <ul className="links dense-list action-list">
       {requirements.map((r) => (
         <li key={r.id}>
           <RequirementLink initiativeId={r.initiativeId} requirement={r} />
@@ -82,13 +84,58 @@ export function RequirementList({ requirements }: { requirements: RequirementDto
             <small>
               <TypeLabel type={r.type} subtype={r.subtype} />
             </small>
-            <span className="badge">
-              <StatusLabel status={r.status} />
-            </span>
+            <StatusLabel status={r.status} />
           </span>
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Export tableur (ticket 16), pour tout membre : les exigences et les statuts
+ * relus au clic, enregistrés dans un fichier Excel par le navigateur.
+ */
+export function ExportRequirementsButton({
+  initiative,
+  onError,
+}: {
+  initiative: InitiativeDto;
+  onError: (error: UiError) => void;
+}) {
+  const { t, locale } = useI18n();
+  const [busy, setBusy] = useState(false);
+
+  const exportRequirements = async () => {
+    setBusy(true);
+    try {
+      const [requirements, statuses] = await Promise.all([
+        api.listRequirements(initiative.id),
+        api.requirementStatuses(),
+      ]);
+      setRequirementStatuses(statuses);
+      const bytes = requirementsWorkbook(requirements, statuses, locale);
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = requirementsFileName(initiative.code, locale, localDate(new Date().toISOString()));
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      onError(toUiError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button type="button" className="ghost" disabled={busy} onClick={() => void exportRequirements()}>
+      <Download />
+      {t('requirements.export')}
+    </button>
   );
 }
 
@@ -164,12 +211,23 @@ export function RequirementPanel({
 
   return (
     <Panel
-      title={
-        requirement
-          ? `${requirement.reference} · ${requirement.title}`
-          : requirementId
-            ? t('common.loading')
-            : t('requirements.new')
+      title={requirement ? requirement.title : requirementId ? t('common.loading') : t('requirements.new')}
+      kicker={
+        requirement && (
+          <>
+            {t('requirement.kicker')} <span className="code">{requirement.reference}</span>
+          </>
+        )
+      }
+      badges={
+        requirement && (
+          <>
+            <StatusLabel status={requirement.status} />
+            <span className="badge">
+              <TypeLabel type={requirement.type} subtype={requirement.subtype} />
+            </span>
+          </>
+        )
       }
       onClose={onClose}
     >
@@ -177,6 +235,8 @@ export function RequirementPanel({
       {ready && (
         <>
           {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
+          {/* Groupes Fiche, Traçabilité, Historique (refonte du design, validé le 01.11.2026). */}
+          <h3 className="group-title">{t('initiative.groupSheet')}</h3>
           {canEditRequirements(initiative) ? (
             <RequirementForm
               initiativeId={initiativeId}
@@ -195,11 +255,16 @@ export function RequirementPanel({
           )}
           {requirement && (
             <>
-              <h3>{t('requirement.children')}</h3>
+              <h3 className="group-title">{t('requirement.groupTrace')}</h3>
+              <h4 className="section-title">
+                {t('requirement.children')} <span className="count">{children.length}</span>
+              </h4>
               <RequirementList requirements={children} />
               {children.length === 0 && <p>{t('requirement.noChildren')}</p>}
               <div className="section-header">
-                <h3>{t('requirement.actions')}</h3>
+                <h4>
+                  {t('requirement.actions')} <span className="count">{linkedActions.length}</span>
+                </h4>
                 <NewActionButton initiative={initiative} from={{ kind: 'requirement', id: requirement.id }} />
               </div>
               <ActionList actions={linkedActions} babok={babok} />
@@ -301,7 +366,8 @@ function RequirementForm({
   requirements: RequirementDto[];
   onSaved: (requirement: RequirementDto) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const statuses = useRequirementStatuses({ fresh: true });
   const [title, setTitle] = useState(requirement?.title ?? '');
   const [type, setType] = useState<RequirementType>(requirement?.type ?? 'business');
   const [subtype, setSubtype] = useState<RequirementSubtype>(requirement?.subtype ?? 'functional');
@@ -354,21 +420,25 @@ function RequirementForm({
 
   return (
     <form className="stacked" onSubmit={(e) => void save(e)} onChange={() => setSaved(false)}>
-      {requirement && (
+      {/* Référence et titre, puis type, sous-type et statut, sur une ligne (ticket 04, lot 1). */}
+      <div className="field-row reference-title">
+        {requirement && (
+          <label>
+            {t('requirement.reference')}
+            <input value={requirement.reference} readOnly aria-readonly="true" />
+          </label>
+        )}
         <label>
-          {t('requirement.reference')}
-          <input value={requirement.reference} readOnly aria-readonly="true" />
+          {t('requirement.title')}
+          <input
+            data-autofocus={requirement ? undefined : true}
+            value={title}
+            maxLength={REQUIREMENT_TITLE_MAX_LENGTH}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </label>
-      )}
-      <label>
-        {t('requirement.title')}
-        <input
-          data-autofocus={requirement ? undefined : true}
-          value={title}
-          maxLength={REQUIREMENT_TITLE_MAX_LENGTH}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </label>
+      </div>
+      <div className="field-row">
       <label>
         {t('requirement.type')}
         <select value={type} onChange={(e) => setType(e.target.value as RequirementType)}>
@@ -391,19 +461,21 @@ function RequirementForm({
           </select>
         </label>
       )}
-      {/* À la création, le statut est Proposée. */}
+      {/* À la création, le statut est Proposée. Un statut désactivé n'est plus
+          proposé, sauf celui que l'exigence porte. */}
       {requirement && (
         <label>
           {t('requirement.status')}
           <select value={status} onChange={(e) => setStatus(e.target.value as RequirementStatus)}>
-            {REQUIREMENT_STATUSES.map((v) => (
-              <option key={v} value={v}>
-                {t(`requirementStatus.${v}`)}
+            {selectableStatuses(statuses, requirement.status).map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.labels[locale]}
               </option>
             ))}
           </select>
         </label>
       )}
+      </div>
       <fieldset>
         <legend>{t('requirement.needs')}</legend>
         <small>{t('requirement.originHint')}</small>
@@ -460,23 +532,33 @@ function RequirementForm({
 function History({ versions }: { versions: RequirementVersionDto[] }) {
   const { t, locale } = useI18n();
   return (
+    // Frise chronologique, tableau Avant / Après par modification (validé le 01.11.2026).
     <section className="requirement-history">
-      <h3>{t('requirement.history')}</h3>
-      <ol>
+      <h3 className="group-title">{t('requirement.history')}</h3>
+      <ol className="timeline">
         {requirementHistory(versions).map((entry) => (
           <li key={entry.changedAt + entry.kind}>
-            <small>
+            <span className="timeline-when">
               {t(entry.kind === 'created' ? 'requirement.historyCreated' : 'requirement.historyUpdated', {
                 date: formatDateTime(locale, entry.changedAt),
                 name: memberName(entry.changedBy),
               })}
-            </small>
+            </span>
             {entry.changes.length > 0 && (
-              <ul>
-                {entry.changes.map((change) => (
-                  <ChangeLine key={change.field} change={change} />
-                ))}
-              </ul>
+              <table className="change-table">
+                <thead>
+                  <tr>
+                    <td />
+                    <th scope="col">{t('requirement.historyBefore')}</th>
+                    <th scope="col">{t('requirement.historyAfter')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entry.changes.map((change) => (
+                    <ChangeLine key={change.field} change={change} />
+                  ))}
+                </tbody>
+              </table>
             )}
           </li>
         ))}
@@ -498,25 +580,29 @@ const FIELD_LABELS = {
 } as const satisfies Record<RequirementChange['field'], Parameters<ReturnType<typeof useI18n>['t']>[0]>;
 
 function ChangeLine({ change }: { change: RequirementChange }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const statuses = useRequirementStatuses();
   const empty = <em>{t('requirement.historyEmpty')}</em>;
   const label = t(FIELD_LABELS[change.field]);
   // L'énoncé, souvent long, s'affiche en entier à la demande.
   if (change.field === 'statement') {
     return (
-      <li>
-        <details>
-          <summary>{label}</summary>
-          <p>
-            <strong>{t('requirement.historyBefore')}</strong>
-          </p>
-          <RichText source={change.from} />
-          <p>
-            <strong>{t('requirement.historyAfter')}</strong>
-          </p>
-          <RichText source={change.to} />
-        </details>
-      </li>
+      <tr>
+        <th scope="row">{label}</th>
+        <td colSpan={2}>
+          <details>
+            <summary>{t('requirement.historyShowStatement')}</summary>
+            <div className="change-statement">
+              <div className="change-before">
+                <RichText source={change.from} />
+              </div>
+              <div>
+                <RichText source={change.to} />
+              </div>
+            </div>
+          </details>
+        </td>
+      </tr>
     );
   }
   const value = (): [ReactNode, ReactNode] => {
@@ -531,7 +617,7 @@ function ChangeLine({ change }: { change: RequirementChange }) {
           change.to ? t(`requirementSubtype.${change.to}`) : empty,
         ];
       case 'status':
-        return [t(`requirementStatus.${change.from}`), t(`requirementStatus.${change.to}`)];
+        return [requirementStatusLabel(statuses, change.from, locale), requirementStatusLabel(statuses, change.to, locale)];
       case 'stakeholders':
         return [
           change.from.length ? change.from.map((s) => s.name).join(', ') : empty,
@@ -548,9 +634,11 @@ function ChangeLine({ change }: { change: RequirementChange }) {
   };
   const [from, to] = value();
   return (
-    <li>
-      {label} : {from} → {to}
-    </li>
+    <tr>
+      <th scope="row">{label}</th>
+      <td className="change-before">{from}</td>
+      <td>{to}</td>
+    </tr>
   );
 }
 

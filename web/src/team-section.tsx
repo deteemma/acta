@@ -11,18 +11,17 @@ import {
   type InitiativeMemberDto,
   type InitiativeRole,
   type Locale,
-  type MemberNameDto,
+  memberName,
   type OwnerDesignationDto,
   type TeamChange,
   teamControls,
 } from '@app/shared';
+import { UserPlus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { api } from './api';
 import { ErrorMessage, teamRefusalError, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { usePanels } from './panels';
-
-export const memberName = (member: MemberNameDto) => member.displayName ?? member.email ?? member.userId;
 
 /** Date et heure d'une désignation, dans la langue de l'interface. */
 export const formatDateTime = (locale: Locale, date: string) =>
@@ -86,7 +85,9 @@ export function TeamSection({
 
   return (
     <section className="team">
-      <h3>{t('initiative.members')}</h3>
+      <h4>
+        {t('initiative.members')} <span className="count">{members.length}</span>
+      </h4>
       <ErrorMessage error={error} />
       {confirmingRemoval && (
         <div role="alertdialog" aria-labelledby="removal-confirm" className="confirm">
@@ -103,7 +104,7 @@ export function TeamSection({
           </button>
         </div>
       )}
-      <ul className="links team-members">
+      <ul className="links dense-list team-members">
         {members.map((member) => {
           const name = memberName(member);
           const controls = controlsFor(member);
@@ -240,7 +241,10 @@ function InviteForm({ initiativeId, onInvited }: { initiativeId: string; onInvit
         />
         {t('member.teamBa')}
       </label>
-      <button type="submit">{t('team.inviteButton')}</button>
+      <button type="submit">
+        <UserPlus />
+        {t('team.inviteButton')}
+      </button>
       <ErrorMessage error={error} />
     </form>
   );

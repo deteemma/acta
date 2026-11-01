@@ -135,6 +135,44 @@ function closingMarker(text: string, start: number, marker: '*' | '**'): number 
   return -1;
 }
 
+/**
+ * Texte sans mise en forme (export tableur, ticket 16), tel qu'il se lit à
+ * l'affichage : un bloc par paragraphe, séparés par une ligne vide ; puces
+ * « - » et numéros « 1. » en début de ligne ; un lien devient « texte (adresse) ».
+ */
+export function richTextToPlainText(source: string): string {
+  return parseRichText(source)
+    .map((block) => {
+      switch (block.type) {
+        case 'heading':
+          return plainInline(block.content);
+        case 'paragraph':
+          return block.lines.map(plainInline).join('\n');
+        case 'list':
+          return block.items.map((item, i) => `${block.ordered ? `${i + 1}.` : '-'} ${plainInline(item)}`).join('\n');
+      }
+    })
+    .join('\n\n');
+}
+
+function plainInline(nodes: readonly RichInline[]): string {
+  return nodes
+    .map((node) => {
+      switch (node.type) {
+        case 'text':
+          return node.text;
+        case 'reference':
+          return node.reference;
+        case 'link':
+          return `${node.text} (${node.href})`;
+        case 'bold':
+        case 'italic':
+          return plainInline(node.children);
+      }
+    })
+    .join('');
+}
+
 /** Boutons de la barre d'outils de saisie. */
 export const RICH_TEXT_FORMATS = ['bold', 'italic', 'heading', 'bulletList', 'numberedList', 'link'] as const;
 export type RichTextFormat = (typeof RICH_TEXT_FORMATS)[number];

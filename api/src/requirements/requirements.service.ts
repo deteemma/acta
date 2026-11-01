@@ -2,11 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   checkRequirementShape,
+  checkRequirementStatus,
   type CreateRequirementInput,
   createsParentCycle,
   type NeedRefDto,
   type RequirementDto,
   type RequirementRefusal,
+  type RequirementStatusRefusal,
   type RequirementVersionDto,
   sortByName,
   sortByReference,
@@ -18,6 +20,7 @@ import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js';
 import { SuggestedActionsService } from '../suggested-actions/suggested-actions.service.js';
 import { needRefusal } from '../needs/needs.service.js';
+import { loadRequirementStatuses } from '../requirement-statuses/requirement-statuses.service.js';
 import { stakeholderRefusal } from '../stakeholders/stakeholders.service.js';
 
 @Injectable()
@@ -90,7 +93,8 @@ export class RequirementsService {
   }
 
   /**
-   * Seuls les champs fournis changent ; tout statut peut passer à tout autre.
+   * Seuls les champs fournis changent ; tout statut peut passer à tout autre
+   * statut actif, et l'exigence garde un statut désactivé qu'elle porte.
    * Changer les sources, les besoins ou la parente modifie l'exigence.
    */
   update(
@@ -116,6 +120,10 @@ export class RequirementsService {
         parentId: input.parentId !== undefined ? input.parentId : (current.parent?.id ?? null),
       });
       if (refusal) throw requirementRefusal(refusal);
+      if (input.status !== undefined) {
+        const statusRefusal = checkRequirementStatus(await loadRequirementStatuses(tx), current.status, input.status);
+        if (statusRefusal) throw statusRefusalOnRequirement(statusRefusal);
+      }
       if (input.parentId && input.parentId !== current.parent?.id) {
         await this.checkParent(tx, initiativeId, requirementId, input.parentId);
       }
@@ -354,6 +362,8 @@ async function write(run: () => Promise<unknown>): Promise<void> {
     if (isConstraintViolation(error, 'requirement_origin_required')) throw requirementRefusal('originRequired');
     if (isConstraintViolation(error, 'requirement_parent_cycle')) throw requirementRefusal('parentCycle');
     if (isConstraintViolation(error, 'requirement_parent_fkey')) throw requirementRefusal('unknownRequirement');
+    if (isConstraintViolation(error, 'requirement_status_fkey')) throw statusRefusalOnRequirement('unknownStatus');
+    if (isConstraintViolation(error, 'requirement_status_inactive')) throw statusRefusalOnRequirement('inactiveStatus');
     if (isConstraintViolation(error, 'requirement_need_need_fkey')) throw needRefusal('unknownNeed');
     if (isConstraintViolation(error, 'requirement_stakeholder_stakeholder_fkey')) {
       throw stakeholderRefusal('unknownStakeholder');
@@ -366,4 +376,9 @@ export function requirementRefusal(refusal: RequirementRefusal) {
   return refusal === 'requirementLinked'
     ? new ConflictException({ statusCode: 409, refusal })
     : new BadRequestException({ statusCode: 400, refusal });
+}
+
+/** Statut refusé sur une exigence : la requête est en cause, pas l'exigence (400). */
+function statusRefusalOnRequirement(refusal: RequirementStatusRefusal) {
+  return new BadRequestException({ statusCode: 400, refusal });
 }

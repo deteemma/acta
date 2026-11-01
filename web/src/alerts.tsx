@@ -1,13 +1,14 @@
 // Alertes dans l'application (ticket 15), sans courriel : badge des nouvelles
 // alertes et panneau qui les liste. Règles dans @app/shared (alerts.ts).
-import { type ActionDto, type Alert, alertKey, localDate, type MeDto, myAlerts } from '@app/shared';
+import { memberName, type ActionDto, type Alert, alertKey, localDate, type MeDto, myAlerts } from '@app/shared';
+import { Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from './api';
+import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { Panel, usePanels } from './panels';
-import { memberName } from './team-section';
 
 /** Relecture de mes actions : une attribution par un autre membre ou un changement de jour fait naître une alerte. */
 const REFRESH_MS = 60_000;
@@ -39,10 +40,12 @@ export function AlertsButton({ alerts }: { alerts: Alert[] }) {
   return (
     <button
       type="button"
+      className="ghost icon-only alerts-button"
       onClick={() => open({ kind: 'alerts' })}
       aria-label={count > 0 ? t('alerts.openWithNew', { count }) : t('alerts.open')}
+      title={t('alerts.open')}
     >
-      {t('alerts.open')}
+      <Bell />
       {count > 0 && <span className="alert-badge">{count}</span>}
     </button>
   );
@@ -75,8 +78,8 @@ export function AlertsPanel({
   return (
     <Panel title={t('alerts.title')} onClose={onClose}>
       <ErrorMessage error={error} />
-      {alerts.length === 0 && <p>{t('alerts.empty')}</p>}
-      <ul className="links alert-list">
+      {alerts.length === 0 && <EmptyState subject="alerts" title={t('alerts.empty')} hint={t('empty.alertsHint')} />}
+      <ul className="links dense-list alert-list">
         {alerts.map(({ kind, action }) => (
           <li key={alertKey({ kind, action })}>
             <button
@@ -94,7 +97,7 @@ export function AlertsPanel({
                     date: formatDate(locale, action.assignedAt),
                   })}
             </small>
-            {newKeys.has(alertKey({ kind, action })) && <span className="badge">{t('alerts.new')}</span>}
+            {newKeys.has(alertKey({ kind, action })) && <span className="badge tone-progress">{t('alerts.new')}</span>}
           </li>
         ))}
       </ul>

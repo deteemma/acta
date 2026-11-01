@@ -4,7 +4,7 @@
 // justification (libellés `suggestion.*` de i18n.ts).
 import type { ActionDto, CreateActionInput } from './actions.js';
 import type { BabokDto, TechniqueDto } from './babok.js';
-import type { RequirementStatus } from './requirements.js';
+import type { RequirementStatus } from './requirement-statuses.js';
 
 /** Objet d'analyse depuis lequel une action est créée. */
 export interface AnalysisObjectRef {

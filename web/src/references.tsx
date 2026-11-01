@@ -6,6 +6,7 @@ import { createContext, type ReactNode, useContext, useEffect, useId, useState }
 import { api } from './api';
 import { useI18n } from './i18n';
 import { type PanelContent, usePanels } from './panels';
+import { StatusLabel } from './requirement-statuses';
 
 const ReferencesContext = createContext<ReadonlyMap<string, ReferenceDto>>(new Map());
 
@@ -61,7 +62,7 @@ export function ReferenceMention({ reference }: { reference: string }) {
                 {t(`requirementType.${item.requirement.type}`)}
                 {item.requirement.subtype && ` (${t(`requirementSubtype.${item.requirement.subtype}`)})`}
                 {' · '}
-                {t(`requirementStatus.${item.requirement.status}`)}
+                <StatusLabel status={item.requirement.status} />
               </>
             )}
             {item.initiativeArchived && ` · ${t('initiative.archived')}`}

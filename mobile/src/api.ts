@@ -1,4 +1,13 @@
-import type { CreateInitiativeInput, InitiativeDto, MeDto, UpdateInitiativeInput, UpdateMeInput } from '@app/shared';
+import type {
+  ActionDto,
+  BabokDto,
+  CreateActionInput,
+  CreateInitiativeInput,
+  InitiativeDto,
+  MeDto,
+  UpdateInitiativeInput,
+  UpdateMeInput,
+} from '@app/shared';
 import { ApiError } from './api-error';
 import { API_URL } from './config';
 
@@ -21,12 +30,19 @@ export function createApi(getToken: () => string) {
   return {
     me: () => request<MeDto>('/me'),
     updateMe: (input: UpdateMeInput) => request<MeDto>('/me', { method: 'PATCH', body: JSON.stringify(input) }),
+    babok: () => request<BabokDto>('/babok'),
     listInitiatives: () => request<InitiativeDto[]>('/initiatives'),
     createInitiative: (input: CreateInitiativeInput) =>
       request<InitiativeDto>('/initiatives', { method: 'POST', body: JSON.stringify(input) }),
     updateInitiative: (id: string, input: UpdateInitiativeInput) =>
       request<InitiativeDto>(`/initiatives/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
     deleteInitiative: (id: string) => request<void>(`/initiatives/${id}`, { method: 'DELETE' }),
+    // Actions (ticket 17) : mode connecté seulement.
+    listMyActions: () => request<ActionDto[]>('/actions/mine'),
+    listActions: (id: string) => request<ActionDto[]>(`/initiatives/${id}/actions`),
+    getAction: (id: string, actionId: string) => request<ActionDto>(`/initiatives/${id}/actions/${actionId}`),
+    createAction: (id: string, input: CreateActionInput) =>
+      request<ActionDto>(`/initiatives/${id}/actions`, { method: 'POST', body: JSON.stringify(input) }),
   };
 }
 

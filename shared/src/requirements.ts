@@ -3,6 +3,7 @@
 // seule fois ici, appliquées par l'API et reproduites par la base (migration 0013).
 import { z } from 'zod';
 import { needIdsSchema, type NeedRefDto } from './needs.js';
+import type { RequirementStatus } from './requirement-statuses.js';
 import type { MemberNameDto } from './schemas.js';
 import { stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
 
@@ -14,12 +15,6 @@ export type RequirementType = (typeof REQUIREMENT_TYPES)[number];
 export const REQUIREMENT_SUBTYPES = ['functional', 'non_functional'] as const;
 export type RequirementSubtype = (typeof REQUIREMENT_SUBTYPES)[number];
 
-/** Statuts d'une exigence ; tout statut peut passer à tout autre. */
-export const REQUIREMENT_STATUSES = ['proposed', 'verified', 'validated', 'approved', 'deferred', 'rejected'] as const;
-export type RequirementStatus = (typeof REQUIREMENT_STATUSES)[number];
-/** Statut d'une exigence créée. */
-export const INITIAL_REQUIREMENT_STATUS: RequirementStatus = 'proposed';
-
 export const REQUIREMENT_TITLE_MAX_LENGTH = 200;
 /** Texte mis en forme (rich-text.ts), même limite que la description d'un besoin. */
 export const REQUIREMENT_STATEMENT_MAX_LENGTH = 20000;
@@ -30,7 +25,8 @@ const requirementFields = {
   type: z.enum(REQUIREMENT_TYPES),
   /** Null pour une exigence qui n'est pas de solution. */
   subtype: z.enum(REQUIREMENT_SUBTYPES).nullable(),
-  status: z.enum(REQUIREMENT_STATUSES),
+  /** Code d'un statut (requirement-statuses.ts) ; l'API vérifie qu'il est permis (checkRequirementStatus). */
+  status: z.string().trim().min(1).max(100),
   /** Sources : parties prenantes de la même initiative ; aucune ou plusieurs. */
   stakeholderIds: stakeholderIdsSchema,
   /** Besoins auxquels l'exigence répond, de la même initiative. */

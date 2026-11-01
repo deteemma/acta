@@ -2,7 +2,8 @@
 // CODE-ACRONYME-NUMÉRO. Règles écrites une seule fois ici, appliquées par l'API
 // et reproduites par la base (migration 0012).
 import { z } from 'zod';
-import type { RequirementStatus, RequirementSubtype, RequirementType } from './requirements.js';
+import type { RequirementStatus } from './requirement-statuses.js';
+import type { RequirementSubtype, RequirementType } from './requirements.js';
 import { matchesEveryWord } from './search.js';
 
 /** Catégories d'objets qui portent une référence ; chacune a son acronyme. */

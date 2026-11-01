@@ -2,6 +2,7 @@
 // initiative, fiche d'une partie prenante dans un panneau latéral. Règles dans
 // @app/shared (stakeholders.ts, roles.ts).
 import {
+  memberName,
   type ActionDto,
   type BabokDto,
   can,
@@ -27,16 +28,18 @@ import {
   type StakeholderRole,
   sortByDueDate,
 } from '@app/shared';
+import { Plus } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
+import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedList } from './need-panels';
 import { RequirementList } from './requirement-panels';
 import { Panel, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
-import { formatDateTime, memberName } from './team-section';
+import { formatDateTime } from './team-section';
 
 const canEditStakeholders = (initiative: InitiativeDto) =>
   can(initiative.myRole, 'editStakeholders', { archived: initiative.archivedAt != null });
@@ -97,8 +100,15 @@ export function StakeholdersPanel({
 
   return (
     <Panel
-      title={initiative ? `${initiative.code} · ${t('stakeholders.section')}` : t('common.loading')}
-      titleTooltip={englishTermTooltip(locale, 'stakeholders.section')}
+      title={initiative ? initiative.name : t('common.loading')}
+      kicker={
+        initiative && (
+          <>
+            <span title={englishTermTooltip(locale, 'stakeholders.section')}>{t('stakeholders.section')}</span>{' '}
+            <span className="code">{initiative.code}</span>
+          </>
+        )
+      }
       onClose={onClose}
     >
       <ErrorMessage error={error} />
@@ -116,12 +126,13 @@ export function StakeholdersPanel({
             </div>
             {canEditStakeholders(initiative) && (
               <button type="button" onClick={() => open({ kind: 'stakeholder', initiativeId })}>
+                <Plus />
                 {t('stakeholders.new')}
               </button>
             )}
           </div>
           {stakeholders.length === 0 ? (
-            <p>{t('stakeholders.empty')}</p>
+            <EmptyState subject="stakeholders" title={t('stakeholders.empty')} hint={t('empty.stakeholdersHint')} />
           ) : view === 'list' ? (
             <StakeholderList stakeholders={stakeholders} />
           ) : (
@@ -135,17 +146,28 @@ export function StakeholdersPanel({
 
 function StakeholderList({ stakeholders }: { stakeholders: StakeholderDto[] }) {
   const { t } = useI18n();
+  const level = (value: StakeholderDto['influence']) =>
+    value ? t(`stakeholderLevel.${value}`) : t('stakeholder.notEvaluated');
   return (
-    <ul className="links stakeholder-list">
+    <ul className="links dense-list stakeholder-list">
       {stakeholders.map((s) => (
-        <li key={s.id}>
+        <li key={s.id} className="stakeholder-row">
           <StakeholderLink initiativeId={s.initiativeId} stakeholder={s} />
-          <span className="action-meta">
+          {/* Influence et intérêt sur chaque ligne (validé le 01.11.2026). */}
+          <span className="stakeholder-levels">
             <span className="badge">{t(`stakeholderKind.${s.kind}`)}</span>
             <small>
-              <RoleList roles={s.roles} />
+              {s.influence || s.interest
+                ? t('stakeholders.levels', {
+                    influence: level(s.influence),
+                    interest: level(s.interest),
+                  })
+                : t('stakeholder.notEvaluated')}
             </small>
           </span>
+          <small className="stakeholder-roles">
+            <RoleList roles={s.roles} />
+          </small>
         </li>
       ))}
     </ul>
@@ -157,7 +179,7 @@ function StakeholderMatrix({ stakeholders }: { stakeholders: StakeholderDto[] })
   const { t } = useI18n();
   const { cells, unpositioned } = stakeholderMatrix(stakeholders);
   const names = (list: StakeholderDto[]) => (
-    <ul className="links">
+    <ul className="links matrix-names">
       {list.map((s) => (
         <li key={s.id}>
           <StakeholderLink initiativeId={s.initiativeId} stakeholder={s} />

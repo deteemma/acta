@@ -1,5 +1,6 @@
 import { type AnalysisObjectRef, type BabokDto, findBabokElement, type InitiativeDto, type MeDto } from '@app/shared';
 import type { User } from 'oidc-client-ts';
+import { Archive, BookOpen, ListChecks, LogOut, PanelLeft, Plus, Search, Settings2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
@@ -7,7 +8,8 @@ import { AlertsButton, AlertsPanel, useMyAlerts } from './alerts';
 import { api } from './api';
 import { BabokElementPanel, BabokPanel } from './babok-panels';
 import { DashboardPanel } from './dashboard-panel';
-import { login, logout } from './auth';
+import { EmptyState } from './empty-state';
+import { login, loginErrorFromUrl, logout, shouldRedirectToLogin } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
 import { CreateInitiativePanel, InitiativePanel, MemberPanel } from './initiative-panels';
@@ -18,6 +20,7 @@ import { IS_MAC, Palette, usePaletteShortcut } from './palette';
 import { FabContext, PanelHost, type PanelContent, PanelsProvider, usePanels } from './panels';
 import { ReferencesProvider } from './references';
 import { RequirementPanel } from './requirement-panels';
+import { ResizeHandle, SIDEBAR } from './resize';
 
 export function App({ user }: { user: User | null }) {
   return (
@@ -27,19 +30,59 @@ export function App({ user }: { user: User | null }) {
   );
 }
 
+/** Une seule redirection vers Keycloak, même si React monte l'accueil deux fois (développement). */
+let loginStarted = false;
+
 function SignedOut() {
   const { t } = useI18n();
-  // Échec avant la redirection vers Keycloak (réseau, certificat…) : à afficher.
-  const [failure, setFailure] = useState<string | null>(null);
+  // Échec avant la redirection vers Keycloak (réseau, certificat…) ou erreur
+  // renvoyée par Keycloak : à afficher.
+  const [failure, setFailure] = useState<string | null>(() => loginErrorFromUrl());
+
+  // Connexion directe (validée le 01.11.2026) : l'accueil ne reste affiché
+  // qu'après une déconnexion volontaire ou une erreur.
+  useEffect(() => {
+    if (shouldRedirectToLogin() && !loginStarted) {
+      loginStarted = true;
+      login().catch((e: unknown) => setFailure(String(e)));
+    }
+  }, []);
+  // Écran de connexion (refonte du design, ticket 05) : logotype, accroche, illustration du système de design.
   return (
-    <main>
-      <header>
-        <h1>{t('app.title')}</h1>
-        <LanguageSelector />
-      </header>
-      <button onClick={() => login().catch((e: unknown) => setFailure(String(e)))}>{t('auth.login')}</button>
-      {failure && <p className="error">{t('auth.loginFailed', { error: failure })}</p>}
+    <main className="signed-out">
+      <div className="signed-out-text">
+        <h1 className="logotype">{t('app.title')}</h1>
+        <p className="tagline">{t('app.tagline')}</p>
+        <div className="signed-out-buttons">
+          <button type="button" className="primary" onClick={() => login().catch((e: unknown) => setFailure(String(e)))}>
+            {t('auth.login')}
+          </button>
+          <LanguageSelector />
+        </div>
+        {failure && <p className="error">{t('auth.loginFailed', { error: failure })}</p>}
+      </div>
+      <LoginIllustration />
     </main>
+  );
+}
+
+/** Blocs de couleur et trame de points, comme la couverture du système de design ACTA (style B). */
+function LoginIllustration() {
+  return (
+    <div className="signed-out-art">
+      <svg viewBox="0 0 240 180" aria-hidden="true">
+        <defs>
+          <pattern id="login-dots" x="6" y="6" width="16" height="16" patternUnits="userSpaceOnUse">
+            <circle className="fill-accent-soft" cx="0" cy="0" r="2" />
+          </pattern>
+        </defs>
+        <rect className="fill-accent" x="10" y="10" width="90" height="160" rx="6" />
+        <rect className="fill-text" x="112" y="10" width="118" height="100" rx="6" />
+        <rect fill="url(#login-dots)" x="112" y="10" width="118" height="100" />
+        <rect className="fill-accent-soft" x="112" y="122" width="72" height="48" rx="6" />
+        <rect className="fill-progress" x="196" y="122" width="34" height="48" rx="6" />
+      </svg>
+    </div>
   );
 }
 
@@ -75,6 +118,11 @@ function Shell({ user }: { user: User }) {
   const [initiativeVersion, setInitiativeVersion] = useState(0);
   usePaletteShortcut();
   const alerts = useMyAlerts(me, actionsVersion);
+  const [navHidden, setNavHidden] = useState(() => readNavHidden());
+  const toggleNav = (hidden: boolean) => {
+    setNavHidden(hidden);
+    writeNavHidden(hidden);
+  };
 
   useEffect(() => {
     api.listInitiatives().then(setInitiatives, (e: unknown) => setError(toUiError(e)));
@@ -97,7 +145,8 @@ function Shell({ user }: { user: User }) {
       disabled={!babok}
       onClick={() => open({ kind: 'createAction', ...fabOrigin })}
     >
-      + {t('actions.fab')}
+      <Plus />
+      {t('actions.fab')}
     </button>
   );
 
@@ -105,46 +154,91 @@ function Shell({ user }: { user: User }) {
     // Les références citées dans un texte suivent les besoins et exigences créés, modifiés ou supprimés.
     <ReferencesProvider version={needsVersion + requirementsVersion}>
       <FabContext.Provider value={fab}>
-        <main>
-          <header>
-            <h1>{t('actions.title')}</h1>
-            <span>
-              <button type="button" onClick={() => open({ kind: 'palette' })}>
-                {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
-              </button>{' '}
-              <button type="button" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
-                {t('babok.open')}
-              </button>{' '}
-              <AlertsButton alerts={alerts} />{' '}
-              {me?.isAdmin && (
-                <>
-                  <button type="button" onClick={() => open({ kind: 'admin' })}>
-                    {t('admin.open')}
-                  </button>{' '}
-                </>
+        <div className="shell">
+          {/* Barre latérale (refonte du design, ticket 03) : repliable, le choix est retenu sur ce navigateur. */}
+          {!navHidden && (
+            <nav id="sidebar" className="sidebar" aria-label={t('shell.navigation')}>
+              <ResizeHandle area={SIDEBAR} label={t('shell.resizeNav')} className="sidebar-resize" />
+              <span className="logotype">{t('app.title')}</span>
+              <span className="nav-item" aria-current="page">
+                <ListChecks />
+                {t('actions.title')}
+              </span>
+              <div className="nav-section">
+                <h2>{t('initiatives.title')}</h2>
+                <button type="button" className="ghost" onClick={() => open({ kind: 'createInitiative' })}>
+                  <Plus />
+                  {t('initiatives.new')}
+                </button>
+              </div>
+              <InitiativeList initiatives={active} />
+              {initiatives.length === 0 && (
+                <EmptyState
+                  subject="initiatives"
+                  compact
+                  title={t('initiatives.empty')}
+                  hint={t('empty.initiativesHint')}
+                />
               )}
-              {user.profile.name ?? user.profile.preferred_username} <LanguageSelector />{' '}
-              <button onClick={() => void logout()}>{t('auth.logout')}</button>
-            </span>
-          </header>
-          <ErrorMessage error={error} />
-          <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
-          <div className="section-header">
-            <h2>{t('initiatives.title')}</h2>
-            <button type="button" onClick={() => open({ kind: 'createInitiative' })}>
-              {t('initiatives.new')}
-            </button>
-          </div>
-          <InitiativeList initiatives={active} />
-          {initiatives.length === 0 && <p>{t('initiatives.empty')}</p>}
-          {archived.length > 0 && (
-            <details className="archived">
-              <summary>{t('initiatives.archivedSection', { count: archived.length })}</summary>
-              <InitiativeList initiatives={archived} />
-            </details>
+              {archived.length > 0 && (
+                <details className="archived">
+                  <summary>
+                    <Archive />
+                    {t('initiatives.archivedSection', { count: archived.length })}
+                  </summary>
+                  <InitiativeList initiatives={archived} />
+                </details>
+              )}
+              {me?.isAdmin && (
+                <button type="button" className="nav-item sidebar-end" onClick={() => open({ kind: 'admin' })}>
+                  <Settings2 />
+                  {t('admin.open')}
+                </button>
+              )}
+            </nav>
           )}
-        </main>
-        {fab}
+          <div className="shell-main">
+            <header className="topbar">
+              <button
+                type="button"
+                className="ghost icon-only"
+                aria-controls="sidebar"
+                aria-expanded={!navHidden}
+                aria-label={t(navHidden ? 'shell.showNav' : 'shell.hideNav')}
+                title={t(navHidden ? 'shell.showNav' : 'shell.hideNav')}
+                onClick={() => toggleNav(!navHidden)}
+              >
+                <PanelLeft />
+              </button>
+              <button type="button" className="search" onClick={() => open({ kind: 'palette' })}>
+                <span>
+                  <Search />
+                  {t('palette.open')}
+                </span>
+                <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
+              </button>
+              <span className="topbar-end">
+                <button type="button" className="ghost" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
+                  <BookOpen />
+                  {t('babok.open')}
+                </button>
+                <AlertsButton alerts={alerts} />
+                <small>{user.profile.name ?? user.profile.preferred_username}</small>
+                <LanguageSelector />
+                <button type="button" className="ghost" onClick={() => void logout()}>
+                  <LogOut />
+                  {t('auth.logout')}
+                </button>
+              </span>
+            </header>
+            <main className="page">
+              <h1>{t('actions.title')}</h1>
+              <ErrorMessage error={error} />
+              <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
+            </main>
+          </div>
+          {fab}
+        </div>
         <PanelHost
           render={(content, close) => {
             switch (content.kind) {
@@ -302,15 +396,37 @@ function InitiativeList({ initiatives }: { initiatives: InitiativeDto[] }) {
   const { t } = useI18n();
   const { open } = usePanels();
   return (
-    <ul className="links">
+    <ul className="nav-list">
       {initiatives.map((i) => (
         <li key={i.id}>
-          <button type="button" className="link" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>
-            <strong>{i.code}</strong> {i.name}
-          </button>{' '}
-          <small>{t(`role.${i.myRole}`)}</small>
+          <button type="button" className="nav-item" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>
+            <span className="code">{i.code}</span>
+            <span>
+              {i.name}
+              <small>{t(`role.${i.myRole}`)}</small>
+            </span>
+          </button>
         </li>
       ))}
     </ul>
   );
+}
+
+// Barre latérale masquée ou non : préférence de ce navigateur seulement.
+const NAV_HIDDEN_KEY = 'acta.navHidden';
+
+function readNavHidden(): boolean {
+  try {
+    return localStorage.getItem(NAV_HIDDEN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeNavHidden(hidden: boolean) {
+  try {
+    localStorage.setItem(NAV_HIDDEN_KEY, String(hidden));
+  } catch {
+    // Stockage indisponible (navigation privée) : le choix vaut pour la session.
+  }
 }

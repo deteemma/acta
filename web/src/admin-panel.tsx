@@ -1,23 +1,35 @@
 // Administration (ticket 05, ADR-0005) : comptes de Keycloak, initiatives sans
-// propriétaire actif, acronymes des références (ticket 09). Les contrôles
-// proposés et les refus suivent les règles de @app/shared (admin.ts, references.ts).
+// propriétaire actif, acronymes des références (ticket 09), statuts d'exigence
+// (ticket 11). Les contrôles proposés et les refus suivent les règles de
+// @app/shared (admin.ts, references.ts, requirement-statuses.ts).
 import {
+  memberName,
   type AccountDto,
+  type AdminRequirementStatusDto,
   checkAccountChange,
   checkAcronymChange,
   checkAdminOwnerDesignation,
+  checkStatusDeletion,
+  checkStatusLabels,
+  checkStatusUpdate,
   createAccountSchema,
   isAdminRefusal,
   type OrphanInitiativeDto,
+  LOCALES,
   type ReferenceCategoryDto,
+  REQUIREMENT_STATUS_LABEL_MAX_LENGTH,
+  type RequirementStatusRefusal,
+  type RequirementStatusLabels,
+  requirementStatusLabelsSchema,
   type UpdateAccountInput,
+  type UpdateRequirementStatusInput,
 } from '@app/shared';
 import { type FormEvent, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import { adminRefusalError, ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { Panel } from './panels';
-import { memberName } from './team-section';
+import { setRequirementStatuses } from './requirement-statuses';
 
 /**
  * Erreur de l'administration : ses refus d'abord (certains portent le même nom
@@ -41,6 +53,7 @@ export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => voi
       <AccountsSection myId={myId} />
       <OrphanInitiativesSection />
       <ReferenceCategoriesSection />
+      <RequirementStatusesSection />
     </Panel>
   );
 }
@@ -80,7 +93,7 @@ function AccountsSection({ myId }: { myId: string }) {
       {accounts === null ? (
         !error && <p>{t('common.loading')}</p>
       ) : (
-        <ul className="links team-members">
+        <ul className="links dense-list team-members">
           {accounts.map((account) => {
             const name = accountName(account);
             const toggle = { enabled: !account.enabled };
@@ -225,7 +238,7 @@ function OrphanInitiativesSection() {
           <h4>
             {initiative.code} · {initiative.name}
           </h4>
-          <ul className="links team-members">
+          <ul className="links dense-list team-members">
             {initiative.members.map((member) => (
               <li key={member.userId}>
                 <span>
@@ -286,7 +299,7 @@ function ReferenceCategoriesSection() {
       <ErrorMessage error={error} />
       {done && <p className="notice">{done}</p>}
       {categories && (
-        <ul className="links team-members">
+        <ul className="links dense-list team-members">
           {categories.map((category) => (
             <AcronymForm key={category.category} category={category} onSave={(acronym) => void save(category, acronym)} />
           ))}
@@ -326,5 +339,219 @@ function AcronymForm({ category, onSave }: { category: ReferenceCategoryDto; onS
         </button>
       </form>
     </li>
+  );
+}
+
+/**
+ * Statuts d'exigence, valables pour toute l'application : les 6 du BABOK, fixes,
+ * puis les statuts ajoutés, que l'on renomme, désactive, réactive ou supprime.
+ */
+function RequirementStatusesSection() {
+  const { t, locale } = useI18n();
+  const [statuses, setStatuses] = useState<AdminRequirementStatusDto[] | null>(null);
+  const [error, setError] = useState<UiError | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  const replaced = (next: AdminRequirementStatusDto[]) => {
+    setStatuses(next);
+    // Les fiches d'exigence ouvertes proposent aussitôt la nouvelle liste.
+    setRequirementStatuses(next);
+  };
+
+  useEffect(() => {
+    api.listRequirementStatuses().then(setStatuses, (e: unknown) => setError(toUiError(e)));
+  }, []);
+
+  /** Refus des règles de @app/shared, sinon appel de l'API ; message de réussite. */
+  async function run(
+    refusal: RequirementStatusRefusal | null,
+    call: () => Promise<AdminRequirementStatusDto[]>,
+    message: string,
+  ): Promise<boolean> {
+    if (refusal) {
+      setDone(null);
+      setError({ key: `requirementStatus.refusal.${refusal}` });
+      return false;
+    }
+    try {
+      replaced(await call());
+      setError(null);
+      setDone(message);
+      return true;
+    } catch (e) {
+      setDone(null);
+      setError(toUiError(e));
+      // Refusé parce que la liste a changé entre-temps : elle est à jour.
+      api.listRequirementStatuses().then(replaced, () => undefined);
+      return false;
+    }
+  }
+
+  function update(status: AdminRequirementStatusDto, change: UpdateRequirementStatusInput) {
+    const label = (change.labels ?? status.labels)[locale];
+    const message =
+      change.active === undefined
+        ? 'admin.requirementStatus.saved'
+        : change.active
+          ? 'admin.requirementStatus.reactivated'
+          : 'admin.requirementStatus.deactivated';
+    void run(
+      checkStatusUpdate(statuses ?? [], status.code, change),
+      () => api.updateRequirementStatus(status.code, change),
+      t(message, { label }),
+    );
+  }
+
+  function remove(status: AdminRequirementStatusDto) {
+    void run(
+      checkStatusDeletion(statuses ?? [], status.code),
+      () => api.deleteRequirementStatus(status.code),
+      t('admin.requirementStatus.deleted', { label: status.labels[locale] }),
+    );
+  }
+
+  /** Vrai si le statut est ajouté : le formulaire se vide. */
+  function add(labels: RequirementStatusLabels): Promise<boolean> {
+    return run(
+      checkStatusLabels(statuses ?? [], null, labels),
+      () => api.addRequirementStatus({ labels }),
+      t('admin.requirementStatus.added', { label: labels[locale] }),
+    );
+  }
+
+  return (
+    <section>
+      <h3>{t('admin.requirementStatuses')}</h3>
+      <p>
+        <small>{t('admin.requirementStatusesHint')}</small>
+      </p>
+      <ErrorMessage error={error} />
+      {done && <p className="notice">{done}</p>}
+      {statuses && (
+        <ul className="links dense-list team-members">
+          {statuses.map((status) =>
+            status.babok ? (
+              <li key={status.code}>
+                <span>
+                  {status.labels.fr} · {status.labels.en}
+                </span>
+                <span className="team-controls">
+                  <small className="badge">{t('admin.requirementStatus.babok')}</small>
+                </span>
+              </li>
+            ) : (
+              <AddedStatusForm
+                // Libellés changés (ici ou par un autre administrateur) : champs remis à jour.
+                key={`${status.code}:${status.labels.fr}:${status.labels.en}`}
+                status={status}
+                onSave={(labels) => update(status, { labels })}
+                onToggle={() => update(status, { active: !status.active })}
+                onDelete={() => remove(status)}
+              />
+            ),
+          )}
+        </ul>
+      )}
+      <AddStatusForm onAdd={add} />
+    </section>
+  );
+}
+
+function StatusLabelInputs({
+  labels,
+  onChange,
+  of,
+}: {
+  labels: RequirementStatusLabels;
+  onChange: (labels: RequirementStatusLabels) => void;
+  /** Libellé actuel du statut modifié, pour nommer les champs ; absent à l'ajout. */
+  of?: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <>
+      {LOCALES.map((language) => (
+        <input
+          key={language}
+          value={labels[language]}
+          size={16}
+          maxLength={REQUIREMENT_STATUS_LABEL_MAX_LENGTH}
+          placeholder={t(`admin.requirementStatus.${language}`)}
+          aria-label={
+            of ? t(`admin.requirementStatus.${language}Of`, { label: of }) : t(`admin.requirementStatus.${language}`)
+          }
+          onChange={(e) => onChange({ ...labels, [language]: e.target.value })}
+        />
+      ))}
+    </>
+  );
+}
+
+function AddedStatusForm({
+  status,
+  onSave,
+  onToggle,
+  onDelete,
+}: {
+  status: AdminRequirementStatusDto;
+  onSave: (labels: RequirementStatusLabels) => void;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  const { t, locale } = useI18n();
+  const [labels, setLabels] = useState(status.labels);
+  // Même schéma de validation que l'API (@app/shared).
+  const parsed = requirementStatusLabelsSchema.safeParse(labels);
+  const unchanged = parsed.success && parsed.data.fr === status.labels.fr && parsed.data.en === status.labels.en;
+  return (
+    <li>
+      <form
+        className="team-controls"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (parsed.success) onSave(parsed.data);
+        }}
+      >
+        <StatusLabelInputs labels={labels} onChange={setLabels} of={status.labels[locale]} />
+        <small className="badge">
+          {t(status.active ? 'admin.requirementStatus.active' : 'admin.requirementStatus.inactive')}
+          {status.used && ` · ${t('admin.requirementStatus.used')}`}
+        </small>
+        <button type="submit" disabled={!parsed.success || unchanged}>
+          {t('admin.requirementStatus.save')}
+        </button>
+        <button type="button" className={status.active ? 'danger' : undefined} onClick={onToggle}>
+          {t(status.active ? 'admin.requirementStatus.deactivate' : 'admin.requirementStatus.reactivate')}
+        </button>
+        <button type="button" className="danger" onClick={onDelete}>
+          {t('admin.requirementStatus.delete')}
+        </button>
+      </form>
+    </li>
+  );
+}
+
+const noLabels: RequirementStatusLabels = { fr: '', en: '' };
+
+function AddStatusForm({ onAdd }: { onAdd: (labels: RequirementStatusLabels) => Promise<boolean> }) {
+  const { t } = useI18n();
+  const [labels, setLabels] = useState(noLabels);
+  const [invalid, setInvalid] = useState(false);
+  return (
+    <form
+      className="stacked invite"
+      onSubmit={(e) => {
+        e.preventDefault();
+        // Même schéma de validation que l'API (@app/shared).
+        const parsed = requirementStatusLabelsSchema.safeParse(labels);
+        setInvalid(!parsed.success);
+        if (parsed.success) void onAdd(parsed.data).then((added) => added && setLabels(noLabels));
+      }}
+    >
+      <h4>{t('admin.requirementStatus.addTitle')}</h4>
+      <StatusLabelInputs labels={labels} onChange={setLabels} />
+      <button type="submit">{t('admin.requirementStatus.add')}</button>
+      {invalid && <ErrorMessage error={{ key: 'admin.requirementStatus.invalid' }} />}
+    </form>
   );
 }

@@ -19,6 +19,11 @@ import { InitiativeRoleGuard } from './initiatives/initiative-role.guard.js';
 import { InitiativesService } from './initiatives/initiatives.service.js';
 import { NeedsController } from './needs/needs.controller.js';
 import { NeedsService } from './needs/needs.service.js';
+import {
+  AdminRequirementStatusesController,
+  RequirementStatusesController,
+} from './requirement-statuses/requirement-statuses.controller.js';
+import { RequirementStatusesService } from './requirement-statuses/requirement-statuses.service.js';
 import { RequirementsController } from './requirements/requirements.controller.js';
 import { RequirementsService } from './requirements/requirements.service.js';
 import { StakeholdersController } from './stakeholders/stakeholders.controller.js';
@@ -32,12 +37,14 @@ import { UsersService } from './users/users.service.js';
   controllers: [
     ActionsController,
     AdminController,
+    AdminRequirementStatusesController,
     BabokController,
     HealthController,
     InitiativesController,
     MeController,
     NeedsController,
     ReferenceCategoriesController,
+    RequirementStatusesController,
     RequirementsController,
     StakeholdersController,
     SuggestedActionsController,
@@ -56,6 +63,7 @@ import { UsersService } from './users/users.service.js';
     StakeholdersService,
     NeedsService,
     ReferenceCategoriesService,
+    RequirementStatusesService,
     RequirementsService,
     SuggestedActionsService,
     { provide: APP_GUARD, useClass: AuthGuard },
