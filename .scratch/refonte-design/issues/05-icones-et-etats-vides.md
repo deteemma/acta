@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — Écrans un par un
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 01.11.2026)
 
 - [x] Icônes Lucide pour la navigation, les boutons d'action et les statuts ; jamais à la place du texte des boutons importants.
 - [x] Style d'illustration choisi dans Claude Design, validé.
