@@ -3,6 +3,7 @@
 // focus et Échap ne referme que le dernier ouvert. Sur grand écran (refonte du
 // design, ticket 03), un panneau latéral s'ancre à droite sans être modal : la
 // liste reste utilisable à côté.
+import { X } from 'lucide-react';
 import {
   createContext,
   type KeyboardEvent,
@@ -237,8 +238,8 @@ export function Panel({
           </h2>
           {badges && <div className="panel-badges">{badges}</div>}
         </div>
-        <button type="button" className="panel-close" aria-label={t('panel.close')} onClick={onClose}>
-          ×
+        <button type="button" className="panel-close" aria-label={t('panel.close')} title={t('panel.close')} onClick={onClose}>
+          <X />
         </button>
       </header>
       <div className="panel-body">{children}</div>

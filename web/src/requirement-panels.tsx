@@ -32,6 +32,7 @@ import {
   sortByDueDate,
   type StakeholderDto,
 } from '@app/shared';
+import { Download } from 'lucide-react';
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
@@ -132,6 +133,7 @@ export function ExportRequirementsButton({
 
   return (
     <button type="button" className="ghost" disabled={busy} onClick={() => void exportRequirements()}>
+      <Download />
       {t('requirements.export')}
     </button>
   );

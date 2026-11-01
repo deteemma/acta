@@ -19,9 +19,11 @@ import {
   type StakeholderDto,
   updateInitiativeSchema,
 } from '@app/shared';
+import { Archive, ArchiveRestore, LayoutDashboard, Plus, Trash2, Users } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { ActionList } from './action-panels';
 import { api, ApiError } from './api';
+import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { canEditNeeds, NeedList } from './need-panels';
@@ -156,6 +158,7 @@ export function InitiativePanel({
               {t('actions.section')} <span className="count">{actions.length}</span>
             </h4>
             <button type="button" disabled={!babok} onClick={() => open({ kind: 'dashboard', initiativeId })}>
+              <LayoutDashboard />
               {t('dashboard.open')}
             </button>
           </div>
@@ -167,10 +170,13 @@ export function InitiativePanel({
               <span className="count">{stakeholders.length}</span>
             </h4>
             <button type="button" onClick={() => open({ kind: 'stakeholders', initiativeId })}>
+              <Users />
               {t('stakeholders.open')}
             </button>
           </div>
-          {stakeholders.length === 0 && <p>{t('stakeholders.sectionEmpty')}</p>}
+          {stakeholders.length === 0 && (
+            <EmptyState subject="stakeholders" compact title={t('stakeholders.sectionEmpty')} hint={t('empty.stakeholdersHint')} />
+          )}
           <div className="section-header">
             <h4>
               <span title={englishTermTooltip(locale, 'needs.section')}>{t('needs.section')}</span>{' '}
@@ -178,12 +184,15 @@ export function InitiativePanel({
             </h4>
             {canEditNeeds(initiative) && (
               <button type="button" onClick={() => open({ kind: 'need', initiativeId })}>
+                <Plus />
                 {t('needs.new')}
               </button>
             )}
           </div>
           <NeedList needs={needs} />
-          {needs.length === 0 && <p>{t('needs.sectionEmpty')}</p>}
+          {needs.length === 0 && (
+            <EmptyState subject="needs" compact title={t('needs.sectionEmpty')} hint={t('empty.needsHint')} />
+          )}
           <div className="section-header">
             <h4>
               <span title={englishTermTooltip(locale, 'requirements.section')}>{t('requirements.section')}</span>{' '}
@@ -193,13 +202,21 @@ export function InitiativePanel({
               {requirements.length > 0 && <ExportRequirementsButton initiative={initiative} onError={setError} />}
               {canEditRequirements(initiative) && (
                 <button type="button" onClick={() => open({ kind: 'requirement', initiativeId })}>
+                  <Plus />
                   {t('requirements.new')}
                 </button>
               )}
             </div>
           </div>
           <RequirementList requirements={requirements} />
-          {requirements.length === 0 && <p>{t('requirements.sectionEmpty')}</p>}
+          {requirements.length === 0 && (
+            <EmptyState
+              subject="requirements"
+              compact
+              title={t('requirements.sectionEmpty')}
+              hint={t('empty.requirementsHint')}
+            />
+          )}
           <h3 className="group-title">{t('initiative.groupTeam')}</h3>
           <TeamSection
             initiative={initiative}
@@ -416,10 +433,12 @@ function OwnerActions({
       ) : (
         <>
           <button type="button" onClick={() => void toggleArchive()}>
+            {initiative.archivedAt ? <ArchiveRestore /> : <Archive />}
             {t(initiative.archivedAt ? 'initiative.unarchive' : 'initiative.archive')}
           </button>{' '}
           {can(initiative.myRole, 'delete', { archived: initiative.archivedAt != null }) && (
             <button type="button" className="danger" onClick={() => setConfirming(true)}>
+              <Trash2 />
               {t('initiative.delete')}
             </button>
           )}

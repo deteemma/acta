@@ -1,8 +1,10 @@
 // Alertes dans l'application (ticket 15), sans courriel : badge des nouvelles
 // alertes et panneau qui les liste. Règles dans @app/shared (alerts.ts).
 import { memberName, type ActionDto, type Alert, alertKey, localDate, type MeDto, myAlerts } from '@app/shared';
+import { Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from './api';
+import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
@@ -38,10 +40,12 @@ export function AlertsButton({ alerts }: { alerts: Alert[] }) {
   return (
     <button
       type="button"
+      className="ghost icon-only alerts-button"
       onClick={() => open({ kind: 'alerts' })}
       aria-label={count > 0 ? t('alerts.openWithNew', { count }) : t('alerts.open')}
+      title={t('alerts.open')}
     >
-      {t('alerts.open')}
+      <Bell />
       {count > 0 && <span className="alert-badge">{count}</span>}
     </button>
   );
@@ -74,7 +78,7 @@ export function AlertsPanel({
   return (
     <Panel title={t('alerts.title')} onClose={onClose}>
       <ErrorMessage error={error} />
-      {alerts.length === 0 && <p>{t('alerts.empty')}</p>}
+      {alerts.length === 0 && <EmptyState subject="alerts" title={t('alerts.empty')} hint={t('empty.alertsHint')} />}
       <ul className="links dense-list alert-list">
         {alerts.map(({ kind, action }) => (
           <li key={alertKey({ kind, action })}>

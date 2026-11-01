@@ -11,11 +11,14 @@ import {
   selectMyActions,
   toggleActionStatus,
 } from '@app/shared';
+import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionList } from './action-panels';
 import { api } from './api';
+import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
+import { usePanels } from './panels';
 
 export function MyActions({
   initiatives,
@@ -28,6 +31,7 @@ export function MyActions({
   version: number;
 }) {
   const { t } = useI18n();
+  const { open } = usePanels();
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [statuses, setStatuses] = useState<readonly ActionStatus[]>(DEFAULT_MY_ACTIONS_STATUSES);
   const [initiativeId, setInitiativeId] = useState('');
@@ -66,7 +70,20 @@ export function MyActions({
       </div>
       <ErrorMessage error={error} />
       <ActionList actions={shown} babok={babok} showInitiative />
-      {shown.length === 0 && <p>{t('actions.empty')}</p>}
+      {shown.length === 0 && (
+        <EmptyState
+          subject="actions"
+          title={t('actions.empty')}
+          hint={t('empty.actionsHint')}
+          action={
+            // Même création que le bouton flottant « + Action ».
+            <button type="button" className="primary" disabled={!babok} onClick={() => open({ kind: 'createAction' })}>
+              <Plus />
+              {t('actions.fab')}
+            </button>
+          }
+        />
+      )}
       {!initiativeId && actions.some((a) => a.initiative.archived) && (
         <p>
           <small>{t('actions.archivedHidden')}</small>

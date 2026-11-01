@@ -16,6 +16,7 @@ import {
   type TeamChange,
   teamControls,
 } from '@app/shared';
+import { UserPlus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { api } from './api';
 import { ErrorMessage, teamRefusalError, toUiError, type UiError } from './errors';
@@ -240,7 +241,10 @@ function InviteForm({ initiativeId, onInvited }: { initiativeId: string; onInvit
         />
         {t('member.teamBa')}
       </label>
-      <button type="submit">{t('team.inviteButton')}</button>
+      <button type="submit">
+        <UserPlus />
+        {t('team.inviteButton')}
+      </button>
       <ErrorMessage error={error} />
     </form>
   );

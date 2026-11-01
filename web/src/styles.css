@@ -30,11 +30,6 @@ h3 {
 a {
   color: var(--accent-strong);
 }
-main.signed-out {
-  max-width: 40rem;
-  margin: var(--space-8) auto;
-  padding: 0 var(--space-4);
-}
 header {
   display: flex;
   justify-content: space-between;
@@ -81,13 +76,13 @@ small {
 :where(button):where(:hover:not(:disabled)) {
   background: var(--bg);
 }
-:where(button[type='submit']) {
+:where(button[type='submit'], button.primary) {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
   font-weight: 600;
 }
-:where(button[type='submit']):where(:hover:not(:disabled)) {
+:where(button[type='submit'], button.primary):where(:hover:not(:disabled)) {
   border-color: var(--accent-strong);
   background: var(--accent-strong);
 }
@@ -1208,4 +1203,154 @@ details.dashboard-task .dense-list {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-1) var(--space-2);
+}
+/* Icônes Lucide (refonte du design, ticket 05) : au trait, à la taille du texte, avant le libellé. */
+.lucide {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  stroke-width: 1.75;
+}
+summary .lucide,
+.nav-item .lucide {
+  vertical-align: -0.2em;
+  margin-inline-end: var(--space-2);
+}
+.nav-item .lucide {
+  margin-inline-end: 0;
+  align-self: center;
+}
+button.icon-only {
+  position: relative;
+  width: 2.25rem;
+  padding: 0;
+}
+.alerts-button .alert-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  margin: 0;
+  min-width: 1.125rem;
+  padding: 0 var(--space-1);
+  box-sizing: border-box;
+  line-height: 1.125rem;
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+.topbar .search > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.panel-close .lucide {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+/* État vide : illustration au trait, texte, aide, action utile. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  padding: var(--space-8) var(--space-4);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+.empty-state.compact {
+  padding: var(--space-4) var(--space-3);
+}
+.empty-state p {
+  margin: 0;
+  max-width: 22rem;
+}
+.empty-title {
+  font-weight: 600;
+}
+.empty-hint {
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.empty-illustration {
+  width: 7.5rem;
+  height: 6rem;
+}
+.empty-state.compact .empty-illustration {
+  width: 5rem;
+  height: 4rem;
+}
+.empty-illustration .lucide {
+  width: 36px;
+  height: 36px;
+}
+.line-muted {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.line-accent {
+  color: var(--accent);
+}
+/* Écran de connexion : texte à gauche, illustration à droite. */
+main.signed-out {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  max-width: 64rem;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+  align-items: center;
+  gap: var(--space-8);
+}
+.signed-out-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.signed-out .logotype {
+  font-size: 1.75rem;
+}
+.signed-out .logotype::before {
+  width: 0.625rem;
+  height: 1.875rem;
+}
+.tagline {
+  margin: 0;
+  max-width: 24rem;
+  color: var(--muted);
+  font-size: var(--text-section-title);
+}
+.signed-out-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.signed-out-art svg {
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+}
+.fill-accent {
+  fill: var(--accent);
+}
+.fill-accent-soft {
+  fill: var(--accent-soft);
+}
+.fill-text {
+  fill: var(--text);
+}
+.fill-progress {
+  fill: var(--tone-progress-fg);
+}
+@media (max-width: 48rem) {
+  main.signed-out {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+  }
+  .signed-out-art {
+    display: none;
+  }
 }
