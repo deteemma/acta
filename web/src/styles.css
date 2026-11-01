@@ -247,7 +247,7 @@ button.ghost {
 .sidebar {
   position: sticky;
   top: 0;
-  flex: 0 0 15rem;
+  flex: 0 0 var(--sidebar-current-width);
   box-sizing: border-box;
   height: 100dvh;
   overflow-y: auto;
@@ -406,6 +406,11 @@ button.ghost {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* Plus précis que .panel-side, écrit plus bas. */
+.panel-side.panel-docked {
+  width: var(--docked-current-width);
+  max-width: none;
+}
 /* L'en-tête (titre, fermeture) reste visible au défilement. */
 .panel-side .panel-header {
   position: sticky;
@@ -414,7 +419,56 @@ button.ghost {
   background: var(--surface);
 }
 body:has(.panel-docked[open]) .shell-main {
-  margin-inline-end: var(--panel-width);
+  margin-inline-end: var(--docked-current-width);
+}
+/*
+ * Largeurs réglables (resize.tsx) : la poignée règle --sidebar-width et
+ * --docked-panel-width ; les bornes valent aussi si la fenêtre change de taille.
+ */
+:root {
+  --sidebar-current-width: clamp(12rem, var(--sidebar-width, 15rem), 24rem);
+  --docked-current-width: clamp(24rem, var(--docked-panel-width, 32rem), 60vw);
+}
+.resize-handle {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 0.5rem;
+  cursor: col-resize;
+  touch-action: none;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  background: transparent;
+}
+.resize-handle:hover::after,
+.resize-handle:focus-visible::after,
+body.resizing .resize-handle::after {
+  background: var(--accent);
+}
+.resize-handle:focus-visible {
+  outline: none;
+}
+.sidebar-resize {
+  left: calc(var(--sidebar-current-width) - 0.25rem);
+}
+.panel-resize {
+  right: calc(var(--docked-current-width) - 0.25rem);
+}
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+@media (max-width: 48rem) {
+  .sidebar-resize {
+    display: none;
+  }
 }
 body:has(.panel-docked[open]) .shell > .fab {
   display: none;

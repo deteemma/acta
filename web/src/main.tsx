@@ -5,9 +5,11 @@ import { App } from './App';
 import { currentUser, initAuth } from './auth';
 import { browserLocale } from './i18n';
 import './styles.css';
+import { restoreWidths } from './resize';
 import { installDesignTokens } from './theme';
 
 installDesignTokens();
+restoreWidths();
 const root = createRoot(document.getElementById('root')!);
 
 initAuth()
