@@ -1,6 +1,6 @@
 # ADR-0018 — Tokens de design écrits une seule fois, dans `shared`
 
-- **Statut** : proposé
+- **Statut** : accepté
 - **Date** : 2026-11-01
 
 ## Contexte

@@ -5,7 +5,9 @@ import { App } from './App';
 import { currentUser, initAuth } from './auth';
 import { browserLocale } from './i18n';
 import './styles.css';
+import { installDesignTokens } from './theme';
 
+installDesignTokens();
 const root = createRoot(document.getElementById('root')!);
 
 initAuth()
