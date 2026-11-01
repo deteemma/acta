@@ -2,8 +2,10 @@
 // remplacée par celle enregistrée sur le compte dès la connexion.
 import { isActionRefusal, LOCALES, type Locale, type MessageKey, pickLocale, translate } from '@app/shared';
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Globe } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { type Api, ApiError } from './api';
+import { type AppTheme, useStyles, useTheme } from './theme';
 
 interface I18n {
   locale: Locale;
@@ -64,27 +66,38 @@ export function describeError(t: I18n['t'], error: unknown): string {
   return String(error);
 }
 
+/**
+ * Globe et langue en cours ; chaque appui passe à la langue suivante (en-tête
+ * validé le 01.11.2026, refonte du design, ticket 06).
+ */
 export function LanguageSelector() {
   const { locale, setLocale, t } = useI18n();
+  const styles = useStyles(makeStyles);
+  const theme = useTheme();
+  const next = LOCALES[(LOCALES.indexOf(locale) + 1) % LOCALES.length];
   return (
-    <View style={styles.row} accessibilityLabel={t('language.label')}>
-      {LOCALES.map((l) => (
-        <Pressable
-          key={l}
-          onPress={() => setLocale(l)}
-          accessibilityRole="button"
-          accessibilityState={{ selected: l === locale }}
-          accessibilityLabel={t(`language.${l}`)}
-        >
-          <Text style={l === locale ? styles.selected : styles.option}>{l.toUpperCase()}</Text>
-        </Pressable>
-      ))}
-    </View>
+    <Pressable
+      onPress={() => setLocale(next)}
+      accessibilityRole="button"
+      accessibilityLabel={`${t('language.label')} : ${t(`language.${locale}`)}`}
+      accessibilityHint={t(`language.${next}`)}
+      style={styles.button}
+    >
+      <Globe color={theme.colors.text} size={20} strokeWidth={1.75} />
+      <Text style={styles.code}>{locale.toUpperCase()}</Text>
+    </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 8 },
-  option: { opacity: 0.5, padding: 4 },
-  selected: { fontWeight: '700', padding: 4 },
-});
+const makeStyles = ({ colors, space, radius, text, fonts }: AppTheme) =>
+  StyleSheet.create({
+    button: {
+      minHeight: 44,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[1],
+      paddingHorizontal: space[2],
+      borderRadius: radius.md,
+    },
+    code: { color: colors.text, fontFamily: fonts.semibold, fontSize: text.small },
+  });

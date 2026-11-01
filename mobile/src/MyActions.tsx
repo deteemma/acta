@@ -1,9 +1,11 @@
 // Écran d'accueil « Mes actions » (ticket 17) : mêmes filtres que sur le web,
 // filtrage et tri par @app/shared (selectMyActions). Mode connecté seulement.
+// Présentation : refonte du design, ticket 06.
 import {
   ACTION_STATUSES,
   type ActionDto,
   type ActionStatus,
+  actionStatusTone,
   type BabokDto,
   DEFAULT_MY_ACTIONS_STATUSES,
   findBabokElement,
@@ -11,11 +13,13 @@ import {
   selectMyActions,
   toggleActionStatus,
 } from '@app/shared';
+import { ListChecks } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { Api } from './api';
 import { describeError, useI18n } from './i18n';
-import { babokLabel, Chip, formatDate, styles as ui } from './ui';
+import { type AppTheme, useStyles } from './theme';
+import { babokLabel, Chip, EmptyState, formatDate, StatusBadge, Text, useUiStyles } from './ui';
 
 export function MyActions({
   api,
@@ -32,6 +36,8 @@ export function MyActions({
   onOpen: (action: ActionDto) => void;
 }) {
   const { t, locale } = useI18n();
+  const ui = useUiStyles();
+  const styles = useStyles(makeStyles);
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [statuses, setStatuses] = useState<readonly ActionStatus[]>(DEFAULT_MY_ACTIONS_STATUSES);
   const [initiativeId, setInitiativeId] = useState<string | null>(null);
@@ -75,23 +81,26 @@ export function MyActions({
           {error != null && <Text style={ui.error}>{describeError(t, error)}</Text>}
         </View>
       }
-      renderItem={({ item }) => {
+      renderItem={({ item, index }) => {
         const task = babok && findBabokElement(babok, item.taskId);
         return (
-          <Pressable style={styles.item} onPress={() => onOpen(item)} accessibilityRole="button">
-            <Text style={styles.itemTitle}>
-              <Text style={ui.label}>{item.initiative.code} </Text>
-              {item.title}
-            </Text>
-            <Text style={ui.muted}>
-              {t(`actionStatus.${item.status}`)} · {item.dueDate ? formatDate(locale, item.dueDate) : t('action.noDueDate')}
-              {item.initiative.archived ? ` · ${t('initiative.archived')}` : ''}
-              {task ? ` · ${babokLabel(task, locale)}` : ''}
-            </Text>
+          <Pressable
+            style={[styles.item, index === 0 && styles.first, index === shown.length - 1 && styles.last]}
+            onPress={() => onOpen(item)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.itemTitle}>{item.title}</Text>
+            <View style={styles.meta}>
+              <Text style={ui.code}>{item.initiative.code}</Text>
+              <Text style={ui.code}>{item.dueDate ? formatDate(locale, item.dueDate) : t('action.noDueDate')}</Text>
+              <StatusBadge tone={actionStatusTone(item.status)} label={t(`actionStatus.${item.status}`)} />
+              {item.initiative.archived && <Text style={ui.muted}>{t('initiative.archived')}</Text>}
+            </View>
+            {task && <Text style={ui.muted}>{babokLabel(task, locale)}</Text>}
           </Pressable>
         );
       }}
-      ListEmptyComponent={<Text>{t('actions.empty')}</Text>}
+      ListEmptyComponent={<EmptyState icon={ListChecks} title={t('actions.empty')} hint={t('empty.actionsHint')} />}
       ListFooterComponent={
         !initiativeId && actions.some((a) => a.initiative.archived) ? (
           <Text style={[ui.muted, styles.footer]}>{t('actions.archivedHidden')}</Text>
@@ -103,11 +112,24 @@ export function MyActions({
   );
 }
 
-const styles = StyleSheet.create({
-  filters: { gap: 6, marginBottom: 8 },
-  row: { flexDirection: 'row', gap: 8 },
-  item: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 2 },
-  itemTitle: { fontSize: 16 },
-  footer: { marginTop: 12 },
-  list: { paddingBottom: 80 },
-});
+const makeStyles = ({ colors, space, radius, text, fonts }: AppTheme) =>
+  StyleSheet.create({
+    filters: { gap: space[2], marginBottom: space[3] },
+    row: { flexDirection: 'row', gap: space[2] },
+    // Lignes dans une carte : bordure commune, coins arrondis aux extrémités.
+    item: {
+      gap: space[1],
+      paddingVertical: space[3],
+      paddingHorizontal: space[3],
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderTopWidth: 0,
+      borderColor: colors.border,
+    },
+    first: { borderTopWidth: 1, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
+    last: { borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg },
+    itemTitle: { fontFamily: fonts.medium, fontSize: text.sectionTitle },
+    meta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] },
+    footer: { marginTop: space[3] },
+    list: { paddingBottom: 96 },
+  });

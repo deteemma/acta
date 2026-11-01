@@ -19,9 +19,11 @@ import {
   type StakeholderDto,
   updateInitiativeSchema,
 } from '@app/shared';
+import { Archive, ArchiveRestore, LayoutDashboard, Plus, Trash2, Users } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { ActionList } from './action-panels';
 import { api, ApiError } from './api';
+import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { canEditNeeds, NeedList } from './need-panels';
@@ -116,65 +118,106 @@ export function InitiativePanel({
 
   const state = { archived: initiative?.archivedAt != null };
 
+  // Hiérarchie de la fiche (refonte du design, ticket 04) : Fiche, Analyse, Équipe, Propriétaire.
+  const me = members?.find((m) => m.isMe);
   return (
-    <Panel title={initiative ? `${initiative.code} · ${initiative.name}` : t('common.loading')} onClose={onClose}>
+    <Panel
+      title={initiative ? initiative.name : t('common.loading')}
+      kicker={
+        initiative && (
+          <>
+            {t('initiative.kicker')} <span className="code">{initiative.code}</span>
+          </>
+        )
+      }
+      badges={
+        initiative && (
+          <>
+            <span className="badge">{t('initiative.myRoleBadge', { role: t(`role.${initiative.myRole}`) })}</span>
+            {me?.isTeamBa && <span className="badge">{t('member.teamBa')}</span>}
+          </>
+        )
+      }
+      onClose={onClose}
+    >
       <ErrorMessage error={error} />
       {initiative && members && (
         <>
           {initiative.archivedAt && (
             <p className="notice">{t('initiative.archivedOn', { date: formatDate(locale, initiative.archivedAt) })}</p>
           )}
+          <h3 className="group-title">{t('initiative.groupSheet')}</h3>
           {can(initiative.myRole, 'edit', state) ? (
             <InitiativeForm initiative={initiative} onSaved={changed} />
           ) : (
             <InitiativeDetails initiative={initiative} />
           )}
-          <dl>
-            <dt>{t('initiative.myRole')}</dt>
-            <dd>{t(`role.${initiative.myRole}`)}</dd>
-          </dl>
+          <h3 className="group-title">{t('initiative.groupAnalysis')}</h3>
           <div className="section-header">
-            <h3>{t('actions.section')}</h3>
+            <h4>
+              {t('actions.section')} <span className="count">{actions.length}</span>
+            </h4>
             <button type="button" disabled={!babok} onClick={() => open({ kind: 'dashboard', initiativeId })}>
+              <LayoutDashboard />
               {t('dashboard.open')}
             </button>
           </div>
           <ActionList actions={sortByDueDate(actions)} babok={babok} />
           {actions.length === 0 && <p>{t('actions.sectionEmpty')}</p>}
           <div className="section-header">
-            <h3 title={englishTermTooltip(locale, 'stakeholders.section')}>{t('stakeholders.section')}</h3>
+            <h4>
+              <span title={englishTermTooltip(locale, 'stakeholders.section')}>{t('stakeholders.section')}</span>{' '}
+              <span className="count">{stakeholders.length}</span>
+            </h4>
             <button type="button" onClick={() => open({ kind: 'stakeholders', initiativeId })}>
+              <Users />
               {t('stakeholders.open')}
             </button>
           </div>
-          <p>
-            {stakeholders.length === 0
-              ? t('stakeholders.sectionEmpty')
-              : t('stakeholders.sectionCount', { count: stakeholders.length })}
-          </p>
+          {stakeholders.length === 0 && (
+            <EmptyState subject="stakeholders" compact title={t('stakeholders.sectionEmpty')} hint={t('empty.stakeholdersHint')} />
+          )}
           <div className="section-header">
-            <h3 title={englishTermTooltip(locale, 'needs.section')}>{t('needs.section')}</h3>
+            <h4>
+              <span title={englishTermTooltip(locale, 'needs.section')}>{t('needs.section')}</span>{' '}
+              <span className="count">{needs.length}</span>
+            </h4>
             {canEditNeeds(initiative) && (
               <button type="button" onClick={() => open({ kind: 'need', initiativeId })}>
+                <Plus />
                 {t('needs.new')}
               </button>
             )}
           </div>
           <NeedList needs={needs} />
-          {needs.length === 0 && <p>{t('needs.sectionEmpty')}</p>}
+          {needs.length === 0 && (
+            <EmptyState subject="needs" compact title={t('needs.sectionEmpty')} hint={t('empty.needsHint')} />
+          )}
           <div className="section-header">
-            <h3 title={englishTermTooltip(locale, 'requirements.section')}>{t('requirements.section')}</h3>
+            <h4>
+              <span title={englishTermTooltip(locale, 'requirements.section')}>{t('requirements.section')}</span>{' '}
+              <span className="count">{requirements.length}</span>
+            </h4>
             <div className="section-buttons">
               {requirements.length > 0 && <ExportRequirementsButton initiative={initiative} onError={setError} />}
               {canEditRequirements(initiative) && (
                 <button type="button" onClick={() => open({ kind: 'requirement', initiativeId })}>
+                  <Plus />
                   {t('requirements.new')}
                 </button>
               )}
             </div>
           </div>
           <RequirementList requirements={requirements} />
-          {requirements.length === 0 && <p>{t('requirements.sectionEmpty')}</p>}
+          {requirements.length === 0 && (
+            <EmptyState
+              subject="requirements"
+              compact
+              title={t('requirements.sectionEmpty')}
+              hint={t('empty.requirementsHint')}
+            />
+          )}
+          <h3 className="group-title">{t('initiative.groupTeam')}</h3>
           <TeamSection
             initiative={initiative}
             members={members}
@@ -274,19 +317,21 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
 
   return (
     <form className="stacked" onSubmit={(e) => void save(e)} onChange={edited}>
-      <label>
-        {t('initiative.code')}
-        {canEditCode ? (
-          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-        ) : (
-          <input value={code} readOnly aria-readonly="true" />
-        )}
-        {initiative.codeFrozen && <small>{t('initiative.codeFrozen')}</small>}
-      </label>
-      <label>
-        {t('initiative.name')}
-        <input value={name} onChange={(e) => setName(e.target.value)} />
-      </label>
+      <div className="code-name">
+        <label>
+          {t('initiative.code')}
+          {canEditCode ? (
+            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+          ) : (
+            <input value={code} readOnly aria-readonly="true" />
+          )}
+          {initiative.codeFrozen && <small>{t('initiative.codeFrozen')}</small>}
+        </label>
+        <label>
+          {t('initiative.name')}
+          <input value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+      </div>
       <label>
         {t('initiative.description')}
         <textarea
@@ -367,6 +412,7 @@ function OwnerActions({
 
   return (
     <section className="owner-actions">
+      <h3 className="group-title">{t('role.owner')}</h3>
       {confirming ? (
         <div role="alertdialog" aria-labelledby="delete-confirm" className="confirm">
           <p id="delete-confirm">{t('initiative.deleteConfirm', { code: initiative.code })}</p>
@@ -387,10 +433,12 @@ function OwnerActions({
       ) : (
         <>
           <button type="button" onClick={() => void toggleArchive()}>
+            {initiative.archivedAt ? <ArchiveRestore /> : <Archive />}
             {t(initiative.archivedAt ? 'initiative.unarchive' : 'initiative.archive')}
           </button>{' '}
           {can(initiative.myRole, 'delete', { archived: initiative.archivedAt != null }) && (
             <button type="button" className="danger" onClick={() => setConfirming(true)}>
+              <Trash2 />
               {t('initiative.delete')}
             </button>
           )}

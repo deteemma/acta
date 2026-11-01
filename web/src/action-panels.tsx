@@ -7,6 +7,7 @@ import {
   ACTION_TITLE_MAX_LENGTH,
   type ActionDto,
   type ActionStatus,
+  actionStatusTone,
   type BabokDto,
   type BabokElementDto,
   babokEnglishName,
@@ -84,7 +85,7 @@ export function StatusLabel({ status, count }: { status: ActionStatus; count?: n
   const { t } = useI18n();
   const label = t(`actionStatus.${status}`);
   return (
-    <span className={`badge status-${status}`}>
+    <span className={`badge status tone-${actionStatusTone(status)}`}>
       {count === undefined ? label : t('dashboard.statusCount', { status: label, count })}
     </span>
   );
@@ -101,32 +102,47 @@ export function ActionList({
   showInitiative?: boolean;
 }) {
   const { t, locale } = useI18n();
-  const { open } = usePanels();
+  const { stack, open } = usePanels();
+  // Action ouverte dans le dernier panneau : sa ligne est mise en évidence (refonte, ticket 04).
+  const top = stack.at(-1)?.content;
+  const openedId = top?.kind === 'action' ? top.actionId : undefined;
+  if (actions.length === 0) return null;
   return (
-    <ul className="links action-list">
+    <ul className={`links dense-list action-list${showInitiative ? ' with-initiative' : ''}`}>
+      {/* En-têtes de colonnes, sur grand écran ; chaque cellule reste lisible seule. */}
+      <li className="action-row list-head" aria-hidden="true">
+        {showInitiative && <span>{t('action.initiative')}</span>}
+        <span>{t('action.title')}</span>
+        <span>{t('action.task')}</span>
+        {!showInitiative && <span>{t('action.assignee')}</span>}
+        <span>{t('action.dueDate')}</span>
+        <span>{t('action.status')}</span>
+      </li>
       {actions.map((a) => {
         const task = babok && findBabokElement(babok, a.taskId);
         return (
-          <li key={a.id}>
+          <li key={a.id} className={`action-row${a.id === openedId ? ' selected' : ''}`}>
+            {showInitiative && <span className="code">{a.initiative.code}</span>}
             <button
               type="button"
-              className="link"
+              className="link action-title"
               onClick={() => open({ kind: 'action', initiativeId: a.initiative.id, actionId: a.id })}
             >
-              {showInitiative && <strong>{a.initiative.code} </strong>}
               {a.title}
             </button>
-            <span className="action-meta">
+            <span className="action-task">{task && <BabokPreview element={task} />}</span>
+            {/* Liste d'une initiative : le responsable, signalé s'il ne peut plus l'être. */}
+            {!showInitiative && (
+              <small>
+                <AssigneeName assignee={a.assignee} />
+              </small>
+            )}
+            <small className="due">
+              {a.dueDate ? formatDate(locale, a.dueDate) : t('action.noDueDate')}
+              {showInitiative && a.initiative.archived && ` · ${t('initiative.archived')}`}
+            </small>
+            <span>
               <StatusLabel status={a.status} />
-              <small>{a.dueDate ? formatDate(locale, a.dueDate) : t('action.noDueDate')}</small>
-              {showInitiative && a.initiative.archived && <small>{t('initiative.archived')}</small>}
-              {/* Liste d'une initiative : le responsable, signalé s'il ne peut plus l'être. */}
-              {!showInitiative && (
-                <small>
-                  <AssigneeName assignee={a.assignee} />
-                </small>
-              )}
-              {task && <BabokPreview element={task} />}
             </span>
           </li>
         );

@@ -2,11 +2,13 @@ import type { InitiativeRole } from '@app/shared';
 import { PowerSyncContext, useQuery } from '@powersync/react-native';
 import { randomUUID } from 'expo-crypto';
 import { useEffect, useState } from 'react';
-import { FlatList, Text } from 'react-native';
+import { Folder } from 'lucide-react-native';
+import { FlatList } from 'react-native';
 import type { Api } from './api';
 import { useI18n } from './i18n';
 import { Connector, db } from './powersync';
-import { InitiativeForm, styles } from './InitiativeForm';
+import { InitiativeForm, InitiativeRow } from './InitiativeForm';
+import { EmptyState, Text, useUiStyles } from './ui';
 
 interface Props {
   endpoint: string;
@@ -17,6 +19,7 @@ interface Props {
 /** Mode hors ligne : la liste vient de la réplique locale, synchronisée par PowerSync. */
 export default function OfflineInitiatives({ endpoint, getToken, api }: Props) {
   const { t } = useI18n();
+  const ui = useUiStyles();
   const [rejection, setRejection] = useState<number | null>(null);
 
   useEffect(() => {
@@ -26,7 +29,7 @@ export default function OfflineInitiatives({ endpoint, getToken, api }: Props) {
 
   return (
     <PowerSyncContext.Provider value={db}>
-      {rejection != null && <Text style={styles.error}>{t('sync.rejected', { status: rejection })}</Text>}
+      {rejection != null && <Text style={ui.error}>{t('sync.rejected', { status: rejection })}</Text>}
       <LocalInitiatives />
     </PowerSyncContext.Provider>
   );
@@ -56,13 +59,15 @@ function LocalInitiatives() {
       <FlatList
         data={initiatives}
         keyExtractor={(p) => p.id}
-        renderItem={({ item }) => (
-          <Text style={styles.item}>
-            {item.code} {item.name}{' '}
-            <Text style={styles.role}>{item.role ? t(`role.${item.role}`) : t('initiatives.pendingSync')}</Text>
-          </Text>
+        renderItem={({ item, index }) => (
+          <InitiativeRow
+            initiative={item}
+            role={item.role ? t(`role.${item.role}`) : t('initiatives.pendingSync')}
+            first={index === 0}
+            last={index === initiatives.length - 1}
+          />
         )}
-        ListEmptyComponent={<Text>{t('initiatives.empty')}</Text>}
+        ListEmptyComponent={<EmptyState icon={Folder} title={t('initiatives.empty')} hint={t('empty.initiativesHint')} />}
       />
     </>
   );

@@ -32,6 +32,7 @@ import {
   sortByDueDate,
   type StakeholderDto,
 } from '@app/shared';
+import { Download } from 'lucide-react';
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
@@ -75,7 +76,7 @@ function TypeLabel({ type, subtype }: { type: RequirementType; subtype: Requirem
 /** Exigences, dans l'ordre reçu (par référence), avec leur type et leur statut. */
 export function RequirementList({ requirements }: { requirements: RequirementDto[] }) {
   return (
-    <ul className="links action-list">
+    <ul className="links dense-list action-list">
       {requirements.map((r) => (
         <li key={r.id}>
           <RequirementLink initiativeId={r.initiativeId} requirement={r} />
@@ -83,9 +84,7 @@ export function RequirementList({ requirements }: { requirements: RequirementDto
             <small>
               <TypeLabel type={r.type} subtype={r.subtype} />
             </small>
-            <span className="badge">
-              <StatusLabel status={r.status} />
-            </span>
+            <StatusLabel status={r.status} />
           </span>
         </li>
       ))}
@@ -133,7 +132,8 @@ export function ExportRequirementsButton({
   };
 
   return (
-    <button type="button" disabled={busy} onClick={() => void exportRequirements()}>
+    <button type="button" className="ghost" disabled={busy} onClick={() => void exportRequirements()}>
+      <Download />
       {t('requirements.export')}
     </button>
   );

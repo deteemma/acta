@@ -35,7 +35,49 @@ export async function login(): Promise<void> {
   if (!manager) throw new Error('initAuth() non appelé');
   await manager.signinRedirect();
 }
-export const logout = () => manager?.signoutRedirect();
+
+// Déconnexion volontaire : au retour, l'écran d'accueil d'ACTA s'affiche au
+// lieu de renvoyer aussitôt vers Keycloak (refonte du design, ticket 05).
+const SIGNED_OUT_KEY = 'acta.signedOut';
+
+export const logout = () => {
+  try {
+    sessionStorage.setItem(SIGNED_OUT_KEY, 'true');
+  } catch {
+    // Stockage indisponible : l'accueil renverra vers Keycloak.
+  }
+  return manager?.signoutRedirect();
+};
+
+/**
+ * Vrai si l'accueil doit renvoyer directement vers la connexion Keycloak :
+ * ni retour de déconnexion volontaire, ni erreur renvoyée par Keycloak (qui
+ * ferait boucler). Décidé une seule fois par chargement de la page :
+ * l'indication de déconnexion est alors effacée.
+ */
+let redirectToLogin: boolean | undefined;
+
+export function shouldRedirectToLogin(): boolean {
+  redirectToLogin ??= decideRedirectToLogin();
+  return redirectToLogin;
+}
+
+function decideRedirectToLogin(): boolean {
+  let signedOut = false;
+  try {
+    signedOut = sessionStorage.getItem(SIGNED_OUT_KEY) === 'true';
+    sessionStorage.removeItem(SIGNED_OUT_KEY);
+  } catch {
+    // Stockage indisponible : comme sans déconnexion.
+  }
+  return !signedOut && !new URLSearchParams(window.location.search).has('error');
+}
+
+/** Message d'erreur renvoyé par Keycloak dans l'adresse, s'il y en a un. */
+export function loginErrorFromUrl(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('error_description') ?? params.get('error');
+}
 
 export async function accessToken(): Promise<string> {
   const user = await manager?.getUser();

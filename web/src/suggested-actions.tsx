@@ -80,44 +80,48 @@ export function SuggestedActions({
 
   const shown = showAll ? suggestions : suggestions.slice(0, SUGGESTED_ACTIONS_SHOWN);
   return (
-    <section className="suggested-actions">
-      <h3>{t('suggestedActions.title')}</h3>
-      <ErrorMessage error={error} />
-      {suggestions.length === 0 && <p>{t('suggestedActions.empty')}</p>}
-      <ul className="links">
-        {shown.map((suggestion) => {
-          const { title, justification } = suggestedActionText(babok, locale, suggestion);
-          const task = findBabokElement(babok, suggestion.taskId);
-          return (
-            <li key={suggestion.key}>
-              <div className="suggested-action-head">
+    <>
+      <h3 className="group-title">{t('suggestedActions.title')}</h3>
+      <section className="suggested-actions" aria-label={t('suggestedActions.title')}>
+        <ErrorMessage error={error} />
+        {suggestions.length === 0 && <p>{t('suggestedActions.empty')}</p>}
+        <ul className="links">
+          {shown.map((suggestion) => {
+            const { title, justification } = suggestedActionText(babok, locale, suggestion);
+            const task = findBabokElement(babok, suggestion.taskId);
+            return (
+              <li key={suggestion.key}>
                 <strong>{title}</strong>
-                {task && <BabokPreview element={task} />}
-              </div>
-              <small>{justification}</small>
-              {(canCreate || canDismiss) && (
-                <div className="suggested-action-buttons">
-                  {canCreate && (
-                    <button type="button" disabled={busy} onClick={() => void create(suggestion)}>
-                      {t('suggestedActions.create')}
-                    </button>
-                  )}
-                  {canDismiss && (
-                    <button type="button" className="link" disabled={busy} onClick={() => void dismiss(suggestion)}>
-                      {t('suggestedActions.dismiss')}
-                    </button>
-                  )}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {suggestions.length > SUGGESTED_ACTIONS_SHOWN && (
-        <button type="button" className="link" onClick={() => setShowAll((v) => !v)}>
-          {showAll ? t('suggestedActions.showLess') : t('suggestedActions.showAll', { count: suggestions.length })}
-        </button>
-      )}
-    </section>
+                <small>{justification}</small>
+                {task && (
+                  <span className="suggested-action-task">
+                    <BabokPreview element={task} />
+                  </span>
+                )}
+                {(canCreate || canDismiss) && (
+                  <div className="suggested-action-buttons">
+                    {canCreate && (
+                      <button type="button" disabled={busy} onClick={() => void create(suggestion)}>
+                        {t('suggestedActions.create')}
+                      </button>
+                    )}
+                    {canDismiss && (
+                      <button type="button" className="ghost" disabled={busy} onClick={() => void dismiss(suggestion)}>
+                        {t('suggestedActions.dismiss')}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        {suggestions.length > SUGGESTED_ACTIONS_SHOWN && (
+          <button type="button" className="link show-more" onClick={() => setShowAll((v) => !v)}>
+            {showAll ? t('suggestedActions.showLess') : t('suggestedActions.showAll', { count: suggestions.length })}
+          </button>
+        )}
+      </section>
+    </>
   );
 }
