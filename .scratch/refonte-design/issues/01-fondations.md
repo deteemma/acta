@@ -4,7 +4,7 @@
 
 **Blocked by:** validation de l'ADR-0017 — Composants d'interface maison (accepté le 01.11.2026)
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 01.11.2026)
 
 - [x] Trois pistes visuelles comparées dans Claude Design sur « Mes actions » avec un panneau d'exigence ouvert ; une piste choisie par la responsable fonctionnelle.
 - [x] Le système de design ACTA est créé dans Claude Design à partir de la piste choisie.
