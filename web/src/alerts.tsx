@@ -1,7 +1,7 @@
 // Alertes dans l'application (ticket 15), sans courriel : badge des nouvelles
 // alertes et panneau qui les liste. Règles dans @app/shared (alerts.ts).
-import { memberName, type ActionDto, type Alert, alertKey, localDate, type MeDto, myAlerts } from '@app/shared';
-import { Bell } from 'lucide-react';
+import { memberName, type ActionDto, type Alert, alertKey, localDate, type MeDto, type MessageKey, myAlerts } from '@app/shared';
+import { Bell, Clock, type LucideIcon, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from './api';
 import { EmptyState } from './empty-state';
@@ -9,6 +9,11 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { Panel, usePanels } from './panels';
+
+const ALERT_GROUPS: { kind: Alert['kind']; title: MessageKey; Icon: LucideIcon }[] = [
+  { kind: 'overdue', title: 'alerts.groupOverdue', Icon: Clock },
+  { kind: 'assigned', title: 'alerts.groupAssigned', Icon: UserPlus },
+];
 
 /** Relecture de mes actions : une attribution par un autre membre ou un changement de jour fait naître une alerte. */
 const REFRESH_MS = 60_000;
@@ -79,28 +84,46 @@ export function AlertsPanel({
     <Panel title={t('alerts.title')} onClose={onClose}>
       <ErrorMessage error={error} />
       {alerts.length === 0 && <EmptyState subject="alerts" title={t('alerts.empty')} hint={t('empty.alertsHint')} />}
-      <ul className="links dense-list alert-list">
-        {alerts.map(({ kind, action }) => (
-          <li key={alertKey({ kind, action })}>
-            <button
-              type="button"
-              className="link"
-              onClick={() => open({ kind: 'action', initiativeId: action.initiative.id, actionId: action.id })}
-            >
-              <strong>{action.initiative.code}</strong> {action.title}
-            </button>
-            <small>
-              {kind === 'overdue'
-                ? t('alerts.overdue', { date: formatDate(locale, action.dueDate!) })
-                : t('alerts.assigned', {
-                    name: memberName(action.assignedBy),
-                    date: formatDate(locale, action.assignedAt),
-                  })}
-            </small>
-            {newKeys.has(alertKey({ kind, action })) && <span className="badge tone-progress">{t('alerts.new')}</span>}
-          </li>
-        ))}
-      </ul>
+      {/* Deux groupes, l'échéance dépassée en tête (refonte du design, validé le 01.11.2026). */}
+      {ALERT_GROUPS.map(({ kind: groupKind, title, Icon }) => {
+        const ofKind = alerts.filter((a) => a.kind === groupKind);
+        if (ofKind.length === 0) return null;
+        return (
+          <section key={groupKind}>
+            <h3 className="group-title">
+              {t(title)} <span className="count">{ofKind.length}</span>
+            </h3>
+            <ul className="links dense-list alert-list">
+              {ofKind.map(({ kind, action }) => {
+                const isNew = newKeys.has(alertKey({ kind, action }));
+                return (
+                  <li key={alertKey({ kind, action })} className={isNew ? 'is-new' : undefined}>
+                    <span className={`alert-icon alert-${kind}`}>
+                      <Icon />
+                    </span>
+                    <button
+                      type="button"
+                      className="link"
+                      onClick={() => open({ kind: 'action', initiativeId: action.initiative.id, actionId: action.id })}
+                    >
+                      <span className="code">{action.initiative.code}</span> {action.title}
+                    </button>
+                    {isNew && <span className="badge tone-progress">{t('alerts.new')}</span>}
+                    <small className="alert-detail">
+                      {kind === 'overdue'
+                        ? t('alerts.overdue', { date: formatDate(locale, action.dueDate!) })
+                        : t('alerts.assigned', {
+                            name: memberName(action.assignedBy),
+                            date: formatDate(locale, action.assignedAt),
+                          })}
+                    </small>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
     </Panel>
   );
 }

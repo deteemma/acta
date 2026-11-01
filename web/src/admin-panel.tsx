@@ -46,22 +46,69 @@ function adminError(error: unknown): UiError {
 const accountName = (account: AccountDto) =>
   [account.firstName, account.lastName].filter(Boolean).join(' ') || account.username;
 
+type AdminTab = 'accounts' | 'orphans' | 'references' | 'statuses';
+
+/**
+ * Quatre onglets (refonte du design, validé le 01.11.2026). Toutes les sections
+ * restent montées : elles se chargent à l'ouverture, ce qui donne les compteurs,
+ * et une saisie en cours survit au changement d'onglet.
+ */
 export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => void }) {
   const { t } = useI18n();
+  const [tab, setTab] = useState<AdminTab>('accounts');
+  const [accountCount, setAccountCount] = useState<number | null>(null);
+  const [orphanCount, setOrphanCount] = useState<number | null>(null);
+  const tabs: { id: AdminTab; label: string; count: number | null; warn?: boolean }[] = [
+    { id: 'accounts', label: t('admin.accounts'), count: accountCount },
+    { id: 'orphans', label: t('admin.orphansTab'), count: orphanCount, warn: true },
+    { id: 'references', label: t('admin.references'), count: null },
+    { id: 'statuses', label: t('admin.requirementStatuses'), count: null },
+  ];
+  const panel = (id: AdminTab) => ({ role: 'tabpanel', id: `admin-${id}`, 'aria-labelledby': `admin-tab-${id}`, hidden: tab !== id });
   return (
     <Panel title={t('admin.title')} onClose={onClose}>
-      <AccountsSection myId={myId} />
-      <OrphanInitiativesSection />
-      <ReferenceCategoriesSection />
-      <RequirementStatusesSection />
+      <div role="tablist" className="tabs">
+        {tabs.map(({ id, label, count, warn }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`admin-tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`admin-${id}`}
+            onClick={() => setTab(id)}
+          >
+            {label}
+            {count !== null && (count > 0 || !warn) && (
+              <span className={`count${warn ? ' tone-negative' : ''}`}>{count}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      <div {...panel('accounts')}>
+        <AccountsSection myId={myId} onCount={setAccountCount} />
+      </div>
+      <div {...panel('orphans')}>
+        <OrphanInitiativesSection onCount={setOrphanCount} />
+      </div>
+      <div {...panel('references')}>
+        <ReferenceCategoriesSection />
+      </div>
+      <div {...panel('statuses')}>
+        <RequirementStatusesSection />
+      </div>
     </Panel>
   );
 }
 
-function AccountsSection({ myId }: { myId: string }) {
+function AccountsSection({ myId, onCount }: { myId: string; onCount: (count: number) => void }) {
   const { t } = useI18n();
   const [accounts, setAccounts] = useState<AccountDto[] | null>(null);
   const [error, setError] = useState<UiError | null>(null);
+
+  useEffect(() => {
+    if (accounts) onCount(accounts.length);
+  }, [accounts, onCount]);
 
   useEffect(() => {
     api.listAccounts().then(setAccounts, (e: unknown) => setError(adminError(e)));
@@ -85,7 +132,7 @@ function AccountsSection({ myId }: { myId: string }) {
 
   return (
     <section>
-      <h3>{t('admin.accounts')}</h3>
+      <h3 className="visually-hidden">{t('admin.accounts')}</h3>
       <p>
         <small>{t('admin.accountsHint')}</small>
       </p>
@@ -193,13 +240,17 @@ function CreateAccountForm({ onCreated }: { onCreated: (account: AccountDto) => 
 }
 
 /** Initiatives sans propriétaire actif : nom, code et membres, rien d'autre. */
-function OrphanInitiativesSection() {
+function OrphanInitiativesSection({ onCount }: { onCount: (count: number) => void }) {
   const { t } = useI18n();
   const [initiatives, setInitiatives] = useState<OrphanInitiativeDto[] | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
   const load = () => api.listOrphanInitiatives().then(setInitiatives, (e: unknown) => setError(adminError(e)));
+
+  useEffect(() => {
+    if (initiatives) onCount(initiatives.length);
+  }, [initiatives, onCount]);
 
   useEffect(() => {
     void load();
@@ -226,7 +277,7 @@ function OrphanInitiativesSection() {
 
   return (
     <section>
-      <h3>{t('admin.orphans')}</h3>
+      <h3 className="visually-hidden">{t('admin.orphans')}</h3>
       <p>
         <small>{t('admin.orphansHint')}</small>
       </p>
@@ -292,7 +343,7 @@ function ReferenceCategoriesSection() {
 
   return (
     <section>
-      <h3>{t('admin.references')}</h3>
+      <h3 className="visually-hidden">{t('admin.references')}</h3>
       <p>
         <small>{t('admin.referencesHint')}</small>
       </p>
@@ -421,7 +472,7 @@ function RequirementStatusesSection() {
 
   return (
     <section>
-      <h3>{t('admin.requirementStatuses')}</h3>
+      <h3 className="visually-hidden">{t('admin.requirementStatuses')}</h3>
       <p>
         <small>{t('admin.requirementStatusesHint')}</small>
       </p>
