@@ -1,8 +1,11 @@
 // Coque de navigation (ticket 02) : panneaux empilés au-dessus de l'écran en
 // cours. Chaque panneau est un <dialog> modal : le navigateur y maintient le
-// focus et Échap ne referme que le dernier ouvert.
+// focus et Échap ne referme que le dernier ouvert. Sur grand écran (refonte du
+// design, ticket 03), un panneau latéral s'ancre à droite sans être modal : la
+// liste reste utilisable à côté.
 import {
   createContext,
+  type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
   useCallback,
@@ -64,7 +67,10 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
 
   const open = useCallback((content: PanelContent) => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setStack((s) => [...s, { id: nextId++, content, opener }]);
+    // Ouvert depuis la page alors qu'un panneau est ancré : il le remplace, au
+    // lieu de s'empiler à chaque objet consulté. La palette, elle, s'y superpose.
+    const fromPage = !opener?.closest('dialog') && content.kind !== 'palette';
+    setStack((s) => [...(fromPage ? [] : s), { id: nextId++, content, opener }]);
   }, []);
 
   const replace = useCallback((content: PanelContent) => {
@@ -117,6 +123,8 @@ export const FabContext = createContext<ReactNode>(null);
 /** Glissement vers le bas, sur petit écran, au-delà duquel le panneau se referme. */
 const SWIPE_CLOSE_PX = 80;
 const NARROW_SCREEN = '(max-width: 40rem)';
+/** Largeur à partir de laquelle un panneau latéral s'ancre à droite de la liste. */
+const WIDE_SCREEN = '(min-width: 80rem)';
 
 export function Panel({
   title,
@@ -141,6 +149,8 @@ export function Panel({
   const ref = useRef<HTMLDialogElement>(null);
   const onCloseRef = useRef(onClose);
   const drag = useRef<{ startY: number; dy: number } | null>(null);
+  // Décidé à l'ouverture : un panneau ne change pas de mode s'il reste ouvert.
+  const [docked] = useState(() => variant === 'side' && window.matchMedia(WIDE_SCREEN).matches);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -148,7 +158,10 @@ export function Panel({
 
   useEffect(() => {
     const dialog = ref.current!;
-    if (!dialog.open) dialog.showModal();
+    if (!dialog.open) {
+      if (docked) dialog.show();
+      else dialog.showModal();
+    }
     // `autoFocus` de React n'agit pas sur un <dialog> encore fermé.
     dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus();
     // Fermeture par le navigateur (Échap) : on retire le panneau de la pile.
@@ -160,7 +173,15 @@ export function Panel({
       const opener = entry?.opener;
       if (opener?.isConnected) opener.focus();
     };
-  }, [entry]);
+  }, [entry, docked]);
+
+  // Un panneau ancré n'est pas modal : le navigateur n'y gère pas Échap.
+  function closeOnEscape(event: KeyboardEvent<HTMLDialogElement>) {
+    if (docked && event.key === 'Escape' && !event.defaultPrevented) {
+      event.preventDefault();
+      onClose();
+    }
+  }
 
   function startDrag(event: PointerEvent<HTMLElement>) {
     if (variant !== 'side' || !window.matchMedia(NARROW_SCREEN).matches) return;
@@ -185,7 +206,12 @@ export function Panel({
 
   const titleId = `panel-title-${entry?.id ?? 0}`;
   return (
-    <dialog ref={ref} className={`panel panel-${variant}`} aria-labelledby={titleId}>
+    <dialog
+      ref={ref}
+      className={`panel panel-${variant}${docked ? ' panel-docked' : ''}`}
+      aria-labelledby={titleId}
+      onKeyDown={closeOnEscape}
+    >
       <header
         className="panel-header"
         onPointerDown={startDrag}

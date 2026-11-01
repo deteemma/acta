@@ -30,7 +30,7 @@ h3 {
 a {
   color: var(--accent-strong);
 }
-main {
+main.signed-out {
   max-width: 40rem;
   margin: var(--space-8) auto;
   padding: 0 var(--space-4);
@@ -223,14 +223,6 @@ button.ghost {
   color: var(--tone-negative-fg);
 }
 /* Logotype : « ACTA » espacé, précédé d'une barre d'accent. */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-.brand h1 {
-  margin: 0;
-}
 .logotype {
   display: inline-flex;
   align-items: center;
@@ -249,9 +241,178 @@ button.ghost {
   background: var(--accent);
 }
 
+/*
+ * Coque (refonte du design, ticket 03) : barre latérale, barre du haut, zone
+ * principale sur toute la largeur restante.
+ */
+.shell {
+  display: flex;
+  min-height: 100dvh;
+}
+.sidebar {
+  position: sticky;
+  top: 0;
+  flex: 0 0 15rem;
+  box-sizing: border-box;
+  height: 100dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-6) var(--space-3);
+  border-inline-end: 1px solid var(--border);
+  background: var(--sidebar);
+}
+.sidebar .logotype {
+  padding: 0 var(--space-2) var(--space-4);
+}
+.nav-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-inline-start: var(--space-2);
+}
+.nav-section h2 {
+  margin: 0;
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.nav-section button {
+  min-height: 1.75rem;
+  padding: 0 var(--space-2);
+  font-size: var(--text-small);
+}
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.nav-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 2.25rem;
+  box-sizing: border-box;
+  padding: var(--space-2);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text);
+  font-weight: 400;
+  text-align: start;
+}
+.nav-item:hover {
+  background: var(--bg);
+}
+.nav-item[aria-current='page'] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+.nav-item .code {
+  flex: none;
+  min-width: 2.75rem;
+}
+.nav-item small {
+  display: block;
+}
+.sidebar details.archived {
+  padding-inline-start: var(--space-2);
+}
+.sidebar-end {
+  margin-top: auto;
+}
+.code {
+  font-family: var(--font-mono);
+  font-size: var(--text-code);
+  color: var(--muted);
+}
+.shell-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-7);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.topbar .search {
+  flex: 0 1 24rem;
+  justify-content: space-between;
+  background: var(--bg);
+  color: var(--muted);
+}
+.topbar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+.page {
+  padding: var(--space-8) var(--space-7) 6rem;
+}
+.page h1 {
+  margin: 0 0 var(--space-4);
+}
+/* Textes longs : environ 75 caractères par ligne. */
+.rich-text,
+.multiline {
+  max-width: 75ch;
+}
+/* Petit écran : la barre latérale passe au-dessus de la page. */
+@media (max-width: 48rem) {
+  .shell {
+    flex-direction: column;
+  }
+  .sidebar {
+    position: static;
+    flex: none;
+    height: auto;
+    border-inline-end: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar,
+  .page {
+    padding-inline: var(--space-4);
+  }
+}
+
 /* Coque de navigation (ticket 02) */
 :root {
   --panel-width: min(32rem, 100%);
+}
+/*
+ * Grand écran : le panneau latéral s'ancre à droite, la page se resserre à côté.
+ * Le bouton « + Action » de la page passe sous le panneau : celui du panneau le remplace.
+ */
+.panel-docked {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 2;
+}
+body:has(.panel-docked[open]) .shell-main {
+  margin-inline-end: var(--panel-width);
+}
+body:has(.panel-docked[open]) .shell > .fab {
+  display: none;
 }
 .links {
   list-style: none;

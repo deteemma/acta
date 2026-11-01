@@ -32,7 +32,7 @@ function SignedOut() {
   // Échec avant la redirection vers Keycloak (réseau, certificat…) : à afficher.
   const [failure, setFailure] = useState<string | null>(null);
   return (
-    <main>
+    <main className="signed-out">
       <header>
         <h1 className="logotype">{t('app.title')}</h1>
         <LanguageSelector />
@@ -75,6 +75,11 @@ function Shell({ user }: { user: User }) {
   const [initiativeVersion, setInitiativeVersion] = useState(0);
   usePaletteShortcut();
   const alerts = useMyAlerts(me, actionsVersion);
+  const [navHidden, setNavHidden] = useState(() => readNavHidden());
+  const toggleNav = (hidden: boolean) => {
+    setNavHidden(hidden);
+    writeNavHidden(hidden);
+  };
 
   useEffect(() => {
     api.listInitiatives().then(setInitiatives, (e: unknown) => setError(toUiError(e)));
@@ -105,49 +110,73 @@ function Shell({ user }: { user: User }) {
     // Les références citées dans un texte suivent les besoins et exigences créés, modifiés ou supprimés.
     <ReferencesProvider version={needsVersion + requirementsVersion}>
       <FabContext.Provider value={fab}>
-        <main>
-          <header>
-            <div className="brand">
+        <div className="shell">
+          {/* Barre latérale (refonte du design, ticket 03) : repliable, le choix est retenu sur ce navigateur. */}
+          {!navHidden && (
+            <nav id="sidebar" className="sidebar" aria-label={t('shell.navigation')}>
               <span className="logotype">{t('app.title')}</span>
-              <h1>{t('actions.title')}</h1>
-            </div>
-            <span>
-              <button type="button" onClick={() => open({ kind: 'palette' })}>
-                {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
-              </button>{' '}
-              <button type="button" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
-                {t('babok.open')}
-              </button>{' '}
-              <AlertsButton alerts={alerts} />{' '}
-              {me?.isAdmin && (
-                <>
-                  <button type="button" onClick={() => open({ kind: 'admin' })}>
-                    {t('admin.open')}
-                  </button>{' '}
-                </>
+              <span className="nav-item" aria-current="page">
+                {t('actions.title')}
+              </span>
+              <div className="nav-section">
+                <h2>{t('initiatives.title')}</h2>
+                <button type="button" className="ghost" onClick={() => open({ kind: 'createInitiative' })}>
+                  {t('initiatives.new')}
+                </button>
+              </div>
+              <InitiativeList initiatives={active} />
+              {initiatives.length === 0 && (
+                <p>
+                  <small>{t('initiatives.empty')}</small>
+                </p>
               )}
-              {user.profile.name ?? user.profile.preferred_username} <LanguageSelector />{' '}
-              <button onClick={() => void logout()}>{t('auth.logout')}</button>
-            </span>
-          </header>
-          <ErrorMessage error={error} />
-          <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
-          <div className="section-header">
-            <h2>{t('initiatives.title')}</h2>
-            <button type="button" onClick={() => open({ kind: 'createInitiative' })}>
-              {t('initiatives.new')}
-            </button>
-          </div>
-          <InitiativeList initiatives={active} />
-          {initiatives.length === 0 && <p>{t('initiatives.empty')}</p>}
-          {archived.length > 0 && (
-            <details className="archived">
-              <summary>{t('initiatives.archivedSection', { count: archived.length })}</summary>
-              <InitiativeList initiatives={archived} />
-            </details>
+              {archived.length > 0 && (
+                <details className="archived">
+                  <summary>{t('initiatives.archivedSection', { count: archived.length })}</summary>
+                  <InitiativeList initiatives={archived} />
+                </details>
+              )}
+              {me?.isAdmin && (
+                <button type="button" className="nav-item sidebar-end" onClick={() => open({ kind: 'admin' })}>
+                  {t('admin.open')}
+                </button>
+              )}
+            </nav>
           )}
-        </main>
-        {fab}
+          <div className="shell-main">
+            <header className="topbar">
+              <button
+                type="button"
+                className="ghost"
+                aria-controls="sidebar"
+                aria-expanded={!navHidden}
+                onClick={() => toggleNav(!navHidden)}
+              >
+                {t(navHidden ? 'shell.showNav' : 'shell.hideNav')}
+              </button>
+              <button type="button" className="search" onClick={() => open({ kind: 'palette' })}>
+                {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
+              </button>
+              <span className="topbar-end">
+                <button type="button" className="ghost" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
+                  {t('babok.open')}
+                </button>
+                <AlertsButton alerts={alerts} />
+                <small>{user.profile.name ?? user.profile.preferred_username}</small>
+                <LanguageSelector />
+                <button type="button" className="ghost" onClick={() => void logout()}>
+                  {t('auth.logout')}
+                </button>
+              </span>
+            </header>
+            <main className="page">
+              <h1>{t('actions.title')}</h1>
+              <ErrorMessage error={error} />
+              <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
+            </main>
+          </div>
+          {fab}
+        </div>
         <PanelHost
           render={(content, close) => {
             switch (content.kind) {
@@ -305,15 +334,37 @@ function InitiativeList({ initiatives }: { initiatives: InitiativeDto[] }) {
   const { t } = useI18n();
   const { open } = usePanels();
   return (
-    <ul className="links dense-list">
+    <ul className="nav-list">
       {initiatives.map((i) => (
         <li key={i.id}>
-          <button type="button" className="link" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>
-            <strong>{i.code}</strong> {i.name}
-          </button>{' '}
-          <small>{t(`role.${i.myRole}`)}</small>
+          <button type="button" className="nav-item" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>
+            <span className="code">{i.code}</span>
+            <span>
+              {i.name}
+              <small>{t(`role.${i.myRole}`)}</small>
+            </span>
+          </button>
         </li>
       ))}
     </ul>
   );
+}
+
+// Barre latérale masquée ou non : préférence de ce navigateur seulement.
+const NAV_HIDDEN_KEY = 'acta.navHidden';
+
+function readNavHidden(): boolean {
+  try {
+    return localStorage.getItem(NAV_HIDDEN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeNavHidden(hidden: boolean) {
+  try {
+    localStorage.setItem(NAV_HIDDEN_KEY, String(hidden));
+  } catch {
+    // Stockage indisponible (navigation privée) : le choix vaut pour la session.
+  }
 }
