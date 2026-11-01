@@ -43,17 +43,16 @@ export function MyActions({
   return (
     <section className="my-actions">
       <div className="action-filters">
-        <fieldset>
-          <legend>{t('actions.filterStatuses')}</legend>
+        {/* Boutons bascule (refonte du design, ticket 04) ; même filtre qu'avec des cases à cocher. */}
+        <div role="group" aria-label={t('actions.filterStatuses')} className="filter-chips">
           {ACTION_STATUSES.map((s) => (
-            <label key={s} className="inline">
-              <input type="checkbox" checked={statuses.includes(s)} onChange={() => toggle(s)} />
+            <button key={s} type="button" aria-pressed={statuses.includes(s)} onClick={() => toggle(s)}>
               {t(`actionStatus.${s}`)}
-            </label>
+            </button>
           ))}
-        </fieldset>
-        <label>
-          {t('actions.filterInitiative')}{' '}
+        </div>
+        <label className="inline-field">
+          {t('actions.filterInitiative')}
           <select value={initiativeId} onChange={(e) => setInitiativeId(e.target.value)}>
             <option value="">{t('actions.allInitiatives')}</option>
             {initiatives.map((i) => (
