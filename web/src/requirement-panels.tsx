@@ -420,21 +420,25 @@ function RequirementForm({
 
   return (
     <form className="stacked" onSubmit={(e) => void save(e)} onChange={() => setSaved(false)}>
-      {requirement && (
+      {/* Référence et titre, puis type, sous-type et statut, sur une ligne (ticket 04, lot 1). */}
+      <div className="field-row reference-title">
+        {requirement && (
+          <label>
+            {t('requirement.reference')}
+            <input value={requirement.reference} readOnly aria-readonly="true" />
+          </label>
+        )}
         <label>
-          {t('requirement.reference')}
-          <input value={requirement.reference} readOnly aria-readonly="true" />
+          {t('requirement.title')}
+          <input
+            data-autofocus={requirement ? undefined : true}
+            value={title}
+            maxLength={REQUIREMENT_TITLE_MAX_LENGTH}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </label>
-      )}
-      <label>
-        {t('requirement.title')}
-        <input
-          data-autofocus={requirement ? undefined : true}
-          value={title}
-          maxLength={REQUIREMENT_TITLE_MAX_LENGTH}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </label>
+      </div>
+      <div className="field-row">
       <label>
         {t('requirement.type')}
         <select value={type} onChange={(e) => setType(e.target.value as RequirementType)}>
@@ -471,6 +475,7 @@ function RequirementForm({
           </select>
         </label>
       )}
+      </div>
       <fieldset>
         <legend>{t('requirement.needs')}</legend>
         <small>{t('requirement.originHint')}</small>

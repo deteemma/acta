@@ -1517,3 +1517,21 @@ main.signed-out {
     display: none;
   }
 }
+/* Champs côte à côte dans une fiche (ticket 04, lot 1) : passent à la ligne si le panneau est étroit. */
+form.stacked .field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+form.stacked .field-row > label {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+form.stacked .reference-title > label:last-child {
+  flex: 3 1 14rem;
+}
+form.stacked input[readonly] {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  background: var(--bg);
+}

@@ -260,21 +260,24 @@ function NeedForm({
 
   return (
     <form className="stacked" onSubmit={(e) => void save(e)} onChange={() => setSaved(false)}>
-      {need && (
+      {/* Référence et titre sur une ligne (ticket 04, lot 1). */}
+      <div className="field-row reference-title">
+        {need && (
+          <label>
+            {t('need.reference')}
+            <input value={need.reference} readOnly aria-readonly="true" />
+          </label>
+        )}
         <label>
-          {t('need.reference')}
-          <input value={need.reference} readOnly aria-readonly="true" />
+          {t('need.title')}
+          <input
+            data-autofocus={need ? undefined : true}
+            value={title}
+            maxLength={NEED_TITLE_MAX_LENGTH}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </label>
-      )}
-      <label>
-        {t('need.title')}
-        <input
-          data-autofocus={need ? undefined : true}
-          value={title}
-          maxLength={NEED_TITLE_MAX_LENGTH}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </label>
+      </div>
       <label>
         {t('need.nature')}
         <select value={nature} onChange={(e) => setNature(e.target.value as NeedNature)}>
