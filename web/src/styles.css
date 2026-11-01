@@ -1,48 +1,98 @@
-:root {
-  font-family: system-ui, sans-serif;
-  color-scheme: light dark;
-}
+@import './tokens.css';
+
+/* Fondations (refonte du design, ticket 01) : toutes les valeurs viennent de tokens.css. */
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+h1 {
+  font-size: var(--text-page-title);
+  font-weight: 600;
+}
+h2 {
+  font-size: var(--text-panel-title);
+  font-weight: 600;
+}
+h3 {
+  font-size: var(--text-section-title);
+  font-weight: 600;
+}
+a {
+  color: var(--accent-strong);
 }
 main {
   max-width: 40rem;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  margin: var(--space-8) auto;
+  padding: 0 var(--space-4);
 }
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 form {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 input {
   flex: 1;
-  padding: 0.4rem;
+  padding: var(--space-2);
 }
 small {
-  opacity: 0.7;
+  color: var(--muted);
+  font-size: var(--text-small);
 }
 .error {
-  color: #c62828;
+  color: var(--danger);
+}
+/* Logotype : « ACTA » espacé, précédé d'une barre d'accent. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.brand h1 {
+  margin: 0;
+}
+.logotype {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--accent-strong);
+}
+.logotype::before {
+  content: '';
+  width: 0.5rem;
+  height: 1.375rem;
+  border-radius: 2px;
+  background: var(--accent);
 }
 
 /* Coque de navigation (ticket 02) */
 :root {
   --panel-width: min(32rem, 100%);
-  --panel-border: color-mix(in srgb, currentColor 20%, transparent);
-  --accent: #1565c0;
 }
 .links {
   list-style: none;
   padding: 0;
 }
 .links li {
-  padding: 0.25rem 0;
+  padding: var(--space-1) 0;
 }
 button.link {
   background: none;
@@ -61,34 +111,35 @@ button.link:hover {
   outline-offset: 2px;
 }
 kbd {
-  font-size: 0.8em;
-  opacity: 0.7;
+  font-family: var(--font-mono);
+  font-size: var(--text-code);
+  color: var(--muted);
 }
 .fab {
   position: fixed;
-  right: 1.5rem;
-  bottom: 1.5rem;
+  right: var(--space-6);
+  bottom: var(--space-6);
   width: 3.5rem;
   height: 3.5rem;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 2rem;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+  box-shadow: var(--shadow-fab);
 }
 
 .panel {
   padding: 0;
-  border: 1px solid var(--panel-border);
-  background: Canvas;
-  color: CanvasText;
-  box-shadow: -4px 0 16px rgb(0 0 0 / 0.2);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-panel);
 }
 .panel::backdrop {
-  background: rgb(0 0 0 / 0.15);
+  background: var(--backdrop);
 }
 /* Panneau latéral : à droite, la liste reste visible. */
 .panel-side {
@@ -101,20 +152,19 @@ kbd {
 }
 .panel-palette {
   margin: 12vh auto auto;
-  width: min(36rem, calc(100% - 2rem));
-  border-radius: 0.5rem;
+  width: min(36rem, calc(100% - var(--space-8)));
+  border-radius: var(--radius-lg);
 }
 .panel-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--panel-border);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
 }
 .panel-header h2 {
   flex: 1;
   margin: 0;
-  font-size: 1.1rem;
 }
 .panel-close {
   background: none;
@@ -128,36 +178,40 @@ kbd {
   display: none;
 }
 .panel-body {
-  padding: 1rem;
+  padding: var(--space-4);
 }
 .panel dl {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1rem;
+  gap: var(--space-1) var(--space-4);
+}
+.panel dt {
+  color: var(--muted);
 }
 .panel dd {
   margin: 0;
 }
 form.stacked {
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 form.stacked label {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 /* Fiche Initiative (ticket 03) */
 form.stacked textarea {
   font: inherit;
-  padding: 0.4rem;
+  padding: var(--space-2);
   resize: vertical;
 }
 form.stacked fieldset {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1rem;
-  border: 1px solid var(--panel-border);
+  gap: var(--space-1) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 form.stacked label.inline {
   flex-direction: row;
@@ -169,13 +223,13 @@ form.stacked label.inline input {
 form.stacked .dates {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 form.stacked .dates label {
   flex: 1;
 }
 input[readonly] {
-  opacity: 0.7;
+  color: var(--muted);
 }
 .multiline {
   white-space: pre-wrap;
@@ -184,55 +238,57 @@ input[readonly] {
 :is(span, dt, legend)[title] {
   text-decoration-line: underline;
   text-decoration-style: dotted;
-  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-decoration-color: var(--muted);
 }
 .notice {
-  padding: 0.5rem 0.75rem;
-  border-left: 3px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 .owner-actions {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--panel-border);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
 }
 button.danger {
-  color: #c62828;
+  color: var(--danger);
 }
 details.archived summary {
   cursor: pointer;
-  opacity: 0.8;
+  color: var(--muted);
 }
 details.archived .links {
-  opacity: 0.7;
+  color: var(--muted);
 }
 /* Référentiel BABOK (ticket 06) */
 .babok-area h4 {
-  margin: 1rem 0 0.25rem;
+  margin: var(--space-4) 0 var(--space-1);
 }
 details.babok-item {
-  padding: 0.15rem 0;
+  padding: var(--space-1) 0;
 }
 details.babok-item summary {
   cursor: pointer;
 }
 details.babok-item .links {
-  margin: 0.25rem 0 0.5rem 1.25rem;
+  margin: var(--space-1) 0 var(--space-2) var(--space-6);
 }
 .palette-results {
   list-style: none;
   padding: 0;
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
   max-height: 50vh;
   overflow-y: auto;
 }
 .palette-results li {
-  padding: 0.4rem 0.5rem;
-  border-radius: 0.25rem;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 .palette-results li[aria-selected='true'] {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 .panel-palette input {
   width: 100%;
@@ -250,22 +306,22 @@ details.babok-item .links {
   }
   .panel-side .panel-header {
     position: relative;
-    padding-top: 1.25rem;
+    padding-top: var(--space-6);
     touch-action: none;
   }
   .panel-side .panel-handle {
     display: block;
     position: absolute;
-    top: 0.5rem;
+    top: var(--space-2);
     left: calc(50% - 1.5rem);
     width: 3rem;
     height: 0.3rem;
-    border-radius: 1rem;
-    background: var(--panel-border);
+    border-radius: var(--radius-pill);
+    background: var(--border);
   }
   .fab {
-    right: 1rem;
-    bottom: 1rem;
+    right: var(--space-4);
+    bottom: var(--space-4);
   }
 }
 @keyframes slide-in-right {
@@ -288,39 +344,40 @@ details.babok-item .links {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem 0.5rem;
+  gap: var(--space-1) var(--space-2);
 }
 .team-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem 0.75rem;
+  gap: var(--space-1) var(--space-3);
   margin-inline-start: auto;
 }
 .team-controls label.inline {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .badge {
-  padding: 0 0.4rem;
-  border: 1px solid var(--panel-border);
-  border-radius: 0.75rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--tone-neutral-bg);
+  color: var(--tone-neutral-fg);
+  font-size: var(--text-small);
 }
 form.invite {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 form.invite h4 {
   margin: 0;
 }
 .owner-history {
-  padding-inline-start: 1.25rem;
+  padding-inline-start: var(--space-6);
 }
 /* Actions et « Mes actions » (ticket 07) */
 .fab {
   width: auto;
-  padding: 0 1.25rem;
-  border-radius: 1.75rem;
+  padding: 0 var(--space-6);
   font-size: 1.1rem;
   font-weight: 600;
 }
@@ -332,30 +389,31 @@ form.invite h4 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-top: 2rem;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
 }
 .section-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .action-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  gap: 0.5rem 1rem;
+  gap: var(--space-2) var(--space-4);
 }
 .action-filters fieldset {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  border: 1px solid var(--panel-border);
+  gap: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 .action-filters label.inline {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .action-filters input[type='checkbox'] {
   flex: none;
@@ -364,13 +422,13 @@ form.invite h4 {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.75rem;
+  gap: var(--space-1) var(--space-3);
 }
 .action-meta {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.75rem;
+  gap: var(--space-1) var(--space-3);
   margin-inline-start: auto;
 }
 .status-in_progress {
@@ -378,71 +436,71 @@ form.invite h4 {
 }
 .status-done,
 .status-cancelled {
-  opacity: 0.6;
+  color: var(--muted);
 }
 /* Tableau de bord de l'initiative (ticket 12) */
 .dashboard-area h3 {
-  margin: 1.25rem 0 0;
+  margin: var(--space-6) 0 0;
 }
 .dashboard-area p {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--space-1);
 }
 details.dashboard-task {
-  padding: 0.2rem 0;
-  border-bottom: 1px solid var(--panel-border);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border);
 }
 details.dashboard-task summary {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.75rem;
+  gap: var(--space-1) var(--space-3);
   cursor: pointer;
 }
 details.dashboard-task .links,
 details.dashboard-task > p {
-  margin: 0.25rem 0 0.5rem 1.25rem;
+  margin: var(--space-1) 0 var(--space-2) var(--space-6);
 }
 details.dashboard-task.uncovered summary .badge {
-  border-color: #c62828;
-  color: #c62828;
+  background: var(--tone-negative-bg);
+  color: var(--tone-negative-fg);
 }
 /* Alertes (ticket 15) */
 .alert-badge {
-  margin-inline-start: 0.35rem;
-  padding: 0 0.4rem;
-  border-radius: 0.75rem;
-  background: #c62828;
-  color: #fff;
-  font-size: 0.85em;
+  margin-inline-start: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--danger-solid);
+  color: var(--on-danger);
+  font-size: var(--text-small);
 }
 .alert-list li {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.75rem;
+  gap: var(--space-1) var(--space-3);
 }
 /* Encart « Actions suggérées » (ticket 14) */
 .suggested-actions {
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--accent);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
 }
 .suggested-actions h3 {
-  margin: 0.25rem 0;
+  margin: var(--space-1) 0;
 }
 .suggested-actions li {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--panel-border);
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
 }
 .suggested-action-head,
 .suggested-action-buttons {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.75rem;
+  gap: var(--space-1) var(--space-3);
 }
 /* Aperçu au survol ou au focus d'une tâche ou d'une technique. */
 .babok-preview {
@@ -455,34 +513,34 @@ details.dashboard-task.uncovered summary .badge {
   top: 100%;
   inset-inline-start: 0;
   width: min(20rem, 80vw);
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--panel-border);
-  border-radius: 0.25rem;
-  background: Canvas;
-  color: CanvasText;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-popover);
   font-weight: normal;
 }
 .babok-preview:is(:hover, :focus-within) .preview-card {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .rich-text-editor {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .rich-text-editor textarea {
   font: inherit;
-  padding: 0.4rem;
+  padding: var(--space-2);
   resize: vertical;
 }
 .rich-text-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .rich-text-toolbar > span {
   margin-inline-end: auto;
@@ -494,13 +552,13 @@ details.dashboard-task.uncovered summary .badge {
   font-style: italic;
 }
 .rich-text :is(h3, h4, h5) {
-  margin: 0.75rem 0 0.25rem;
+  margin: var(--space-3) 0 var(--space-1);
 }
 .rich-text :is(p, ul, ol) {
-  margin: 0.25rem 0;
+  margin: var(--space-1) 0;
 }
 .audit {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 /* Parties prenantes (ticket 08) */
 .stakeholder-views {
@@ -513,7 +571,7 @@ details.dashboard-task.uncovered summary .badge {
 .stakeholder-list li {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
+  gap: var(--space-1) var(--space-3);
 }
 .stakeholder-matrix {
   width: 100%;
@@ -521,8 +579,8 @@ details.dashboard-task.uncovered summary .badge {
   border-collapse: collapse;
 }
 .stakeholder-matrix :is(th, td) {
-  padding: 0.25rem;
-  border: 1px solid var(--panel-border);
+  padding: var(--space-1);
+  border: 1px solid var(--border);
   vertical-align: top;
   overflow-wrap: anywhere;
 }
@@ -543,23 +601,23 @@ details.dashboard-task.uncovered summary .badge {
   top: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-1);
   width: max-content;
   max-width: min(20rem, 80vw);
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--panel-border);
-  border-radius: 0.25rem;
-  background: Canvas;
-  color: CanvasText;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.15);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-popover);
   font-weight: normal;
 }
 .requirement-history ol {
-  padding-inline-start: 1.25rem;
+  padding-inline-start: var(--space-6);
 }
 .requirement-history ul {
-  margin: 0.25rem 0 0.5rem;
-  padding-inline-start: 1rem;
+  margin: var(--space-1) 0 var(--space-2);
+  padding-inline-start: var(--space-4);
 }
 /* Suggestions à la création d'une action (ticket 13) */
 .suggestions ul {
@@ -567,13 +625,13 @@ details.dashboard-task.uncovered summary .badge {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .suggestions li {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.5rem;
+  gap: var(--space-1) var(--space-2);
 }
 .suggestions button[aria-pressed='true'] {
   font-weight: 600;

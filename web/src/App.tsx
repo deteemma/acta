@@ -34,7 +34,7 @@ function SignedOut() {
   return (
     <main>
       <header>
-        <h1>{t('app.title')}</h1>
+        <h1 className="logotype">{t('app.title')}</h1>
         <LanguageSelector />
       </header>
       <button onClick={() => login().catch((e: unknown) => setFailure(String(e)))}>{t('auth.login')}</button>
@@ -107,7 +107,10 @@ function Shell({ user }: { user: User }) {
       <FabContext.Provider value={fab}>
         <main>
           <header>
-            <h1>{t('actions.title')}</h1>
+            <div className="brand">
+              <span className="logotype">{t('app.title')}</span>
+              <h1>{t('actions.title')}</h1>
+            </div>
             <span>
               <button type="button" onClick={() => open({ kind: 'palette' })}>
                 {t('palette.open')} <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
