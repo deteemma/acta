@@ -47,14 +47,180 @@ form {
 }
 input {
   flex: 1;
-  padding: var(--space-2);
 }
 small {
   color: var(--muted);
   font-size: var(--text-small);
 }
 .error {
-  color: var(--danger);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--tone-negative-bg);
+  color: var(--tone-negative-fg);
+}
+
+/*
+ * Composants de base (refonte du design, ticket 02). Les règles sur les
+ * éléments sont dans :where(), sans poids : toute classe les remplace.
+ */
+/* Boutons : secondaire par défaut ; un bouton d'envoi enregistre ou crée, il est le bouton principal. */
+:where(button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+:where(button):where(:hover:not(:disabled)) {
+  background: var(--bg);
+}
+:where(button[type='submit']) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+:where(button[type='submit']):where(:hover:not(:disabled)) {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+:where(button):disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Bouton bascule (filtre, choix) enfoncé. */
+:where(button[aria-pressed='true']) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+button.ghost {
+  border-color: transparent;
+  background: transparent;
+}
+/* Champs */
+:where(input:not([type='checkbox'], [type='radio']), select, textarea) {
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+}
+:where(textarea) {
+  padding: var(--space-2);
+}
+:where(input, select, textarea):focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+:where(input, select, textarea)[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+:where(input[type='checkbox'], input[type='radio']) {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+:where(fieldset) {
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+:where(legend) {
+  padding: 0 var(--space-1);
+  font-size: var(--text-small);
+  font-weight: 500;
+}
+:where(summary) {
+  cursor: pointer;
+}
+/* Liste dense : une ligne par objet. */
+.dense-list {
+  margin: var(--space-2) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.dense-list:empty {
+  display: none;
+}
+.dense-list > li {
+  box-sizing: border-box;
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.dense-list > li:first-child {
+  border-top: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.dense-list > li:last-child {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.dense-list > li:only-child {
+  border-radius: var(--radius-lg);
+}
+.dense-list > li:hover {
+  background: var(--bg);
+}
+/* Badge : étiquette neutre ; un statut prend la couleur de sa famille. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 1.375rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--tone-neutral-bg);
+  color: var(--tone-neutral-fg);
+  font-size: var(--text-badge);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge.status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.tone-neutral {
+  background: var(--tone-neutral-bg);
+  color: var(--tone-neutral-fg);
+}
+.tone-muted {
+  background: transparent;
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.tone-progress {
+  background: var(--tone-progress-bg);
+  color: var(--tone-progress-fg);
+}
+.tone-positive {
+  background: var(--tone-positive-bg);
+  color: var(--tone-positive-fg);
+}
+.tone-attention {
+  background: var(--tone-attention-bg);
+  color: var(--tone-attention-fg);
+}
+.tone-negative {
+  background: var(--tone-negative-bg);
+  color: var(--tone-negative-fg);
 }
 /* Logotype : « ACTA » espacé, précédé d'une barre d'accent. */
 .brand {
@@ -95,6 +261,8 @@ small {
   padding: var(--space-1) 0;
 }
 button.link {
+  display: inline;
+  min-height: 0;
   background: none;
   border: none;
   padding: 0;
@@ -167,6 +335,8 @@ kbd {
   margin: 0;
 }
 .panel-close {
+  width: 2.25rem;
+  padding: 0;
   background: none;
   border: none;
   font-size: 1.5rem;
@@ -210,12 +380,11 @@ form.stacked fieldset {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
 }
 form.stacked label.inline {
   flex-direction: row;
   align-items: center;
+  gap: var(--space-2);
 }
 form.stacked label.inline input {
   flex: none;
@@ -358,13 +527,6 @@ details.babok-item .links {
   align-items: center;
   gap: var(--space-1);
 }
-.badge {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--tone-neutral-bg);
-  color: var(--tone-neutral-fg);
-  font-size: var(--text-small);
-}
 form.invite {
   margin-top: var(--space-4);
 }
@@ -407,8 +569,6 @@ form.invite h4 {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
 }
 .action-filters label.inline {
   display: inline-flex;
@@ -430,13 +590,6 @@ form.invite h4 {
   align-items: baseline;
   gap: var(--space-1) var(--space-3);
   margin-inline-start: auto;
-}
-.status-in_progress {
-  border-color: var(--accent);
-}
-.status-done,
-.status-cancelled {
-  color: var(--muted);
 }
 /* Tableau de bord de l'initiative (ticket 12) */
 .dashboard-area h3 {
@@ -460,10 +613,6 @@ details.dashboard-task .links,
 details.dashboard-task > p {
   margin: var(--space-1) 0 var(--space-2) var(--space-6);
 }
-details.dashboard-task.uncovered summary .badge {
-  background: var(--tone-negative-bg);
-  color: var(--tone-negative-fg);
-}
 /* Alertes (ticket 15) */
 .alert-badge {
   margin-inline-start: var(--space-1);
@@ -480,10 +629,13 @@ details.dashboard-task.uncovered summary .badge {
   gap: var(--space-1) var(--space-3);
 }
 /* Encart « Actions suggérées » (ticket 14) */
+/* Carte */
+.card,
 .suggested-actions {
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--accent);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 .suggested-actions h3 {
   margin: var(--space-1) 0;
@@ -542,6 +694,10 @@ details.dashboard-task.uncovered summary .badge {
   align-items: center;
   gap: var(--space-1);
 }
+.rich-text-toolbar button {
+  min-height: 1.75rem;
+  padding: 0 var(--space-2);
+}
 .rich-text-toolbar > span {
   margin-inline-end: auto;
 }
@@ -564,9 +720,24 @@ details.dashboard-task.uncovered summary .badge {
 .stakeholder-views {
   margin-top: 0;
 }
-.stakeholder-views button[aria-pressed='true'] {
+/* Onglets : Liste / Matrice. */
+.stakeholder-views [role='group'] {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+.stakeholder-views [role='group'] button {
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+}
+.stakeholder-views [role='group'] button[aria-pressed='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
   font-weight: 600;
-  border-bottom: 2px solid var(--accent);
 }
 .stakeholder-list li {
   display: flex;
@@ -583,6 +754,10 @@ details.dashboard-task.uncovered summary .badge {
   border: 1px solid var(--border);
   vertical-align: top;
   overflow-wrap: anywhere;
+}
+.stakeholder-matrix th {
+  background: var(--bg);
+  font-size: var(--text-small);
 }
 .stakeholder-matrix thead th:first-child {
   font-weight: normal;
@@ -632,8 +807,4 @@ details.dashboard-task.uncovered summary .badge {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-1) var(--space-2);
-}
-.suggestions button[aria-pressed='true'] {
-  font-weight: 600;
-  border-color: var(--accent);
 }

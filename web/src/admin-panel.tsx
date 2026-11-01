@@ -93,7 +93,7 @@ function AccountsSection({ myId }: { myId: string }) {
       {accounts === null ? (
         !error && <p>{t('common.loading')}</p>
       ) : (
-        <ul className="links team-members">
+        <ul className="links dense-list team-members">
           {accounts.map((account) => {
             const name = accountName(account);
             const toggle = { enabled: !account.enabled };
@@ -238,7 +238,7 @@ function OrphanInitiativesSection() {
           <h4>
             {initiative.code} · {initiative.name}
           </h4>
-          <ul className="links team-members">
+          <ul className="links dense-list team-members">
             {initiative.members.map((member) => (
               <li key={member.userId}>
                 <span>
@@ -299,7 +299,7 @@ function ReferenceCategoriesSection() {
       <ErrorMessage error={error} />
       {done && <p className="notice">{done}</p>}
       {categories && (
-        <ul className="links team-members">
+        <ul className="links dense-list team-members">
           {categories.map((category) => (
             <AcronymForm key={category.category} category={category} onSave={(acronym) => void save(category, acronym)} />
           ))}
@@ -428,7 +428,7 @@ function RequirementStatusesSection() {
       <ErrorMessage error={error} />
       {done && <p className="notice">{done}</p>}
       {statuses && (
-        <ul className="links team-members">
+        <ul className="links dense-list team-members">
           {statuses.map((status) =>
             status.babok ? (
               <li key={status.code}>

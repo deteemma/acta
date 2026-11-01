@@ -101,7 +101,7 @@ export function TeamSection({
           </button>
         </div>
       )}
-      <ul className="links team-members">
+      <ul className="links dense-list team-members">
         {members.map((member) => {
           const name = memberName(member);
           const controls = controlsFor(member);

@@ -137,7 +137,7 @@ export function StakeholdersPanel({
 function StakeholderList({ stakeholders }: { stakeholders: StakeholderDto[] }) {
   const { t } = useI18n();
   return (
-    <ul className="links stakeholder-list">
+    <ul className="links dense-list stakeholder-list">
       {stakeholders.map((s) => (
         <li key={s.id}>
           <StakeholderLink initiativeId={s.initiativeId} stakeholder={s} />

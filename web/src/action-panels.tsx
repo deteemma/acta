@@ -7,6 +7,7 @@ import {
   ACTION_TITLE_MAX_LENGTH,
   type ActionDto,
   type ActionStatus,
+  actionStatusTone,
   type BabokDto,
   type BabokElementDto,
   babokEnglishName,
@@ -84,7 +85,7 @@ export function StatusLabel({ status, count }: { status: ActionStatus; count?: n
   const { t } = useI18n();
   const label = t(`actionStatus.${status}`);
   return (
-    <span className={`badge status-${status}`}>
+    <span className={`badge status tone-${actionStatusTone(status)}`}>
       {count === undefined ? label : t('dashboard.statusCount', { status: label, count })}
     </span>
   );
@@ -103,7 +104,7 @@ export function ActionList({
   const { t, locale } = useI18n();
   const { open } = usePanels();
   return (
-    <ul className="links action-list">
+    <ul className="links dense-list action-list">
       {actions.map((a) => {
         const task = babok && findBabokElement(babok, a.taskId);
         return (

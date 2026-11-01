@@ -75,7 +75,7 @@ export function AlertsPanel({
     <Panel title={t('alerts.title')} onClose={onClose}>
       <ErrorMessage error={error} />
       {alerts.length === 0 && <p>{t('alerts.empty')}</p>}
-      <ul className="links alert-list">
+      <ul className="links dense-list alert-list">
         {alerts.map(({ kind, action }) => (
           <li key={alertKey({ kind, action })}>
             <button
@@ -93,7 +93,7 @@ export function AlertsPanel({
                     date: formatDate(locale, action.assignedAt),
                   })}
             </small>
-            {newKeys.has(alertKey({ kind, action })) && <span className="badge">{t('alerts.new')}</span>}
+            {newKeys.has(alertKey({ kind, action })) && <span className="badge tone-progress">{t('alerts.new')}</span>}
           </li>
         ))}
       </ul>

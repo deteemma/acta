@@ -80,7 +80,7 @@ export function DashboardPanel({
                         <StatusLabel key={status} status={status} count={countByStatus[status]} />
                       ))
                     ) : (
-                      <span className="badge">{t('dashboard.uncovered')}</span>
+                      <span className="badge tone-negative">{t('dashboard.uncovered')}</span>
                     )}
                   </span>
                 </summary>

@@ -305,7 +305,7 @@ function InitiativeList({ initiatives }: { initiatives: InitiativeDto[] }) {
   const { t } = useI18n();
   const { open } = usePanels();
   return (
-    <ul className="links">
+    <ul className="links dense-list">
       {initiatives.map((i) => (
         <li key={i.id}>
           <button type="button" className="link" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>

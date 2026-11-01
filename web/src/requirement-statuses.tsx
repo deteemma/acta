@@ -8,6 +8,7 @@ import {
   type RequirementStatus,
   type RequirementStatusDto,
   requirementStatusLabel,
+  requirementStatusTone,
 } from '@app/shared';
 import { useEffect, useSyncExternalStore } from 'react';
 import { api } from './api';
@@ -48,12 +49,17 @@ export function useRequirementStatuses({ fresh = false } = {}): RequirementStatu
   return list ?? BABOK_STATUSES;
 }
 
-/** Libellé d'un statut ; pour un statut du BABOK, en français, le terme anglais en info-bulle (ADR-0013). */
+/**
+ * Badge d'un statut, coloré selon sa famille ; pour un statut du BABOK, en
+ * français, le terme anglais en info-bulle (ADR-0013).
+ */
 export function StatusLabel({ status }: { status: RequirementStatus }) {
   const { locale } = useI18n();
   const list = useRequirementStatuses();
   return (
-    <span title={isBabokRequirementStatus(status) ? englishTermTooltip(locale, `requirementStatus.${status}`) : undefined}>
+    <span
+      className={`badge status tone-${requirementStatusTone(status)}`}
+      title={isBabokRequirementStatus(status) ? englishTermTooltip(locale, `requirementStatus.${status}`) : undefined}>
       {requirementStatusLabel(list, status, locale)}
     </span>
   );

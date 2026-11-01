@@ -45,7 +45,7 @@ export function NeedLink({ initiativeId, need }: { initiativeId: string; need: N
 export function NeedList({ needs }: { needs: NeedDto[] }) {
   const { t } = useI18n();
   return (
-    <ul className="links action-list">
+    <ul className="links dense-list action-list">
       {needs.map((n) => (
         <li key={n.id}>
           <NeedLink initiativeId={n.initiativeId} need={n} />
