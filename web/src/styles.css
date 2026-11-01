@@ -407,6 +407,16 @@ button.ghost {
   position: fixed;
   inset: 0 0 0 auto;
   z-index: 2;
+  /* Le navigateur ne fait défiler que les panneaux modaux. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* L'en-tête (titre, fermeture) reste visible au défilement. */
+.panel-side .panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
 }
 body:has(.panel-docked[open]) .shell-main {
   margin-inline-end: var(--panel-width);
@@ -693,7 +703,6 @@ details.babok-item .links {
     animation: slide-up 0.2s ease-out;
   }
   .panel-side .panel-header {
-    position: relative;
     padding-top: var(--space-6);
     touch-action: none;
   }
