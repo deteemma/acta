@@ -4,13 +4,13 @@
 
 **Blocked by:** 03 — Coque de navigation
 
-**Status:** en cours
+**Status:** partiellement fait — Mes actions, fiche initiative et équipe, tableau de bord validés par la responsable fonctionnelle le 01.11.2026 ; les six autres écrans sont reportés (passage au ticket 05 demandé)
 
 Un passage par écran, chacun maquetté dans Claude Design puis validé :
 
-- [x] Mes actions (à valider)
-- [x] Fiche initiative et équipe (à valider)
-- [x] Tableau de bord et actions suggérées (à valider)
+- [x] Mes actions (validé)
+- [x] Fiche initiative et équipe (validé)
+- [x] Tableau de bord et actions suggérées (validé)
 - [ ] Parties prenantes (liste et matrice)
 - [ ] Besoins
 - [ ] Exigences (liste, fiche, historique)
