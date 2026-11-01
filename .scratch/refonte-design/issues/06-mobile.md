@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 — Icônes et états vides
 
-**Status:** à valider par la responsable fonctionnelle
+**Status:** done (validé par la responsable fonctionnelle le 01.11.2026)
 
 - [x] Partage des tokens entre web et mobile décidé (ADR-0017, conséquences).
 - [x] Couleurs, typographie, espacements, familles de statut et icônes du web appliqués au mobile, en thème clair et sombre.
