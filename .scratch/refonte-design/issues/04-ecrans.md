@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Coque de navigation
 
-**Status:** en cours — trois écrans validés le 01.11.2026 ; lot 1 (parties prenantes, besoins, exigences) validé le 01.11.2026 ; lot 2 (référentiel, alertes, administration) codé, à valider
+**Status:** done (tous les écrans validés par la responsable fonctionnelle le 01.11.2026)
 
 Un passage par écran, chacun maquetté dans Claude Design puis validé (les six derniers en deux lots, validé le 01.11.2026) :
 
@@ -14,9 +14,9 @@ Un passage par écran, chacun maquetté dans Claude Design puis validé (les six
 - [x] Parties prenantes (liste et matrice) — lot 1, validé le 01.11.2026
 - [x] Besoins — lot 1, validé le 01.11.2026
 - [x] Exigences (liste, fiche, historique) — lot 1, validé le 01.11.2026
-- [x] Référentiel BABOK — lot 2, à valider
-- [x] Alertes — lot 2, à valider
-- [x] Administration — lot 2, à valider
+- [x] Référentiel BABOK — lot 2, validé le 01.11.2026
+- [x] Alertes — lot 2, validé le 01.11.2026
+- [x] Administration — lot 2, validé le 01.11.2026
 
 Réalisation :
 - Mes actions (maquette : piste B — Sauge) : filtres de statut en boutons bascule (même filtre, À faire et En cours par défaut), choix de l'initiative à côté ; liste en colonnes sur grand écran (initiative en police à chasse fixe, action, tâche BABOK avec son aperçu, échéance, statut), avec les en-têtes de colonnes ; la ligne de l'action ouverte dans le panneau est mise en évidence. Avec un panneau ancré et jusqu'à 1600 px de large, ou sur un écran plus petit, chaque action reste sur une ligne qui passe à la ligne au besoin. Les listes d'actions des panneaux (initiative, tableau de bord, besoin, exigence, partie prenante) gardent cette disposition en ligne, avec le responsable.
