@@ -9,7 +9,7 @@ import { api } from './api';
 import { BabokElementPanel, BabokPanel } from './babok-panels';
 import { DashboardPanel } from './dashboard-panel';
 import { EmptyState } from './empty-state';
-import { login, logout } from './auth';
+import { login, loginErrorFromUrl, logout, shouldRedirectToLogin } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
 import { CreateInitiativePanel, InitiativePanel, MemberPanel } from './initiative-panels';
@@ -29,10 +29,23 @@ export function App({ user }: { user: User | null }) {
   );
 }
 
+/** Une seule redirection vers Keycloak, même si React monte l'accueil deux fois (développement). */
+let loginStarted = false;
+
 function SignedOut() {
   const { t } = useI18n();
-  // Échec avant la redirection vers Keycloak (réseau, certificat…) : à afficher.
-  const [failure, setFailure] = useState<string | null>(null);
+  // Échec avant la redirection vers Keycloak (réseau, certificat…) ou erreur
+  // renvoyée par Keycloak : à afficher.
+  const [failure, setFailure] = useState<string | null>(() => loginErrorFromUrl());
+
+  // Connexion directe (validée le 01.11.2026) : l'accueil ne reste affiché
+  // qu'après une déconnexion volontaire ou une erreur.
+  useEffect(() => {
+    if (shouldRedirectToLogin() && !loginStarted) {
+      loginStarted = true;
+      login().catch((e: unknown) => setFailure(String(e)));
+    }
+  }, []);
   // Écran de connexion (refonte du design, ticket 05) : logotype, accroche, illustration du système de design.
   return (
     <main className="signed-out">

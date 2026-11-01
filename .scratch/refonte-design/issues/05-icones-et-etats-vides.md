@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — Écrans un par un
 
-**Status:** à valider par la responsable fonctionnelle (un point ouvert : affichage direct de la connexion)
+**Status:** à valider par la responsable fonctionnelle
 
 - [x] Icônes Lucide pour la navigation, les boutons d'action et les statuts ; jamais à la place du texte des boutons importants.
 - [x] Style d'illustration choisi dans Claude Design, validé.
@@ -21,5 +21,7 @@ Réalisation :
 - Connexion : logotype, accroche, « Se connecter » en bouton principal, langue, illustration à droite (masquée sur petit écran).
 - Libellés `app.tagline` et `empty.*` en français et en anglais.
 
-Point ouvert :
-- « L'écran de connexion s'affiche sans devoir passer par le bouton connexion » : interprétation à confirmer (voir la question posée le 01.11.2026).
+Connexion directe (option a, validée le 01.11.2026) :
+- Sans session, l'application renvoie directement vers la page de connexion de Keycloak, sans passer par le bouton « Se connecter ».
+- L'écran d'accueil d'ACTA ne s'affiche qu'après une déconnexion volontaire, ou si Keycloak renvoie une erreur ou ne répond pas (le message est alors affiché) ; cela évite aussi de boucler entre ACTA et Keycloak.
+- La page Keycloak garde son apparence standard ; un thème à l'image d'ACTA (option b) demanderait un nouvel ADR et une intervention sur le socle.
