@@ -4,7 +4,13 @@
 
 **Blocked by:** 01 — Fondations visuelles
 
-**Status:** done (validé par la responsable fonctionnelle le 01.11.2026, sans test approfondi dans l'application)
+**Status:** done (validé par la responsable fonctionnelle le 01.11.2026 ; vérifié par Claude dans l'application le même jour, sauf les écrans d'administration)
+
+Vérification dans l'application (01.11.2026, Chrome, compte de test alice) : « Mes actions », fiche d'initiative (fiche, analyse, équipe), fiche d'exigence, tableau de bord.
+- Bouton principal (vert plein) : seulement « Enregistrer », « Inviter » et « + Action ». Tous les « Supprimer » et « Retirer » sont rouges.
+- Badges : statuts à la couleur de leur famille (« À faire » neutre, « En cours » en cours), « Non couverte » rouge ; rôles et types neutres.
+- Focus visible au clavier sur chaque élément atteignable.
+- Non vérifié : écrans d'administration (le navigateur piloté n'a pas accès à la page de connexion pour changer de compte).
 
 - [x] Maquette des composants et de leurs états dans le système de design ACTA (Claude Design), validée.
 - [x] Boutons : principal, secondaire, discret, danger ; états survol, focus, désactivé, en cours.
