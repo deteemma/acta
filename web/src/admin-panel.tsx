@@ -574,9 +574,12 @@ function AddedStatusForm({
         <button type="button" className={status.active ? 'danger' : undefined} onClick={onToggle}>
           {t(status.active ? 'admin.requirementStatus.deactivate' : 'admin.requirementStatus.reactivate')}
         </button>
-        <button type="button" className="danger" onClick={onDelete}>
-          {t('admin.requirementStatus.delete')}
-        </button>
+        {/* Un statut déjà porté par une exigence ne se supprime pas : pas de bouton. */}
+        {!status.used && (
+          <button type="button" className="danger" onClick={onDelete}>
+            {t('admin.requirementStatus.delete')}
+          </button>
+        )}
       </form>
     </li>
   );
