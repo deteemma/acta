@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Composants de base
 
-**Status:** done (validé par la responsable fonctionnelle le 01.11.2026 ; les deux points ci-dessous n'ont pas pu être testés)
+**Status:** done (validé par la responsable fonctionnelle le 01.11.2026 ; les deux points à vérifier, en fin de ticket, ont été vérifiés par Claude dans l'application le même jour)
 
 - [x] Maquette de la coque dans Claude Design, validée.
 - [x] Barre latérale repliable : Mes actions, initiatives (actives, archivées), administration pour l'administrateur.
@@ -27,3 +27,7 @@ Réalisation :
 Points à vérifier à la validation :
 - Le passage d'un objet à l'autre depuis la liste remplace le panneau ancré (sinon chaque clic empilerait un panneau de plus) : à confirmer.
 - Le mode du panneau (ancré ou par-dessus) est fixé à son ouverture : un panneau ouvert reste dans son mode si la fenêtre change de largeur.
+
+Vérification dans l'application (01.11.2026, Chrome, compte de test alice) :
+- Trois actions ouvertes l'une après l'autre depuis « Mes actions » : un seul panneau ancré, qui montre la dernière. Conforme.
+- Panneau ancré ouvert à 1400 px, fenêtre réduite à 1000 px : il reste ancré, non modal. Panneau ouvert à 1000 px, fenêtre élargie à 1400 px : il reste par-dessus. Conforme. À 1000 px avec un panneau resté ancré, la page à côté est très étroite (barre du haut empilée, liste en cartes) : c'est la conséquence de la règle.

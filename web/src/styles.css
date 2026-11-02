@@ -152,7 +152,8 @@ button.ghost {
 .dense-list:empty {
   display: none;
 }
-.dense-list > li {
+/* `ul` : l'emporte sur `.links li`, défini plus bas, qui annulait la marge intérieure. */
+ul.dense-list > li {
   box-sizing: border-box;
   min-height: 2.5rem;
   padding: var(--space-2) var(--space-3);
@@ -623,6 +624,10 @@ form.stacked .code-name {
 }
 .panel-body {
   padding: var(--space-6) var(--space-6) var(--space-8);
+}
+/* Le bouton flottant ne recouvre pas le bas du contenu (ex. « Créer le compte »). */
+.panel:has(> .fab) > .panel-body {
+  padding-bottom: calc(3.5rem + 2 * var(--space-6));
 }
 .panel dl {
   display: grid;

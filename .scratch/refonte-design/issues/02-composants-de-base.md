@@ -4,7 +4,17 @@
 
 **Blocked by:** 01 — Fondations visuelles
 
-**Status:** done (validé par la responsable fonctionnelle le 01.11.2026, sans test approfondi dans l'application)
+**Status:** done (validé par la responsable fonctionnelle le 01.11.2026 ; vérifié par Claude dans l'application le même jour, et les écrans d'administration le 02.11.2026 : trois défauts relevés, voir plus bas)
+
+Vérification dans l'application (01.11.2026, Chrome, compte de test alice) : « Mes actions », fiche d'initiative (fiche, analyse, équipe), fiche d'exigence, tableau de bord.
+- Bouton principal (vert plein) : seulement « Enregistrer », « Inviter » et « + Action ». Tous les « Supprimer » et « Retirer » sont rouges.
+- Badges : statuts à la couleur de leur famille (« À faire » neutre, « En cours » en cours), « Non couverte » rouge ; rôles et types neutres.
+- Focus visible au clavier sur chaque élément atteignable.
+- Écrans d'administration : vérifiés le 02.11.2026 (Chrome, session administrateur ouverte par la responsable fonctionnelle), sur les quatre onglets. « Désactiver » et « Supprimer » rouges, « Créer le compte » et « Ajouter » en bouton principal, « Enregistrer » désactivé tant que rien n'a changé, badges neutres (« Actif », « BABOK », « Actif · utilisé »), focus visible au clavier.
+- Défauts relevés dans l'administration, corrigés le 02.11.2026 et vérifiés dans l'application :
+  - le bouton flottant « + Action » recouvrait le bas du panneau, dont le bouton « Créer le compte » : le contenu d'un panneau qui porte ce bouton garde une marge basse à sa hauteur ;
+  - dans les listes, les libellés touchaient le bord gauche du cadre : la règle `.links li` annulait la marge intérieure de toutes les listes denses (`.dense-list`) ; corrigé pour toutes les listes de l'application, pas seulement l'administration ;
+  - « Supprimer » était proposé sur un statut d'exigence déjà utilisé : le bouton disparaît (décision de la responsable fonctionnelle du 02.11.2026).
 
 - [x] Maquette des composants et de leurs états dans le système de design ACTA (Claude Design), validée.
 - [x] Boutons : principal, secondaire, discret, danger ; états survol, focus, désactivé, en cours.
