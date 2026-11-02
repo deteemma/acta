@@ -22,6 +22,6 @@ Réalisation :
 - Écrans : en-tête validé, accueil avec logotype, accroche, « Se connecter » et langue ; Mes actions (filtres, lignes dans une carte : titre, code, échéance, statut coloré, tâche BABOK ; état vide) ; Mes initiatives (formulaire, lignes code, nom, rôle ; état vide) ; fiche d'action ; création rapide (champ et bouton principal du thème) ; texte mis en forme.
 - Toutes les dépendances ajoutées sont incluses dans Expo Go : aucun build de développement nécessaire.
 
-Points à vérifier sur un téléphone (non testé : pas d'appareil ni d'émulateur dans cette session) :
+Points à vérifier sur un téléphone, vérifiés par la responsable fonctionnelle le 02.11.2026 :
 - Thème sombre du téléphone : lisibilité de chaque écran.
 - Polices : chargement au démarrage.

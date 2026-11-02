@@ -30,3 +30,17 @@ Un hook pre-commit (`.husky/pre-commit`) relance les vérifications de la CI.
 
 Lancer le skill personnel `/nouvelle-application`. Pour renommer l'entité
 partagée d'exemple : `docs/renommer-entite-partagee.md`.
+
+## Agent skills
+
+### Issue tracker
+
+Tickets en fichiers markdown dans `.scratch/<sujet>/issues/`, pas dans GitHub Issues. Voir `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Les cinq statuts par défaut (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), dans la ligne `**Status:**` du ticket. Voir `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Un seul contexte : glossaire `CONTEXT.md` (à la place de `GLOSSARY.md`) et `docs/adr/`. Voir `docs/agents/domain.md`.
