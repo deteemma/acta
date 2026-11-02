@@ -26,6 +26,7 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - [Passage de l'Action au ticket générique](issues/02-passage-de-l-action-au-ticket-generique.md) : rien ne se perd ; références attribuées par date de création ; parties prenantes concernées propres à l'Action ; suggestions, couverture, tableau de bord, alertes et « Mes actions » restent limités aux Actions ; historique vide au passage.
 - [Types de ticket et statuts paramétrables](issues/03-types-de-ticket-et-statuts-parametrables.md) : types et statuts livrés figés, l'administration en ajoute ; « En attente » sur les six types, « Refusée » sur Question et Décision ; statut initial, passage libre, statuts fermés ; familles choisies pour les statuts ajoutés.
 - [Liens](issues/04-liens.md) : trois natures fixes entre tickets (bloque, duplique, est lié à), un seul lien par paire ; tout ticket et toute page se lient aux besoins et exigences, sans nature ; pas de lien entre pages ni entre initiatives ; suppression refusée si lié ; liens hors historique.
+- [Modifications non enregistrées](issues/12-modifications-non-enregistrees.md) : alerte « Enregistrer / Abandonner / Continuer la saisie » sur tout panneau de saisie (phase 1 comprise) et les formulaires du téléphone, dès qu'une valeur diffère de l'enregistrée ; toutes les sorties gardées, l'onglet par le message du navigateur ; une alerte par panneau, en partant du dessus ; échec = panneau resté ouvert.
 
 ## Zones floues
 

@@ -94,3 +94,9 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 | Nature de lien | `link_kind` | Sens d'un lien entre deux tickets, dans une liste fixe : « bloque » / « est bloqué par », « duplique » / « est dupliqué par », « est lié à » (sans sens). Purement informative : un ticket bloqué peut changer de statut et être fermé. |
 | Modèle de page | `page_template` | Plan prérempli pour créer une page, lié à un livrable d'une tâche BABOK ; liste extensible par l'administration. |
 | Suggestion | `suggestion` | Proposition de tâche BABOK, de technique ou d'action, produite par une règle fixe et accompagnée de sa justification. |
+
+### Saisie
+
+| Français | Code (anglais) | Définition |
+|---|---|---|
+| Modification non enregistrée | `unsaved_changes` | Saisie dans un panneau ou un formulaire dont au moins un champ a une valeur différente de celle enregistrée (en création : de celle de départ) ; revenir à la valeur d'avant n'en est pas une. Quitter le panneau la signale par une alerte qui propose « Enregistrer », « Abandonner les modifications » ou « Continuer la saisie ». _À ne pas confondre avec_ Alerte (signal sur une action). |
