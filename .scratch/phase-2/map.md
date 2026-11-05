@@ -31,6 +31,7 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - [Commentaires](issues/05-commentaires.md) : sur les tickets et les pages entières, fil simple, écrits par propriétaires et contributeurs ; modifiés par leur auteur, supprimés par leur auteur ou un propriétaire avec une ligne de trace ; ni mention ni pièce jointe ; 5 000 caractères ; web seulement.
 - [Éditeur de page](issues/08-editeur-de-page.md) : Tiptap, contenu enregistré en JSON (ADR-0019), écriture directe dans le rendu ; pleine page, arborescence à gauche, historique en volet ; comparaison dans un seul texte ; après un refus : comparer, enregistrer à la suite ou prendre la version de l'autre.
 - [Modèles de page](issues/09-modeles-de-page.md) : 22 modèles livrés, plan et texte d'aide en deux langues, globaux ; copiés à la création, sans effet sur la couverture ; conception portée par une page, objectifs métier en section, confirmation par une version ; page créée au premier enregistrement.
+- [Pièces jointes](issues/10-pieces-jointes.md) : sur les tickets et les pages ; liste fixe de formats, sans antivirus (risque accepté) ; 500 Mo par initiative, réglables ; un fichier appartient à la page, reste visible dans les anciens enregistrements, et ne se supprime pas s'il figure dans le dernier ; suppression tracée ; web seulement.
 
 ## Zones floues
 
