@@ -30,6 +30,7 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - [Modèle de la page](issues/07-modele-de-la-page.md) : référence `PA`, titre, contenu de 200 000 caractères ; arborescence libre, ordre manuel, déplacement avec les sous-pages ; chaque enregistrement conservé, versions déclarées à la demande (même après coup), suppression d'un enregistrement sauf le dernier avec trace ; refus d'enregistrer si la page a changé entre-temps ; suppression refusée si liée ou avec sous-pages.
 - [Commentaires](issues/05-commentaires.md) : sur les tickets et les pages entières, fil simple, écrits par propriétaires et contributeurs ; modifiés par leur auteur, supprimés par leur auteur ou un propriétaire avec une ligne de trace ; ni mention ni pièce jointe ; 5 000 caractères ; web seulement.
 - [Éditeur de page](issues/08-editeur-de-page.md) : Tiptap, contenu enregistré en JSON (ADR-0019), écriture directe dans le rendu ; pleine page, arborescence à gauche, historique en volet ; comparaison dans un seul texte ; après un refus : comparer, enregistrer à la suite ou prendre la version de l'autre.
+- [Modèles de page](issues/09-modeles-de-page.md) : 22 modèles livrés, plan et texte d'aide en deux langues, globaux ; copiés à la création, sans effet sur la couverture ; conception portée par une page, objectifs métier en section, confirmation par une version ; page créée au premier enregistrement.
 
 ## Zones floues
 
@@ -50,3 +51,4 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - Connexion à Jira ou Confluence : envisagée plus tard.
 - Hors-ligne mobile, et sur mobile tout écran autre que « Mes actions » : chantier hors-ligne.
 - Commentaires et pièces jointes sur les besoins et les exigences : écartés de la phase 2, à rouvrir plus tard.
+- Priorité des exigences (tâche BABOK 5.3) : ni champ ni modèle en phase 2, à rouvrir plus tard ([Modèles de page](issues/09-modeles-de-page.md)).
