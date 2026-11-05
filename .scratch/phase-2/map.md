@@ -8,7 +8,7 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 
 ## Notes
 
-- Domaine : ACTA, cadre BABOK v3. Glossaire `CONTEXT.md`, ADR `docs/adr/` (0001 à 0011 non négociables ; 0014 fixe les pièces jointes en base, 10 Mo par fichier).
+- Domaine : ACTA, cadre BABOK v3. Glossaire `CONTEXT.md`, ADR `docs/adr/` (0001 à 0011 non négociables ; 0014 fixe les pièces jointes en base, 10 Mo par fichier ; 0019 fixe l'éditeur de page).
 - Chaque ticket de discussion : skills `grilling` et `domain-modeling` ; mettre à jour `CONTEXT.md` dès qu'un terme est tranché.
 - Ne jamais inventer de règle de gestion : la responsable fonctionnelle tranche.
 - Décisions de cadrage (02.11.2026) :
@@ -29,6 +29,7 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - [Modifications non enregistrées](issues/12-modifications-non-enregistrees.md) : alerte « Enregistrer / Abandonner / Continuer la saisie » sur tout panneau de saisie (phase 1 comprise) et les formulaires du téléphone, dès qu'une valeur diffère de l'enregistrée ; toutes les sorties gardées, l'onglet par le message du navigateur ; une alerte par panneau, en partant du dessus ; échec = panneau resté ouvert.
 - [Modèle de la page](issues/07-modele-de-la-page.md) : référence `PA`, titre, contenu de 200 000 caractères ; arborescence libre, ordre manuel, déplacement avec les sous-pages ; chaque enregistrement conservé, versions déclarées à la demande (même après coup), suppression d'un enregistrement sauf le dernier avec trace ; refus d'enregistrer si la page a changé entre-temps ; suppression refusée si liée ou avec sous-pages.
 - [Commentaires](issues/05-commentaires.md) : sur les tickets et les pages entières, fil simple, écrits par propriétaires et contributeurs ; modifiés par leur auteur, supprimés par leur auteur ou un propriétaire avec une ligne de trace ; ni mention ni pièce jointe ; 5 000 caractères ; web seulement.
+- [Éditeur de page](issues/08-editeur-de-page.md) : Tiptap, contenu enregistré en JSON (ADR-0019), écriture directe dans le rendu ; pleine page, arborescence à gauche, historique en volet ; comparaison dans un seul texte ; après un refus : comparer, enregistrer à la suite ou prendre la version de l'autre.
 
 ## Zones floues
 

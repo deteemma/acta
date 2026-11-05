@@ -9,7 +9,7 @@ Blocked by: 06, 07
 Comment fonctionnent les modèles de page ? Trancher :
 
 - lesquels sont livrés d'office, et à quels livrables BABOK ils correspondent (à partir des résultats du ticket 06) ;
-- contenu d'un modèle (plan de titres, texte d'aide) et ses deux langues (ADR-0013) — la page créée prend-elle la langue de l'utilisateur ;
+- contenu d'un modèle (plan de titres, texte d'aide), écrit comme une page avec Tiptap en JSON (ADR-0019), et ses deux langues (ADR-0013) — la page créée prend-elle la langue de l'utilisateur ;
 - création, modification, désactivation par l'administration ; modèles propres à une initiative ou non ;
 - lien entre la page créée et son modèle après création (la modification du modèle touche-t-elle les pages existantes ?) ;
 - une page créée depuis un modèle est-elle rattachée à la tâche BABOK du livrable ;
