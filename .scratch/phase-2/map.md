@@ -28,10 +28,11 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - [Liens](issues/04-liens.md) : trois natures fixes entre tickets (bloque, duplique, est lié à), un seul lien par paire ; tout ticket et toute page se lient aux besoins et exigences, sans nature ; pas de lien entre pages ni entre initiatives ; suppression refusée si lié ; liens hors historique.
 - [Modifications non enregistrées](issues/12-modifications-non-enregistrees.md) : alerte « Enregistrer / Abandonner / Continuer la saisie » sur tout panneau de saisie (phase 1 comprise) et les formulaires du téléphone, dès qu'une valeur diffère de l'enregistrée ; toutes les sorties gardées, l'onglet par le message du navigateur ; une alerte par panneau, en partant du dessus ; échec = panneau resté ouvert.
 - [Modèle de la page](issues/07-modele-de-la-page.md) : référence `PA`, titre, contenu de 200 000 caractères ; arborescence libre, ordre manuel, déplacement avec les sous-pages ; chaque enregistrement conservé, versions déclarées à la demande (même après coup), suppression d'un enregistrement sauf le dernier avec trace ; refus d'enregistrer si la page a changé entre-temps ; suppression refusée si liée ou avec sous-pages.
+- [Commentaires](issues/05-commentaires.md) : sur les tickets et les pages entières, fil simple, écrits par propriétaires et contributeurs ; modifiés par leur auteur, supprimés par leur auteur ou un propriétaire avec une ligne de trace ; ni mention ni pièce jointe ; 5 000 caractères ; web seulement.
 
 ## Zones floues
 
-- Alertes sur les autres types de ticket que l'Action (aujourd'hui limitées aux actions).
+- Alertes sur les autres types de ticket que l'Action (aujourd'hui limitées aux actions), et mention d'un membre dans un commentaire, écartée tant qu'elle ne peut pas prévenir la personne.
 - Nouvelles actions suggérées liées aux nouveaux types (ex. risque non traité).
 - Recherche transverse dans l'initiative (tickets et pages).
 - Export tableur des tickets, sur le modèle de celui des exigences.

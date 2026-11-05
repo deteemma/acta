@@ -8,7 +8,7 @@ Blocked by: 01, 07
 
 Comment fonctionnent les pièces jointes (stockées en base, 10 Mo par fichier — ADR-0014) ? Trancher :
 
-- sur quoi : tickets, pages, commentaires ;
+- sur quoi : tickets et pages (pas sur les commentaires, voir « Commentaires ») : tous les types de ticket ?
 - formats acceptés ou refusés ; aperçu des images et des PDF ;
 - limite par initiative en plus de la limite par fichier ;
 - qui peut ajouter, renommer, supprimer ; trace de la suppression ;
