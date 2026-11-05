@@ -27,6 +27,7 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - [Types de ticket et statuts paramétrables](issues/03-types-de-ticket-et-statuts-parametrables.md) : types et statuts livrés figés, l'administration en ajoute ; « En attente » sur les six types, « Refusée » sur Question et Décision ; statut initial, passage libre, statuts fermés ; familles choisies pour les statuts ajoutés.
 - [Liens](issues/04-liens.md) : trois natures fixes entre tickets (bloque, duplique, est lié à), un seul lien par paire ; tout ticket et toute page se lient aux besoins et exigences, sans nature ; pas de lien entre pages ni entre initiatives ; suppression refusée si lié ; liens hors historique.
 - [Modifications non enregistrées](issues/12-modifications-non-enregistrees.md) : alerte « Enregistrer / Abandonner / Continuer la saisie » sur tout panneau de saisie (phase 1 comprise) et les formulaires du téléphone, dès qu'une valeur diffère de l'enregistrée ; toutes les sorties gardées, l'onglet par le message du navigateur ; une alerte par panneau, en partant du dessus ; échec = panneau resté ouvert.
+- [Modèle de la page](issues/07-modele-de-la-page.md) : référence `PA`, titre, contenu de 200 000 caractères ; arborescence libre, ordre manuel, déplacement avec les sous-pages ; chaque enregistrement conservé, versions déclarées à la demande (même après coup), suppression d'un enregistrement sauf le dernier avec trace ; refus d'enregistrer si la page a changé entre-temps ; suppression refusée si liée ou avec sous-pages.
 
 ## Zones floues
 
