@@ -16,9 +16,17 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { AnalysisObjectRef, InitiativeMemberDto } from '@app/shared';
+import {
+  type AnalysisObjectRef,
+  type GuardedForm,
+  hasDirtyForm,
+  type InitiativeMemberDto,
+  leavePanels,
+  type UnsavedChoice,
+} from '@app/shared';
 import { useI18n } from './i18n';
 import { DOCKED_PANEL, ResizeHandle } from './resize';
+import { FormRegistryContext, UnsavedChangesAlert } from './unsaved-changes';
 
 /** Ce qu'un panneau peut afficher. */
 export type PanelContent =
@@ -54,45 +62,207 @@ interface Entry {
 
 interface Panels {
   stack: Entry[];
+  /** Depuis la page, remplace les panneaux ouverts : gardé par l'alerte. */
   open: (content: PanelContent) => void;
-  /** Remplace le dernier panneau (ex. palette → fiche) en gardant son élément d'origine. */
+  /** Remplace le dernier panneau (ex. palette → fiche) en gardant son élément d'origine ; gardé par l'alerte. */
   replace: (content: PanelContent) => void;
+  /** La fiche créée remplace le panneau : sa saisie vient d'être enregistrée, pas d'alerte. */
+  replaceSaved: (content: PanelContent) => void;
+  /** Ferme un panneau et ceux ouverts par-dessus ; gardé par l'alerte. */
   close: (id: number) => void;
+  /** Ferme tous les panneaux, avec l'alerte ; vrai si la sortie peut se poursuivre (déconnexion, changement d'écran). */
+  leaveAll: () => Promise<boolean>;
 }
 
 const PanelsContext = createContext<Panels | null>(null);
 
+/** Fermeture sans alerte du panneau en cours : son objet vient d'être supprimé ou quitté. */
+const CloseSilentlyContext = createContext<() => void>(() => undefined);
+export const useCloseSilently = () => useContext(CloseSilentlyContext);
+
 let nextId = 1;
+
+const panelTitleElement = (id: number) => document.getElementById(panelTitleId(id));
+const panelTitleId = (id: number) => `panel-title-${id}`;
+
+/** Amène sous les yeux l'erreur du panneau, une fois affichée. */
+function scrollToError(id: number) {
+  requestAnimationFrame(() => {
+    const errors = panelTitleElement(id)?.closest('dialog')?.querySelectorAll('.error') ?? [];
+    [...errors].find((error) => error.checkVisibility())?.scrollIntoView({ block: 'center' });
+  });
+}
+
+interface Asking {
+  id: number;
+  title: string;
+  saving: boolean;
+  answer: (choice: UnsavedChoice) => void;
+}
 
 export function PanelsProvider({ children }: { children: ReactNode }) {
   const [stack, setStack] = useState<Entry[]>([]);
+  const [asking, setAsking] = useState<Asking | null>(null);
+  // Lus par une sortie en cours, qui s'étale sur plusieurs rendus.
+  const stackRef = useRef(stack);
+  const forms = useRef(new Map<number, Set<GuardedForm>>());
+  const leaving = useRef(false);
 
-  const open = useCallback((content: PanelContent) => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    // Ouvert depuis la page alors qu'un panneau est ancré : il le remplace, au
-    // lieu de s'empiler à chaque objet consulté. La palette, elle, s'y superpose.
-    const fromPage = !opener?.closest('dialog') && content.kind !== 'palette';
-    setStack((s) => [...(fromPage ? [] : s), { id: nextId++, content, opener }]);
+  const update = useCallback((next: (s: Entry[]) => Entry[]) => {
+    stackRef.current = next(stackRef.current);
+    setStack(stackRef.current);
   }, []);
 
-  const replace = useCallback((content: PanelContent) => {
-    setStack((s) => {
-      const top = s.at(-1);
-      return top ? [...s.slice(0, -1), { id: nextId++, content, opener: top.opener }] : s;
-    });
+  const formsOf = useCallback((id: number) => [...(forms.current.get(id) ?? [])], []);
+
+  const registerForm = useCallback((id: number, form: GuardedForm) => {
+    const set = forms.current.get(id) ?? new Set<GuardedForm>();
+    forms.current.set(id, set);
+    set.add(form);
+    return () => {
+      set.delete(form);
+      if (set.size === 0) forms.current.delete(id);
+    };
   }, []);
 
-  // Fermer un panneau referme aussi ceux ouverts par-dessus.
-  const close = useCallback((id: number) => {
-    setStack((s) => {
-      const index = s.findIndex((e) => e.id === id);
-      return index < 0 ? s : s.slice(0, index);
-    });
+  /** Referme un panneau et ceux ouverts par-dessus. */
+  const closeWithoutAlert = useCallback(
+    (id: number) => {
+      update((s) => {
+        const index = s.findIndex((e) => e.id === id);
+        return index < 0 ? s : s.slice(0, index);
+      });
+    },
+    [update],
+  );
+
+  /** Passe chaque panneau modifié de `entries` (du dessous vers le dessus) à l'alerte ; vrai si la sortie se poursuit. */
+  const leave = useCallback(
+    async (entries: Entry[]): Promise<boolean> => {
+      leaving.current = true;
+      const result = await leavePanels(
+        entries.toReversed().map((entry) => ({ id: entry.id, forms: formsOf(entry.id) })),
+        ({ id }) =>
+          new Promise<UnsavedChoice>((resolve) => {
+            setAsking({
+              id,
+              title: panelTitleElement(id)?.textContent ?? '',
+              saving: false,
+              answer: (choice) => {
+                if (choice === 'save') setAsking((a) => a && { ...a, saving: true });
+                resolve(choice);
+              },
+            });
+          }),
+        ({ id }) => closeWithoutAlert(id),
+      );
+      leaving.current = false;
+      setAsking(null);
+      if (result.outcome === 'saveFailed') {
+        // Ce qui est au-dessus cacherait le panneau et son erreur.
+        const { id } = result.panel;
+        update((s) => s.slice(0, s.findIndex((e) => e.id === id) + 1));
+        scrollToError(id);
+      }
+      return result.outcome === 'left';
+    },
+    [closeWithoutAlert, formsOf, update],
+  );
+
+  /**
+   * Sans modification, la sortie se fait aussitôt ; pendant une alerte, elle est
+   * ignorée. Vrai si elle a eu lieu.
+   */
+  const guarded = useCallback(
+    async (entries: Entry[], proceed: () => void): Promise<boolean> => {
+      if (leaving.current) return false;
+      const dirty = entries.some((e) => hasDirtyForm(formsOf(e.id)));
+      if (dirty && !(await leave(entries))) return false;
+      proceed();
+      return true;
+    },
+    [formsOf, leave],
+  );
+
+  const open = useCallback(
+    (content: PanelContent) => {
+      const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      // Ouvert depuis la page alors qu'un panneau est ancré : il le remplace, au
+      // lieu de s'empiler à chaque objet consulté. La palette, elle, s'y superpose.
+      const fromPage = !opener?.closest('dialog') && content.kind !== 'palette';
+      void guarded(fromPage ? stackRef.current : [], () => {
+        update((s) => [...(fromPage ? [] : s), { id: nextId++, content, opener }]);
+      });
+    },
+    [guarded, update],
+  );
+
+  /** Le panneau `top` (déjà refermé si l'alerte est passée par là) laisse la place à `content`. */
+  const swap = useCallback(
+    (top: Entry, content: PanelContent) => {
+      update((s) => [...s.filter((e) => e.id !== top.id), { id: nextId++, content, opener: top.opener }]);
+    },
+    [update],
+  );
+
+  const replace = useCallback(
+    (content: PanelContent) => {
+      const top = stackRef.current.at(-1);
+      if (top) void guarded([top], () => swap(top, content));
+    },
+    [guarded, swap],
+  );
+
+  // Enregistré depuis l'alerte : le panneau va se fermer, la sortie demandée se poursuit.
+  const replaceSaved = useCallback(
+    (content: PanelContent) => {
+      const top = stackRef.current.at(-1);
+      if (top && !leaving.current) swap(top, content);
+    },
+    [swap],
+  );
+
+  const close = useCallback(
+    (id: number) => {
+      const index = stackRef.current.findIndex((e) => e.id === id);
+      if (index >= 0) void guarded(stackRef.current.slice(index), () => closeWithoutAlert(id));
+    },
+    [closeWithoutAlert, guarded],
+  );
+
+  const leaveAll = useCallback(() => guarded(stackRef.current, () => update(() => [])), [guarded, update]);
+
+  // Fermeture ou rechargement de l'onglet : seulement le message du navigateur.
+  useEffect(() => {
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      const dirty = [...forms.current.values()].some(hasDirtyForm);
+      if (dirty) event.preventDefault();
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
 
-  const value = useMemo<Panels>(() => ({ stack, open, replace, close }), [stack, open, replace, close]);
-  return <PanelsContext.Provider value={value}>{children}</PanelsContext.Provider>;
+  const value = useMemo<Panels>(
+    () => ({ stack, open, replace, replaceSaved, close, leaveAll }),
+    [stack, open, replace, replaceSaved, close, leaveAll],
+  );
+  const registry = useMemo(() => ({ registerForm, closeWithoutAlert }), [registerForm, closeWithoutAlert]);
+  return (
+    <PanelRegistryContext.Provider value={registry}>
+      <PanelsContext.Provider value={value}>
+        {children}
+        {asking && (
+          <UnsavedChangesAlert key={asking.id} title={asking.title} saving={asking.saving} onChoice={asking.answer} />
+        )}
+      </PanelsContext.Provider>
+    </PanelRegistryContext.Provider>
+  );
 }
+
+const PanelRegistryContext = createContext<{
+  registerForm: (id: number, form: GuardedForm) => () => void;
+  closeWithoutAlert: (id: number) => void;
+} | null>(null);
 
 export function usePanels(): Panels {
   const panels = useContext(PanelsContext);
@@ -106,11 +276,26 @@ export function PanelHost({ render }: { render: (content: PanelContent, close: (
   return (
     <>
       {stack.map((entry) => (
-        <PanelEntryContext.Provider key={entry.id} value={entry}>
+        <PanelSlot key={entry.id} entry={entry}>
           {render(entry.content, () => close(entry.id))}
-        </PanelEntryContext.Provider>
+        </PanelSlot>
       ))}
     </>
+  );
+}
+
+/** Contexte d'un panneau : son entrée, ses formulaires, sa fermeture sans alerte. */
+function PanelSlot({ entry, children }: { entry: Entry; children: ReactNode }) {
+  const registry = useContext(PanelRegistryContext)!;
+  const { id } = entry;
+  const register = useCallback((form: GuardedForm) => registry.registerForm(id, form), [registry, id]);
+  const closeSilently = useCallback(() => registry.closeWithoutAlert(id), [registry, id]);
+  return (
+    <PanelEntryContext.Provider value={entry}>
+      <FormRegistryContext.Provider value={register}>
+        <CloseSilentlyContext.Provider value={closeSilently}>{children}</CloseSilentlyContext.Provider>
+      </FormRegistryContext.Provider>
+    </PanelEntryContext.Provider>
   );
 }
 
@@ -172,14 +357,26 @@ export function Panel({
     }
     // `autoFocus` de React n'agit pas sur un <dialog> encore fermé.
     dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus();
-    // Fermeture par le navigateur (Échap) : on retire le panneau de la pile.
-    // L'événement arrive en différé : celui d'une fermeture suivie d'une
-    // réouverture (double montage de React en développement) est ignoré.
-    const handleClose = () => {
-      if (!dialog.open) onCloseRef.current();
+    // Échap quand le focus est hors du panneau (clic sur du texte) : la fermeture
+    // passe par la pile, gardée par l'alerte.
+    const handleCancel = (event: Event) => {
+      event.preventDefault();
+      onCloseRef.current();
     };
+    // Le navigateur peut fermer malgré tout (deuxième Échap d'affilée) : le panneau
+    // est rouvert, la pile décide. L'événement arrive en différé : celui d'une
+    // fermeture suivie d'une réouverture (double montage de React en
+    // développement) est ignoré.
+    const handleClose = () => {
+      if (dialog.open) return;
+      if (docked) dialog.show();
+      else dialog.showModal();
+      onCloseRef.current();
+    };
+    dialog.addEventListener('cancel', handleCancel);
     dialog.addEventListener('close', handleClose);
     return () => {
+      dialog.removeEventListener('cancel', handleCancel);
       dialog.removeEventListener('close', handleClose);
       dialog.close();
       const opener = entry?.opener;
@@ -187,9 +384,10 @@ export function Panel({
     };
   }, [entry, docked]);
 
-  // Un panneau ancré n'est pas modal : le navigateur n'y gère pas Échap.
+  // Échap passe par la pile, gardée par l'alerte ; un panneau ancré n'est de toute
+  // façon pas modal, le navigateur n'y gère pas Échap.
   function closeOnEscape(event: KeyboardEvent<HTMLDialogElement>) {
-    if (docked && event.key === 'Escape' && !event.defaultPrevented) {
+    if (event.key === 'Escape' && !event.defaultPrevented) {
       event.preventDefault();
       onClose();
     }
@@ -216,7 +414,7 @@ export function Panel({
     if (dy > SWIPE_CLOSE_PX) onClose();
   }
 
-  const titleId = `panel-title-${entry?.id ?? 0}`;
+  const titleId = panelTitleId(entry?.id ?? 0);
   return (
     <dialog
       ref={ref}

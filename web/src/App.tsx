@@ -97,7 +97,7 @@ function SignedIn({ user }: { user: User }) {
 /** Coque de navigation : « Mes actions », initiatives, palette (Ctrl+K), bouton « + Action » et panneaux. */
 function Shell({ user }: { user: User }) {
   const { t } = useI18n();
-  const { stack, open } = usePanels();
+  const { stack, open, leaveAll } = usePanels();
   const [initiatives, setInitiatives] = useState<InitiativeDto[]>([]);
   const [me, setMe] = useState<MeDto | null>(null);
   const [babok, setBabok] = useState<BabokDto | null>(null);
@@ -225,7 +225,7 @@ function Shell({ user }: { user: User }) {
                 <AlertsButton alerts={alerts} />
                 <small>{user.profile.name ?? user.profile.preferred_username}</small>
                 <LanguageSelector />
-                <button type="button" className="ghost" onClick={() => void logout()}>
+                <button type="button" className="ghost" onClick={() => void leaveAll().then((left) => (left ? logout() : undefined))}>
                   <LogOut />
                   {t('auth.logout')}
                 </button>

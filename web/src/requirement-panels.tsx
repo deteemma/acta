@@ -31,19 +31,21 @@ import {
   selectableStatuses,
   sortByDueDate,
   type StakeholderDto,
+  subtypeForType,
 } from '@app/shared';
 import { Download } from 'lucide-react';
-import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-panels';
-import { Panel, usePanels } from './panels';
+import { Panel, useCloseSilently, usePanels } from './panels';
 import { setRequirementStatuses, StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
 import { formatDateTime } from './team-section';
+import { useUnsavedForm } from './unsaved-changes';
 
 export const canEditRequirements = (initiative: InitiativeDto) =>
   can(initiative.myRole, 'editRequirements', { archived: initiative.archivedAt != null });
@@ -164,7 +166,8 @@ export function RequirementPanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { replace } = usePanels();
+  const { replaceSaved } = usePanels();
+  const closeSilently = useCloseSilently();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [requirement, setRequirement] = useState<RequirementDto | null>(null);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
@@ -247,7 +250,7 @@ export function RequirementPanel({
               onSaved={(next) => {
                 setRequirement(next);
                 onChanged();
-                if (!requirement) replace({ kind: 'requirement', initiativeId, requirementId: next.id });
+                if (!requirement) replaceSaved({ kind: 'requirement', initiativeId, requirementId: next.id });
               }}
             />
           ) : (
@@ -275,7 +278,7 @@ export function RequirementPanel({
                   requirement={requirement}
                   onDeleted={() => {
                     onChanged();
-                    onClose();
+                    closeSilently();
                   }}
                 />
               )}
@@ -380,6 +383,19 @@ function RequirementForm({
   const [parentId, setParentId] = useState(requirement?.parent?.id ?? '');
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
+  const submit = useUnsavedForm(
+    {
+      title,
+      type,
+      subtype: subtypeForType(type, subtype),
+      status,
+      statement,
+      stakeholderIds,
+      needIds,
+      parentId,
+    },
+    save,
+  );
 
   const toggle = (id: string) => (current: readonly string[]) =>
     current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
@@ -387,8 +403,7 @@ function RequirementForm({
   const tree = requirements.map((r) => ({ id: r.id, parentId: r.parent?.id ?? null }));
   const parents = requirement ? requirements.filter((r) => !createsParentCycle(tree, requirement.id, r.id)) : requirements;
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save(): Promise<boolean> {
     setSaved(false);
     // Même schéma de validation que l'API (@app/shared) ; le formulaire envoie
     // tous les champs, la fiche complète vaut aussi pour une modification.
@@ -396,14 +411,14 @@ function RequirementForm({
       title,
       statement,
       type,
-      subtype: type === 'solution' ? subtype : null,
+      subtype: subtypeForType(type, subtype),
       stakeholderIds,
       needIds,
       parentId: parentId || null,
     });
     if (!parsed.success) {
       setError({ key: 'requirement.invalid' });
-      return;
+      return false;
     }
     try {
       onSaved(
@@ -413,13 +428,15 @@ function RequirementForm({
       );
       setError(null);
       setSaved(true);
+      return true;
     } catch (e) {
       setError(e instanceof ApiError && e.status === 400 && !e.refusal ? { key: 'requirement.invalid' } : toUiError(e));
+      return false;
     }
   }
 
   return (
-    <form className="stacked" onSubmit={(e) => void save(e)} onChange={() => setSaved(false)}>
+    <form className="stacked" onSubmit={submit} onChange={() => setSaved(false)}>
       {/* Référence et titre, puis type, sous-type et statut, sur une ligne (ticket 04, lot 1). */}
       <div className="field-row reference-title">
         {requirement && (

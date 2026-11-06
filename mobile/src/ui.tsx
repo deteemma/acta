@@ -2,7 +2,7 @@
 // espacements du thème (refonte du design, ticket 06).
 import { type BabokElementDto, babokEnglishName, type Locale, type StatusTone } from '@app/shared';
 import { type LucideIcon, X } from 'lucide-react-native';
-import type { ReactNode } from 'react';
+import { type ComponentRef, type ReactNode, useEffect, useRef } from 'react';
 import { Modal, Pressable, Text as RNText, SafeAreaView, ScrollView, StyleSheet, type TextProps, View } from 'react-native';
 import { useI18n } from './i18n';
 import { useStyles, useTheme } from './theme';
@@ -35,18 +35,25 @@ export function Sheet({
   kicker,
   title,
   badges,
+  scrollToEndOn,
   onClose,
   children,
 }: {
   kicker?: ReactNode;
   title: string;
   badges?: ReactNode;
+  /** Quand cette valeur change (erreur affichée en bas de la feuille), le corps défile jusqu'en bas. */
+  scrollToEndOn?: unknown;
   onClose: () => void;
   children: ReactNode;
 }) {
   const { t } = useI18n();
   const ui = useUiStyles();
   const theme = useTheme();
+  const body = useRef<ComponentRef<typeof ScrollView>>(null);
+  useEffect(() => {
+    if (scrollToEndOn != null) body.current?.scrollToEnd();
+  }, [scrollToEndOn]);
   return (
     <>
       <View style={ui.sheetHeader}>
@@ -61,7 +68,7 @@ export function Sheet({
           <X color={theme.colors.text} size={24} strokeWidth={1.75} />
         </Pressable>
       </View>
-      <ScrollView contentContainerStyle={ui.sheetBody} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={body} contentContainerStyle={ui.sheetBody} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>
     </>

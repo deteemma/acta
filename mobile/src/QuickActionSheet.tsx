@@ -6,6 +6,7 @@ import {
   type ActionDto,
   type BabokDto,
   canCreateActionIn,
+  chosenValue,
   createActionSchema,
   findBabokElement,
   type InitiativeDto,
@@ -18,6 +19,7 @@ import { type Api, ApiError } from './api';
 import { describeError, useI18n } from './i18n';
 import { type AppTheme, useStyles, useTheme } from './theme';
 import { babokLabel, Chip, Sheet, Text, useUiStyles } from './ui';
+import { useUnsavedForm } from './unsaved-changes';
 
 export function QuickActionSheet({
   api,
@@ -59,25 +61,36 @@ export function QuickActionSheet({
   const hasActions = loadedActions?.initiativeId === chosenInitiative ? loadedActions.hasActions : null;
   const suggestions = hasActions == null ? [] : suggestTasks({ kind: 'initiative', hasActions });
   const taskId = chosenTask ?? suggestions[0]?.taskId ?? '';
+  // L'initiative et la tâche proposées font partie des valeurs de départ, même si elles arrivent après l'ouverture.
+  const submit = useUnsavedForm(
+    {
+      initiative: chosenValue(chosenInitiative, editable[0]?.id),
+      title,
+      task: chosenValue(taskId, suggestions[0]?.taskId),
+    },
+    create,
+  );
 
-  async function create() {
+  async function create(): Promise<boolean> {
     // Même schéma de validation que l'API (@app/shared).
     const parsed = createActionSchema.safeParse({ title, taskId });
     if (!parsed.success || !chosenInitiative) {
       setFailure({ invalid: true });
-      return;
+      return false;
     }
     setSaving(true);
     try {
       onCreated(await api.createAction(chosenInitiative, parsed.data));
+      return true;
     } catch (e) {
       setFailure(e instanceof ApiError && e.status === 400 && !e.refusal ? { invalid: true } : e);
       setSaving(false);
+      return false;
     }
   }
 
   return (
-    <Sheet title={t('actions.new')} onClose={onClose}>
+    <Sheet title={t('actions.new')} scrollToEndOn={failure} onClose={onClose}>
       {editable.length === 0 ? (
         <Text>{t('actions.noEditableInitiative')}</Text>
       ) : (
@@ -151,7 +164,7 @@ export function QuickActionSheet({
           <Pressable
             style={[ui.primary, saving && ui.primaryDisabled]}
             disabled={saving}
-            onPress={() => void create()}
+            onPress={() => void submit()}
             accessibilityRole="button"
           >
             <Text style={ui.primaryText}>{t('action.create')}</Text>

@@ -10,7 +10,7 @@ import type { BabokDto, InitiativeDto, PublicConfigDto } from '@app/shared';
 import { StatusBar } from 'expo-status-bar';
 import { LogOut, Plus } from 'lucide-react-native';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Pressable, SafeAreaView, StyleSheet, View } from 'react-native';
 import { ActionSheet } from './src/ActionSheet';
 import { ApiError, createApi } from './src/api';
 import { useLogin } from './src/auth';
@@ -22,6 +22,7 @@ import { QuickActionSheet } from './src/QuickActionSheet';
 import { getAccessToken } from './src/session';
 import { type AppTheme, useStyles, useTheme } from './src/theme';
 import { SheetModal, Text, useUiStyles } from './src/ui';
+import { FormScopeContext, useFormScope } from './src/unsaved-changes';
 
 // Chargé seulement en mode hors ligne : PowerSync repose sur un module natif
 // absent d'Expo Go.
@@ -91,6 +92,21 @@ function Main({ config }: { config: PublicConfigDto }) {
   // Échec du chargement du référentiel BABOK ou des initiatives.
   const [loadError, setLoadError] = useState<unknown>(null);
   const closeSheet = () => setSheet(null);
+  // Modifications non enregistrées (ticket 15) : la feuille, et sous elle l'écran en cours.
+  const screenForms = useFormScope();
+  const sheetForms = useFormScope();
+  const leaveSheet = () => sheetForms.leave(closeSheet);
+
+  // Retour d'Android sur l'écran principal : il quitte l'application. Une feuille
+  // ouverte le reçoit d'abord (onRequestClose de SheetModal).
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!screenForms.isDirty()) return false;
+      screenForms.leave(() => BackHandler.exitApp());
+      return true;
+    });
+    return () => subscription.remove();
+  }, [screenForms]);
 
   useEffect(() => {
     if (signedIn) linkAccount(api);
@@ -134,7 +150,7 @@ function Main({ config }: { config: PublicConfigDto }) {
           <Logotype />
           <LanguageSelector />
           <Pressable
-            onPress={auth.logout}
+            onPress={() => screenForms.leave(() => void auth.logout())}
             accessibilityRole="button"
             accessibilityLabel={t('auth.logout')}
             style={ui.iconButton}
@@ -146,7 +162,9 @@ function Main({ config }: { config: PublicConfigDto }) {
           {(['actions', 'initiatives'] as const).map((value) => (
             <Pressable
               key={value}
-              onPress={() => setTab(value)}
+              onPress={() => {
+                if (value !== tab) screenForms.leave(() => setTab(value));
+              }}
               accessibilityRole="tab"
               accessibilityState={{ selected: tab === value }}
               style={[styles.segment, tab === value && styles.segmentSelected]}
@@ -159,24 +177,26 @@ function Main({ config }: { config: PublicConfigDto }) {
         </View>
       </View>
       {loadError != null && <Text style={[ui.error, styles.padded]}>{describeError(t, loadError)}</Text>}
-      <View style={styles.body}>
-        {/* « Mes actions » : mode connecté seulement, même si la synchronisation hors ligne est activée. */}
-        {tab === 'actions' ? (
-          <MyActions
-            api={api}
-            initiatives={initiatives}
-            babok={babok}
-            version={actionsVersion}
-            onOpen={(a) => setSheet({ kind: 'action', initiativeId: a.initiative.id, actionId: a.id })}
-          />
-        ) : OFFLINE_MODE && config.powersyncUrl ? (
-          <Suspense fallback={<ActivityIndicator />}>
-            <OfflineInitiatives endpoint={config.powersyncUrl} getToken={getAccessToken} api={api} />
-          </Suspense>
-        ) : (
-          <OnlineInitiatives api={api} />
-        )}
-      </View>
+      <FormScopeContext.Provider value={screenForms}>
+        <View style={styles.body}>
+          {/* « Mes actions » : mode connecté seulement, même si la synchronisation hors ligne est activée. */}
+          {tab === 'actions' ? (
+            <MyActions
+              api={api}
+              initiatives={initiatives}
+              babok={babok}
+              version={actionsVersion}
+              onOpen={(a) => setSheet({ kind: 'action', initiativeId: a.initiative.id, actionId: a.id })}
+            />
+          ) : OFFLINE_MODE && config.powersyncUrl ? (
+            <Suspense fallback={<ActivityIndicator />}>
+              <OfflineInitiatives endpoint={config.powersyncUrl} getToken={getAccessToken} api={api} />
+            </Suspense>
+          ) : (
+            <OnlineInitiatives api={api} />
+          )}
+        </View>
+      </FormScopeContext.Provider>
       <Pressable
         style={styles.fab}
         onPress={() => setSheet({ kind: 'create' })}
@@ -186,18 +206,20 @@ function Main({ config }: { config: PublicConfigDto }) {
         <Plus color={theme.colors.onAccent} size={22} strokeWidth={2} />
         <Text style={styles.fabText}>{t('actions.fab')}</Text>
       </Pressable>
-      <SheetModal visible={sheet != null} onClose={closeSheet}>
+      <SheetModal visible={sheet != null} onClose={leaveSheet}>
         {sheet?.kind === 'create' && (
-          <QuickActionSheet
-            api={api}
-            babok={babok}
-            initiatives={initiatives}
-            onCreated={(action) => {
-              setActionsVersion((v) => v + 1);
-              setSheet({ kind: 'action', initiativeId: action.initiative.id, actionId: action.id });
-            }}
-            onClose={closeSheet}
-          />
+          <FormScopeContext.Provider value={sheetForms}>
+            <QuickActionSheet
+              api={api}
+              babok={babok}
+              initiatives={initiatives}
+              onCreated={(action) => {
+                setActionsVersion((v) => v + 1);
+                setSheet({ kind: 'action', initiativeId: action.initiative.id, actionId: action.id });
+              }}
+              onClose={leaveSheet}
+            />
+          </FormScopeContext.Provider>
         )}
         {sheet?.kind === 'action' && (
           <ActionSheet

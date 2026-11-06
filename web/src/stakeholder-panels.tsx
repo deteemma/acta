@@ -29,7 +29,7 @@ import {
   sortByDueDate,
 } from '@app/shared';
 import { Plus } from 'lucide-react';
-import { type FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
 import { EmptyState } from './empty-state';
@@ -37,9 +37,10 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedList } from './need-panels';
 import { RequirementList } from './requirement-panels';
-import { Panel, usePanels } from './panels';
+import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { formatDateTime } from './team-section';
+import { useUnsavedForm } from './unsaved-changes';
 
 const canEditStakeholders = (initiative: InitiativeDto) =>
   can(initiative.myRole, 'editStakeholders', { archived: initiative.archivedAt != null });
@@ -250,7 +251,8 @@ export function StakeholderPanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { replace } = usePanels();
+  const { replaceSaved } = usePanels();
+  const closeSilently = useCloseSilently();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
@@ -313,7 +315,7 @@ export function StakeholderPanel({
               linkable={linkableMembers(members, stakeholders, stakeholderId ?? null)}
               onSaved={(next) => {
                 saved(next);
-                if (!stakeholder) replace({ kind: 'stakeholder', initiativeId, stakeholderId: next.id });
+                if (!stakeholder) replaceSaved({ kind: 'stakeholder', initiativeId, stakeholderId: next.id });
               }}
             />
           ) : (
@@ -339,7 +341,7 @@ export function StakeholderPanel({
                   stakeholder={stakeholder}
                   onDeleted={() => {
                     onChanged();
-                    onClose();
+                    closeSilently();
                   }}
                 />
               )}
@@ -417,6 +419,7 @@ function StakeholderForm({
   const [userId, setUserId] = useState(stakeholder?.user?.userId ?? '');
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
+  const submit = useUnsavedForm({ name, kind, roles, influence, interest, contact, notes, userId }, save);
 
   // Le compte actuel reste affiché s'il n'est plus membre.
   const keepsFormerMember = stakeholder?.user && !linkable.some((m) => m.userId === stakeholder.user!.userId);
@@ -426,8 +429,7 @@ function StakeholderForm({
       current.includes(role) ? current.filter((r) => r !== role) : STAKEHOLDER_ROLES.filter((r) => r === role || current.includes(r)),
     );
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save(): Promise<boolean> {
     setSaved(false);
     const input = {
       name,
@@ -444,7 +446,7 @@ function StakeholderForm({
     const parsed = createStakeholderSchema.safeParse(input);
     if (!parsed.success) {
       setError({ key: 'stakeholder.invalid' });
-      return;
+      return false;
     }
     try {
       onSaved(
@@ -454,13 +456,15 @@ function StakeholderForm({
       );
       setError(null);
       setSaved(true);
+      return true;
     } catch (e) {
       setError(e instanceof ApiError && e.status === 400 && !e.refusal ? { key: 'stakeholder.invalid' } : toUiError(e));
+      return false;
     }
   }
 
   return (
-    <form className="stacked" onSubmit={(e) => void save(e)} onChange={() => setSaved(false)}>
+    <form className="stacked" onSubmit={submit} onChange={() => setSaved(false)}>
       <label>
         {t('stakeholder.name')}
         <input

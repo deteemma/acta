@@ -790,6 +790,32 @@ details.babok-item .links {
     animation: none;
   }
 }
+/* Alerte de modifications non enregistrées (phase 2, ticket 15) */
+.unsaved-alert {
+  padding: 0;
+  width: min(30rem, calc(100% - var(--space-8)));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-panel);
+}
+.unsaved-alert::backdrop {
+  background: var(--backdrop);
+}
+.unsaved-alert-body {
+  padding: var(--space-6);
+}
+.unsaved-alert-body h2 {
+  margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
+}
+.unsaved-alert-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
 /* Équipe de l'initiative (ticket 04) */
 .team-members li {
   display: flex;

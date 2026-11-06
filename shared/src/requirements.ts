@@ -46,6 +46,11 @@ export interface RequirementShape {
   parentId: string | null;
 }
 
+/** Le sous-type n'existe que pour une exigence de solution : celui à retenir pour ce type. */
+export function subtypeForType(type: RequirementType, subtype: RequirementSubtype): RequirementSubtype | null {
+  return type === 'solution' ? subtype : null;
+}
+
 /**
  * Vérifie une exigence complète ; null si elle est permise :
  * - le sous-type est obligatoire pour une exigence de solution, absent sinon ;

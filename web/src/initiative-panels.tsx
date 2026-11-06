@@ -20,17 +20,18 @@ import {
   updateInitiativeSchema,
 } from '@app/shared';
 import { Archive, ArchiveRestore, LayoutDashboard, Plus, Trash2, Users } from 'lucide-react';
-import { type FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActionList } from './action-panels';
 import { api, ApiError } from './api';
 import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { canEditNeeds, NeedList } from './need-panels';
-import { Panel, usePanels } from './panels';
+import { Panel, useCloseSilently, usePanels } from './panels';
 import { canEditRequirements, ExportRequirementsButton, RequirementList } from './requirement-panels';
 import { TextWithReferences } from './rich-text';
 import { TeamSection } from './team-section';
+import { useUnsavedForm } from './unsaved-changes';
 
 /** Date AAAA-MM-JJ ou horodatage, affiché dans la langue de l'interface. */
 export function formatDate(locale: Locale, date: string): string {
@@ -66,6 +67,7 @@ export function InitiativePanel({
 }) {
   const { t, locale } = useI18n();
   const { open } = usePanels();
+  const closeSilently = useCloseSilently();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
@@ -226,7 +228,7 @@ export function InitiativePanel({
             onLeft={() => {
               // L'initiative quitte la liste, comme une suppression.
               onDeleted(initiative.id);
-              onClose();
+              closeSilently();
             }}
           />
           {can(initiative.myRole, 'archive', state) && (
@@ -235,7 +237,7 @@ export function InitiativePanel({
               onChanged={changed}
               onDeleted={() => {
                 onDeleted(initiative.id);
-                onClose();
+                closeSilently();
               }}
             />
           )}
@@ -286,9 +288,9 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
   const [plannedEndDate, setPlannedEndDate] = useState(initiative.plannedEndDate ?? '');
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
+  const submit = useUnsavedForm({ code, name, description, approach, startDate, plannedEndDate }, save);
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save(): Promise<boolean> {
     setSaved(false);
     // Même schéma de validation que l'API (@app/shared).
     const parsed = updateInitiativeSchema.safeParse({
@@ -302,21 +304,23 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
     if (!parsed.success) {
       const codeIssue = parsed.error.issues.some((issue) => issue.path[0] === 'code');
       setError({ key: codeIssue ? 'initiatives.invalid' : 'initiative.invalid' });
-      return;
+      return false;
     }
     try {
       onSaved(await api.updateInitiative(initiative.id, parsed.data));
       setError(null);
       setSaved(true);
+      return true;
     } catch (e) {
       setError(e instanceof ApiError && e.status === 400 ? { key: 'initiative.invalid' } : toUiError(e));
+      return false;
     }
   }
 
   const edited = () => setSaved(false);
 
   return (
-    <form className="stacked" onSubmit={(e) => void save(e)} onChange={edited}>
+    <form className="stacked" onSubmit={submit} onChange={edited}>
       <div className="code-name">
         <label>
           {t('initiative.code')}
@@ -474,31 +478,33 @@ export function CreateInitiativePanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { replace } = usePanels();
+  const { replaceSaved } = usePanels();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<UiError | null>(null);
+  const submit = useUnsavedForm({ code, name }, create);
 
-  async function create(event: FormEvent) {
-    event.preventDefault();
+  async function create(): Promise<boolean> {
     // Même schéma de validation que l'API (@app/shared).
     const parsed = createInitiativeSchema.safeParse({ code, name });
     if (!parsed.success) {
       setError({ key: 'initiatives.invalid' });
-      return;
+      return false;
     }
     try {
       const initiative = await api.createInitiative(parsed.data);
       onCreated(initiative);
-      replace({ kind: 'initiative', initiativeId: initiative.id });
+      replaceSaved({ kind: 'initiative', initiativeId: initiative.id });
+      return true;
     } catch (e) {
       setError(toUiError(e));
+      return false;
     }
   }
 
   return (
     <Panel title={t('initiatives.new')} onClose={onClose}>
-      <form className="stacked" onSubmit={(e) => void create(e)}>
+      <form className="stacked" onSubmit={submit}>
         <label>
           {t('initiative.code')}
           <input
