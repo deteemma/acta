@@ -9,6 +9,7 @@ const bruno = { userId: 'bruno', email: 'bruno@exemple.test', displayName: 'Brun
 /** Action d'alice, attribuée par bruno le 20.10.2026 ; seuls les champs utiles au test changent. */
 function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
   return {
+    reference: 'CRM-AC-001',
     initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor' },
     title: fields.id,
     description: null,
@@ -64,6 +65,11 @@ test('aucune alerte pour une action Terminée ou Annulée, ni pour une action d�
     today,
   );
   assert.deepEqual(summary(alerts), ['overdue:en-cours', 'assigned:en-cours']);
+});
+
+test('une action En attente garde ses alertes', () => {
+  const alerts = myAlerts([action({ id: 'attente', status: 'on_hold', dueDate: '2026-10-01' })], me, today);
+  assert.deepEqual(summary(alerts), ['overdue:attente', 'assigned:attente']);
 });
 
 test('aucune alerte pour une action d’une initiative archivée', () => {

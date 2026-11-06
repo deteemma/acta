@@ -1,6 +1,7 @@
 // Types Kysely des tables (voir api/migrations). À tenir à jour avec les migrations.
 import type { ColumnType, Generated } from 'kysely';
 import type {
+  ActionSnapshot,
   ActionStatus,
   AnalysisApproach,
   InitiativeRole,
@@ -68,10 +69,12 @@ export interface OwnerDesignationTable {
   designated_at: Timestamp;
 }
 
-/** Action (migration 0010) : auteurs et dates écrits par un déclencheur. */
-export interface ActionTable {
+/** Ticket (migrations 0010, 0018) : référence, auteurs et dates écrits par un déclencheur. Seul type pour l'instant : l'Action. */
+export interface TicketTable {
   id: string;
   initiative_id: string;
+  type: 'action';
+  reference: ColumnType<string, never, never>;
   title: string;
   description: Optional<string>;
   task_id: string;
@@ -118,10 +121,10 @@ export interface StakeholderTable {
   updated_at: ColumnType<Date, never, never>;
 }
 
-/** Lien action ↔ partie prenante (migration 0011) : créé ou retiré, jamais modifié. */
+/** Partie prenante concernée par une action (migration 0011) : créé ou retiré, jamais modifié. */
 export interface ActionStakeholderTable {
   initiative_id: string;
-  action_id: string;
+  ticket_id: string;
   stakeholder_id: string;
 }
 
@@ -167,10 +170,10 @@ export interface NeedStakeholderTable {
   stakeholder_id: string;
 }
 
-/** Lien action ↔ besoin (migration 0012) : créé ou retiré, jamais modifié. */
-export interface ActionNeedTable {
+/** Lien ticket ↔ besoin (migrations 0012, 0018) : créé ou retiré, jamais modifié. */
+export interface TicketNeedTable {
   initiative_id: string;
-  action_id: string;
+  ticket_id: string;
   need_id: string;
 }
 
@@ -205,10 +208,10 @@ export interface RequirementNeedTable {
   need_id: string;
 }
 
-/** Lien action ↔ exigence (migration 0013) : créé ou retiré, jamais modifié. */
-export interface ActionRequirementTable {
+/** Lien ticket ↔ exigence (migrations 0013, 0018) : créé ou retiré, jamais modifié. */
+export interface TicketRequirementTable {
   initiative_id: string;
-  action_id: string;
+  ticket_id: string;
   requirement_id: string;
 }
 
@@ -220,6 +223,17 @@ export interface RequirementVersionTable {
   changed_by: ColumnType<string, never, never>;
   changed_at: ColumnType<Date, never, never>;
   snapshot: ColumnType<RequirementSnapshot, never, never>;
+}
+
+/** Historique d'un ticket (migration 0018) : écrit seulement par la base, en lecture seule. */
+export interface TicketVersionTable {
+  id: ColumnType<string, never, never>;
+  initiative_id: ColumnType<string, never, never>;
+  ticket_id: ColumnType<string, never, never>;
+  changed_by: ColumnType<string, never, never>;
+  changed_at: ColumnType<Date, never, never>;
+  snapshot_before: ColumnType<ActionSnapshot, never, never>;
+  snapshot_after: ColumnType<ActionSnapshot, never, never>;
 }
 
 /** Référentiel BABOK (migration 0009) : lecture seule, aucune écriture possible. */
@@ -247,9 +261,6 @@ export interface BabokTaskTechniqueTable {
 }
 
 export interface Database {
-  action: ActionTable;
-  action_need: ActionNeedTable;
-  action_requirement: ActionRequirementTable;
   action_stakeholder: ActionStakeholderTable;
   app_user: AppUserTable;
   babok_knowledge_area: BabokKnowledgeAreaTable;
@@ -270,4 +281,8 @@ export interface Database {
   requirement_version: RequirementVersionTable;
   stakeholder: StakeholderTable;
   suggestion_dismissal: SuggestionDismissalTable;
+  ticket: TicketTable;
+  ticket_need: TicketNeedTable;
+  ticket_requirement: TicketRequirementTable;
+  ticket_version: TicketVersionTable;
 }

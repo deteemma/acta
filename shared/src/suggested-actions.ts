@@ -176,7 +176,7 @@ const isOnObjects = (s: SuggestedAction) => s.count != null;
 /**
  * Suggestions de l'encart, dans l'ordre du référentiel de leur tâche (G1) :
  * aucune sur une initiative archivée (G4) ; ni celles écartées (G7), ni celles
- * dont une Action créée depuis elles est À faire ou En cours (G6) ; parmi les
+ * dont une Action créée depuis elles n'est pas fermée (G6) ; parmi les
  * restantes, une seule par tâche (G2) : celle qui porte sur des objets, puis
  * la règle au plus petit numéro.
  */

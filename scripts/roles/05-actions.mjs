@@ -105,10 +105,10 @@ await check('initiative archivée : actions en lecture seule, signalées dans «
 console.log('\nActions — barrière 2 : base de données (RLS, compte applicatif)');
 // L'initiative est encore archivée.
 await check('archivée : alice (propriétaire) : UPDATE et DELETE sans effet, INSERT refusé', async () => {
-  assert.equal((await asUserInDb(alice.sub, `UPDATE action SET title = 'Interdit' WHERE id = $1`, [aliceActionId])).rowCount, 0);
-  assert.equal((await asUserInDb(alice.sub, `DELETE FROM action WHERE id = $1`, [aliceActionId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `UPDATE ticket SET title = 'Interdit' WHERE id = $1`, [aliceActionId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `DELETE FROM ticket WHERE id = $1`, [aliceActionId])).rowCount, 0);
   await assert.rejects(
-    asUserInDb(alice.sub, `INSERT INTO action (id, initiative_id, title, task_id, assignee_id) VALUES (gen_random_uuid(), $1, 'x', '4.1', $2)`, [actionsInitiativeId, alice.sub]),
+    asUserInDb(alice.sub, `INSERT INTO ticket (id, type, initiative_id, title, task_id, assignee_id) VALUES (gen_random_uuid(), 'action', $1, 'x', '4.1', $2)`, [actionsInitiativeId, alice.sub]),
     /row-level security/,
   );
 });
@@ -118,17 +118,17 @@ await check('alice désarchive l’initiative : 200', async () => {
 export const insertAction = (sub, assignee) =>
   asUserInDb(
     sub,
-    `INSERT INTO action (id, initiative_id, title, task_id, assignee_id) VALUES (gen_random_uuid(), $1, 'Via SQL', '4.1', $2) RETURNING created_by`,
+    `INSERT INTO ticket (id, type, initiative_id, title, task_id, assignee_id) VALUES (gen_random_uuid(), 'action', $1, 'Via SQL', '4.1', $2) RETURNING created_by`,
     [actionsInitiativeId, assignee],
   );
 await check('chloé (lectrice) : INSERT refusé, UPDATE et DELETE sans effet', async () => {
   await assert.rejects(insertAction(chloe.sub, alice.sub), /row-level security/);
-  assert.equal((await asUserInDb(chloe.sub, `UPDATE action SET title = 'Piraté' WHERE id = $1`, [aliceActionId])).rowCount, 0);
-  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM action WHERE id = $1`, [aliceActionId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `UPDATE ticket SET title = 'Piraté' WHERE id = $1`, [aliceActionId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM ticket WHERE id = $1`, [aliceActionId])).rowCount, 0);
 });
 await check('admin (non-membre) : aucune action visible, aucune écriture', async () => {
-  assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM action WHERE initiative_id = $1`, [actionsInitiativeId])).rowCount, 0);
-  assert.equal((await asUserInDb(admin.sub, `UPDATE action SET title = 'Piraté' WHERE id = $1`, [aliceActionId])).rowCount, 0);
+  assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM ticket WHERE initiative_id = $1`, [actionsInitiativeId])).rowCount, 0);
+  assert.equal((await asUserInDb(admin.sub, `UPDATE ticket SET title = 'Piraté' WHERE id = $1`, [aliceActionId])).rowCount, 0);
   await assert.rejects(insertAction(admin.sub, alice.sub), /row-level security/);
 });
 await check('bruno (contributeur) : INSERT accepté, auteur imposé par la base', async () => {
@@ -142,7 +142,7 @@ await check('responsable lecteur ou non-membre refusé (déclencheur)', async ()
 await check('bruno ne falsifie ni l’auteur ni les dates (déclencheur)', async () => {
   const r = await asUserInDb(
     bruno.sub,
-    `UPDATE action SET created_by = $2, updated_by = $2, created_at = '2000-01-01' WHERE id = $1 RETURNING created_by, updated_by, created_at`,
+    `UPDATE ticket SET created_by = $2, updated_by = $2, created_at = '2000-01-01' WHERE id = $1 RETURNING created_by, updated_by, created_at`,
     [aliceActionId, chloe.sub],
   );
   assert.equal(r.rows[0].created_by, alice.sub);
@@ -152,14 +152,14 @@ await check('bruno ne falsifie ni l’auteur ni les dates (déclencheur)', async
 await check('une action ne change pas d’initiative', async () => {
   const r = await call(bruno, 'POST', '/initiatives', { code: `${code.slice(0, 8)}AD`, name: 'Autre' });
   await assert.rejects(
-    asUserInDb(bruno.sub, `UPDATE action SET initiative_id = $2 WHERE id = $1`, [brunoActionId, r.body.id]),
+    asUserInDb(bruno.sub, `UPDATE ticket SET initiative_id = $2 WHERE id = $1`, [brunoActionId, r.body.id]),
     /ne change pas/,
   );
   assert.equal((await call(bruno, 'DELETE', `/initiatives/${r.body.id}`)).status, 204);
 });
 await check('description de plus de 20 000 caractères refusée (contrainte en base)', async () => {
   await assert.rejects(
-    asUserInDb(bruno.sub, `UPDATE action SET description = repeat('x', 20001) WHERE id = $1`, [aliceActionId]),
+    asUserInDb(bruno.sub, `UPDATE ticket SET description = repeat('x', 20001) WHERE id = $1`, [aliceActionId]),
     /check constraint/,
   );
 });

@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import type { ActionStatus } from './actions.js';
 import { suggestionKeySchema } from './actions.js';
 import type { BabokDto } from './babok.js';
 import {
@@ -248,14 +249,15 @@ test('G4 : aucune suggestion sur une initiative archivée', () => {
   assert.deepEqual(suggestActions(babok, context({ initiative: { archived: true, analysisApproach: null, plannedEndDate: null } })), []);
 });
 
-test('G6 : masquée tant qu’une Action créée depuis elle est À faire ou En cours, de retour si Terminée ou Annulée', () => {
-  const withAction = (status: 'todo' | 'in_progress' | 'done' | 'cancelled') =>
+test('G6 : masquée tant qu’une Action créée depuis elle n’est pas fermée, de retour si Terminée ou Annulée', () => {
+  const withAction = (status: ActionStatus) =>
     find(
       suggestActions(babok, context({ needs: [need('n1', [])], actions: [action({ taskId: '5.1', status, suggestionKey: 'R8' })] })),
       'R8',
     );
   assert.equal(withAction('todo'), undefined);
   assert.equal(withAction('in_progress'), undefined);
+  assert.equal(withAction('on_hold'), undefined);
   assert.ok(withAction('done'));
   assert.ok(withAction('cancelled'));
 });

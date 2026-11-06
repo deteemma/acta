@@ -80,13 +80,14 @@ async function loadContext(tx: Tx, initiativeId: string): Promise<SuggestionCont
     .where('id', '=', initiativeId)
     .executeTakeFirstOrThrow();
   const actions = await tx
-    .selectFrom('action')
+    .selectFrom('ticket')
     .select(['id', 'task_id', 'status', 'suggestion_key'])
     .where('initiative_id', '=', initiativeId)
+    .where('type', '=', 'action')
     .execute();
   const actionStakeholders = await tx
     .selectFrom('action_stakeholder')
-    .select(['action_id', 'stakeholder_id'])
+    .select(['ticket_id', 'stakeholder_id'])
     .where('initiative_id', '=', initiativeId)
     .execute();
   const stakeholders = await tx
@@ -139,7 +140,7 @@ async function loadContext(tx: Tx, initiativeId: string): Promise<SuggestionCont
       taskId: a.task_id,
       status: a.status,
       suggestionKey: a.suggestion_key,
-      stakeholderIds: actionStakeholders.filter((l) => l.action_id === a.id).map((l) => l.stakeholder_id),
+      stakeholderIds: actionStakeholders.filter((l) => l.ticket_id === a.id).map((l) => l.stakeholder_id),
     })),
     stakeholders,
     needs: needs.map((n) => ({

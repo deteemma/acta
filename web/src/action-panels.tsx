@@ -5,7 +5,10 @@ import {
   ACTION_DESCRIPTION_MAX_LENGTH,
   ACTION_STATUSES,
   ACTION_TITLE_MAX_LENGTH,
+  type ActionChange,
   type ActionDto,
+  actionHistory,
+  type ActionVersionDto,
   type ActionStatus,
   actionStatusTone,
   type BabokDto,
@@ -20,6 +23,7 @@ import {
   findBabokElement,
   type InitiativeDto,
   type InitiativeMemberDto,
+  type MessageKey,
   type NeedDto,
   type RequirementDto,
   type StakeholderDto,
@@ -35,7 +39,7 @@ import {
   tasksOfKnowledgeArea,
   updateActionSchema,
 } from '@app/shared';
-import { useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
@@ -130,7 +134,7 @@ export function ActionList({
               className="link action-title"
               onClick={() => open({ kind: 'action', initiativeId: a.initiative.id, actionId: a.id })}
             >
-              {a.title}
+              <span className="code">{a.reference}</span> {a.title}
             </button>
             <span className="action-task">{task && <BabokPreview element={task} />}</span>
             {/* Liste d'une initiative : le responsable, signalé s'il ne peut plus l'être. */}
@@ -226,12 +230,19 @@ export function ActionPanel({
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
   const [needs, setNeeds] = useState<NeedDto[] | null>(null);
   const [requirements, setRequirements] = useState<RequirementDto[] | null>(null);
+  const [versions, setVersions] = useState<ActionVersionDto[]>([]);
+  // Augmente à chaque enregistrement : l'historique se recharge.
+  const [saveCount, setSaveCount] = useState(0);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
     api.getAction(initiativeId, actionId).then(setAction, (e: unknown) => setError(toUiError(e)));
     api.listMembers(initiativeId).then(setMembers, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, actionId]);
+
+  useEffect(() => {
+    api.actionHistory(initiativeId, actionId).then(setVersions, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, actionId, saveCount]);
 
   useEffect(() => {
     api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
@@ -246,7 +257,7 @@ export function ActionPanel({
   }, [initiativeId, requirementsVersion]);
 
   return (
-    <Panel title={action ? `${action.initiative.code} · ${action.title}` : t('common.loading')} onClose={onClose}>
+    <Panel title={action ? `${action.reference} · ${action.title}` : t('common.loading')} onClose={onClose}>
       <ErrorMessage error={error} />
       {action && (
         <>
@@ -261,6 +272,7 @@ export function ActionPanel({
               requirements={requirements}
               onSaved={(saved) => {
                 setAction(saved);
+                setSaveCount((count) => count + 1);
                 onChanged();
               }}
             />
@@ -268,6 +280,7 @@ export function ActionPanel({
             <ActionDetails babok={babok} action={action} />
           )}
           <AuditTrail action={action} />
+          <ActionHistory babok={babok} versions={versions} />
           {canEditActions(action) && (
             <DeleteAction
               action={action}
@@ -555,6 +568,112 @@ function AuditTrail({ action }: { action: ActionDto }) {
   );
 }
 
+/** Historique : qui, quand, et pour chaque champ modifié l'ancienne et la nouvelle valeur. */
+function ActionHistory({ babok, versions }: { babok: BabokDto; versions: ActionVersionDto[] }) {
+  const { t, locale } = useI18n();
+  const entries = actionHistory(versions);
+  return (
+    <section className="requirement-history">
+      <h3 className="group-title">{t('action.history')}</h3>
+      {entries.length === 0 && <p><small>{t('action.historyEmpty')}</small></p>}
+      <ol className="timeline">
+        {entries.map((entry) => (
+          <li key={entry.changedAt}>
+            <span className="timeline-when">
+              {t('action.historyUpdated', { date: formatDateTime(locale, entry.changedAt), name: memberName(entry.changedBy) })}
+            </span>
+            <table className="change-table">
+              <thead>
+                <tr>
+                  <td />
+                  <th scope="col">{t('action.historyBefore')}</th>
+                  <th scope="col">{t('action.historyAfter')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entry.changes.map((change) => (
+                  <ActionChangeLine key={change.field} babok={babok} change={change} />
+                ))}
+              </tbody>
+            </table>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** Libellé du champ modifié, dans la langue de l'interface. */
+const ACTION_FIELD_LABELS = {
+  title: 'action.title',
+  description: 'action.description',
+  status: 'action.status',
+  taskId: 'action.task',
+  techniqueId: 'action.technique',
+  dueDate: 'action.dueDate',
+  assignee: 'action.assignee',
+  stakeholders: 'action.stakeholders',
+} as const satisfies Record<ActionChange['field'], MessageKey>;
+
+function ActionChangeLine({ babok, change }: { babok: BabokDto; change: ActionChange }) {
+  const { t, locale } = useI18n();
+  const empty = <em>{t('action.historyNoValue')}</em>;
+  const label = t(ACTION_FIELD_LABELS[change.field]);
+  // La description, souvent longue, s'affiche en entier à la demande.
+  if (change.field === 'description') {
+    return (
+      <tr>
+        <th scope="row">{label}</th>
+        <td colSpan={2}>
+          <details>
+            <summary>{t('action.historyShowDescription')}</summary>
+            <div className="change-statement">
+              <div className="change-before">{change.from ? <RichText source={change.from} /> : empty}</div>
+              <div>{change.to ? <RichText source={change.to} /> : empty}</div>
+            </div>
+          </details>
+        </td>
+      </tr>
+    );
+  }
+  const babokName = (id: string | null) => {
+    if (!id) return empty;
+    const element = findBabokElement(babok, id);
+    return element ? `${element.section} ${element.name[locale]}` : id;
+  };
+  const value = (): [ReactNode, ReactNode] => {
+    switch (change.field) {
+      case 'title':
+        return [change.from, change.to];
+      case 'status':
+        return [t(`actionStatus.${change.from}`), t(`actionStatus.${change.to}`)];
+      case 'taskId':
+      case 'techniqueId':
+        return [babokName(change.from), babokName(change.to)];
+      case 'dueDate':
+        return [
+          change.from ? formatDate(locale, change.from) : empty,
+          change.to ? formatDate(locale, change.to) : empty,
+        ];
+      case 'assignee':
+        return [memberName(change.from), memberName(change.to)];
+      case 'stakeholders':
+        return [
+          change.from.length ? change.from.map((s) => s.name).join(', ') : empty,
+          change.to.length ? change.to.map((s) => s.name).join(', ') : empty,
+        ];
+    }
+  };
+  const [from, to] = value();
+  return (
+    <tr>
+      <th scope="row">{label}</th>
+      <td className="change-before">{from}</td>
+      <td>{to}</td>
+    </tr>
+  );
+}
+
 /** Suppression après confirmation ; une action liée à un autre objet s'annule plutôt (refus `linked`). */
 function DeleteAction({ action, onDeleted }: { action: ActionDto; onDeleted: () => void }) {
   const { t } = useI18n();
@@ -575,7 +694,7 @@ function DeleteAction({ action, onDeleted }: { action: ActionDto; onDeleted: () 
     <section className="owner-actions">
       {confirming ? (
         <div role="alertdialog" aria-labelledby="action-delete-confirm" className="confirm">
-          <p id="action-delete-confirm">{t('action.deleteConfirm', { title: action.title })}</p>
+          <p id="action-delete-confirm">{t('action.deleteConfirm', { reference: action.reference, title: action.title })}</p>
           <button type="button" autoFocus onClick={() => setConfirming(false)}>
             {t('common.cancel')}
           </button>{' '}

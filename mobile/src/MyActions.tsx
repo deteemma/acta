@@ -89,7 +89,9 @@ export function MyActions({
             onPress={() => onOpen(item)}
             accessibilityRole="button"
           >
-            <Text style={styles.itemTitle}>{item.title}</Text>
+            <Text style={styles.itemTitle}>
+              <Text style={ui.code}>{item.reference}</Text> {item.title}
+            </Text>
             <View style={styles.meta}>
               <Text style={ui.code}>{item.initiative.code}</Text>
               <Text style={ui.code}>{item.dueDate ? formatDate(locale, item.dueDate) : t('action.noDueDate')}</Text>

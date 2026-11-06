@@ -1,12 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkAcronymChange, formatReference, type ReferenceCategoryDto, type ReferenceDto, searchReferences } from './references.js';
+import { checkAcronymChange, DEFAULT_ACRONYMS, formatReference, type ReferenceCategoryDto, type ReferenceDto, searchReferences } from './references.js';
 
 test('une référence s’écrit CODE-ACRONYME-NUMÉRO, le numéro sur 3 chiffres au moins', () => {
   assert.equal(formatReference('CRM', 'BE', 1), 'CRM-BE-001');
   assert.equal(formatReference('CRM', 'EX', 12), 'CRM-EX-012');
   assert.equal(formatReference('CRM', 'BE', 999), 'CRM-BE-999');
   assert.equal(formatReference('CRM', 'BE', 1000), 'CRM-BE-1000');
+});
+
+test('une action porte par défaut l’acronyme AC', () => {
+  assert.equal(DEFAULT_ACRONYMS.action, 'AC');
 });
 
 const categories: ReferenceCategoryDto[] = [

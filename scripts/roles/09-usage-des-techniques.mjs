@@ -43,7 +43,7 @@ await check('bruno lit le comptage (technique, nombre) mais aucune action de lâ€
   const counts = await asUserInDb(bruno.sub, 'SELECT * FROM technique_usage_counts()');
   assert.deepEqual(counts.fields.map((f) => f.name), ['technique_id', 'action_count']);
   assert.ok(counts.rows.some((row) => row.technique_id === '10.43'));
-  const actions = await asUserInDb(bruno.sub, 'SELECT 1 FROM action WHERE initiative_id = $1', [usageInitiativeId]);
+  const actions = await asUserInDb(bruno.sub, 'SELECT 1 FROM ticket WHERE initiative_id = $1', [usageInitiativeId]);
   assert.equal(actions.rowCount, 0);
 });
 await check('sans utilisateur, aucun comptage', async () => {

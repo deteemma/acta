@@ -180,7 +180,7 @@ export interface RequirementHistoryEntry {
 const VALUE_FIELDS: readonly ValueField[] = ['title', 'statement', 'type', 'subtype', 'status'];
 const LIST_FIELDS: readonly ListField[] = ['stakeholders', 'needs'];
 
-const sameIdSet = (a: readonly { id: string }[], b: readonly { id: string }[]) =>
+export const sameIdSet = (a: readonly { id: string }[], b: readonly { id: string }[]) =>
   a.length === b.length && a.every((x) => b.some((y) => y.id === x.id));
 
 function changesBetween(before: RequirementSnapshot, after: RequirementSnapshot): RequirementChange[] {

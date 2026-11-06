@@ -1,6 +1,7 @@
 import type {
   AccountDto,
   ActionDto,
+  ActionVersionDto,
   AdminRequirementStatusDto,
   CreateActionInput,
   UpdateActionInput,
@@ -98,6 +99,8 @@ export const api = {
   listMyActions: () => request<ActionDto[]>('/actions/mine'),
   listActions: (id: string) => request<ActionDto[]>(`/initiatives/${id}/actions`),
   getAction: (id: string, actionId: string) => request<ActionDto>(`/initiatives/${id}/actions/${actionId}`),
+  actionHistory: (id: string, actionId: string) =>
+    request<ActionVersionDto[]>(`/initiatives/${id}/actions/${actionId}/history`),
   createAction: (id: string, input: CreateActionInput) =>
     request<ActionDto>(`/initiatives/${id}/actions`, { method: 'POST', body: JSON.stringify(input) }),
   updateAction: (id: string, actionId: string, input: UpdateActionInput) =>

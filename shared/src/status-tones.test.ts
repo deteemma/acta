@@ -5,6 +5,7 @@ import { actionStatusTone, requirementStatusTone } from './status-tones.js';
 test("famille de statut d'une action", () => {
   assert.equal(actionStatusTone('todo'), 'neutral');
   assert.equal(actionStatusTone('in_progress'), 'progress');
+  assert.equal(actionStatusTone('on_hold'), 'attention');
   assert.equal(actionStatusTone('done'), 'positive');
   assert.equal(actionStatusTone('cancelled'), 'muted');
 });

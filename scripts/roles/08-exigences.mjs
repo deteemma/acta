@@ -159,7 +159,7 @@ export const insertRequirement = (sub) => asUserInDb(sub, insertRequirementSql, 
 await check('archivée : alice (propriétaire) : UPDATE et DELETE sans effet, INSERT refusé', async () => {
   assert.equal((await asUserInDb(alice.sub, `UPDATE requirement SET status = 'deferred' WHERE id = $1`, [rootId])).rowCount, 0);
   assert.equal((await asUserInDb(alice.sub, `DELETE FROM requirement WHERE id = $1`, [childId])).rowCount, 0);
-  assert.equal((await asUserInDb(alice.sub, `DELETE FROM action_requirement WHERE action_id = $1`, [exActionId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `DELETE FROM ticket_requirement WHERE ticket_id = $1`, [exActionId])).rowCount, 0);
   await assert.rejects(insertRequirement(alice.sub), /row-level security/);
 });
 await check('alice désarchive l’initiative : 200', async () => {
@@ -175,17 +175,17 @@ await check('chloé (lectrice) : INSERT refusés, UPDATE et DELETE sans effet', 
   assert.equal((await asUserInDb(chloe.sub, `UPDATE requirement SET status = 'rejected' WHERE id = $1`, [rootId])).rowCount, 0);
   assert.equal((await asUserInDb(chloe.sub, `DELETE FROM requirement_need WHERE requirement_id = $1`, [rootId])).rowCount, 0);
   assert.equal((await asUserInDb(chloe.sub, `DELETE FROM requirement_stakeholder WHERE requirement_id = $1`, [rootId])).rowCount, 0);
-  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM action_requirement WHERE action_id = $1`, [exActionId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM ticket_requirement WHERE ticket_id = $1`, [exActionId])).rowCount, 0);
   for (const [table, linkId] of [['requirement_need', exNeedId], ['requirement_stakeholder', exSourceId]]) {
     await assert.rejects(asUserInDb(chloe.sub, `INSERT INTO ${table} VALUES ($1, $2, $3)`, [exInitiativeId, childId, linkId]), /row-level security/);
   }
   await assert.rejects(
-    asUserInDb(chloe.sub, `INSERT INTO action_requirement VALUES ($1, $2, $3)`, [exInitiativeId, exActionId, childId]),
+    asUserInDb(chloe.sub, `INSERT INTO ticket_requirement VALUES ($1, $2, $3)`, [exInitiativeId, exActionId, childId]),
     /row-level security/,
   );
 });
 await check('admin (non-membre) : aucune exigence, aucun lien, aucun historique visible ; aucune écriture', async () => {
-  for (const table of ['requirement', 'requirement_need', 'requirement_stakeholder', 'action_requirement', 'requirement_version']) {
+  for (const table of ['requirement', 'requirement_need', 'requirement_stakeholder', 'ticket_requirement', 'requirement_version']) {
     assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM ${table} WHERE initiative_id = $1`, [exInitiativeId])).rowCount, 0, table);
   }
   assert.equal((await asUserInDb(admin.sub, `UPDATE requirement SET status = 'rejected' WHERE id = $1`, [rootId])).rowCount, 0);
@@ -254,7 +254,7 @@ await check('liens vers une parente, un besoin, une source ou une exigence d’u
   await assert.rejects(asUserInDb(bruno.sub, `UPDATE requirement SET parent_id = $2 WHERE id = $1`, [childId, otherRequirementId]), /foreign key/);
   await assert.rejects(asUserInDb(bruno.sub, `INSERT INTO requirement_need VALUES ($1, $2, $3)`, [exInitiativeId, rootId, otherExNeedId]), /foreign key/);
   await assert.rejects(asUserInDb(bruno.sub, `INSERT INTO requirement_stakeholder VALUES ($1, $2, $3)`, [exInitiativeId, rootId, otherExSourceId]), /foreign key/);
-  await assert.rejects(asUserInDb(bruno.sub, `INSERT INTO action_requirement VALUES ($1, $2, $3)`, [exInitiativeId, exActionId, otherRequirementId]), /foreign key/);
+  await assert.rejects(asUserInDb(bruno.sub, `INSERT INTO ticket_requirement VALUES ($1, $2, $3)`, [exInitiativeId, exActionId, otherRequirementId]), /foreign key/);
 });
 await check('liées : DELETE de l’exigence, de sa parente, du besoin et de la source refusés (clé étrangère)', async () => {
   await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM requirement WHERE id = $1`, [rootId]), /foreign key/);

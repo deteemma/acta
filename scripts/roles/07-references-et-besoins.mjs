@@ -30,7 +30,7 @@ await check('alice crée l’initiative et invite bruno (contributeur) et chloé
 await check('admin consulte les acronymes ; bruno, chloé (non administrateurs) : 403', async () => {
   const r = await call(admin, 'GET', categories);
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body.map((c) => c.category), ['need', 'requirement']);
+  assert.deepEqual(r.body.map((c) => c.category), ['need', 'requirement', 'action']);
   needAcronym = r.body[0].acronym;
   assert.equal((await call(bruno, 'GET', categories)).status, 403);
   assert.equal((await call(chloe, 'PATCH', `${categories}/need`, { acronym: 'BS' })).status, 403);
@@ -168,7 +168,7 @@ export const insertNeed = (sub, initiative = rbInitiativeId) =>
   );
 await check('archivée : alice (propriétaire) : UPDATE et DELETE sans effet, INSERT refusé', async () => {
   assert.equal((await asUserInDb(alice.sub, `UPDATE need SET title = 'Interdit' WHERE id = $1`, [needId])).rowCount, 0);
-  assert.equal((await asUserInDb(alice.sub, `DELETE FROM action_need WHERE action_id = $1`, [rbActionId])).rowCount, 0);
+  assert.equal((await asUserInDb(alice.sub, `DELETE FROM ticket_need WHERE ticket_id = $1`, [rbActionId])).rowCount, 0);
   await assert.rejects(insertNeed(alice.sub), /row-level security/);
 });
 await check('alice désarchive l’initiative : 200', async () => {
@@ -178,9 +178,9 @@ await check('chloé (lectrice) : INSERT refusés, UPDATE et DELETE sans effet', 
   await assert.rejects(insertNeed(chloe.sub), /row-level security/);
   assert.equal((await asUserInDb(chloe.sub, `UPDATE need SET title = 'Piraté' WHERE id = $1`, [needId])).rowCount, 0);
   assert.equal((await asUserInDb(chloe.sub, `DELETE FROM need_stakeholder WHERE need_id = $1`, [needId])).rowCount, 0);
-  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM action_need WHERE action_id = $1`, [rbActionId])).rowCount, 0);
+  assert.equal((await asUserInDb(chloe.sub, `DELETE FROM ticket_need WHERE ticket_id = $1`, [rbActionId])).rowCount, 0);
   await assert.rejects(
-    asUserInDb(chloe.sub, `INSERT INTO action_need VALUES ($1, $2, $3)`, [rbInitiativeId, rbActionId, needId]),
+    asUserInDb(chloe.sub, `INSERT INTO ticket_need VALUES ($1, $2, $3)`, [rbInitiativeId, rbActionId, needId]),
     /row-level security/,
   );
   await assert.rejects(
@@ -191,7 +191,7 @@ await check('chloé (lectrice) : INSERT refusés, UPDATE et DELETE sans effet', 
 await check('admin (non-membre) : aucun besoin ni lien visible, aucune écriture', async () => {
   assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM need WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
   assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM need_stakeholder WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
-  assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM action_need WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
+  assert.equal((await asUserInDb(admin.sub, `SELECT 1 FROM ticket_need WHERE initiative_id = $1`, [rbInitiativeId])).rowCount, 0);
   assert.equal((await asUserInDb(admin.sub, `UPDATE need SET title = 'Piraté' WHERE id = $1`, [needId])).rowCount, 0);
   await assert.rejects(insertNeed(admin.sub), /row-level security/);
 });
@@ -253,7 +253,7 @@ await check('nouvel acronyme : les références attribuées restent, la suivante
 });
 await check('liens vers un besoin ou une partie prenante d’une autre initiative refusés (clé étrangère)', async () => {
   await assert.rejects(
-    asUserInDb(bruno.sub, `INSERT INTO action_need VALUES ($1, $2, $3)`, [rbInitiativeId, rbActionId, otherNeedId]),
+    asUserInDb(bruno.sub, `INSERT INTO ticket_need VALUES ($1, $2, $3)`, [rbInitiativeId, rbActionId, otherNeedId]),
     /foreign key/,
   );
   await assert.rejects(

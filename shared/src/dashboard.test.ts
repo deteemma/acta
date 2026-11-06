@@ -25,6 +25,7 @@ const person = { userId: 'alice', email: 'alice@exemple.test', displayName: 'ali
 /** Action d'exemple ; seuls les champs utiles au test changent. */
 function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
   return {
+    reference: 'CRM-AC-001',
     initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor' },
     title: fields.id,
     description: null,
@@ -63,10 +64,11 @@ test('chaque tâche compte ses actions par statut', () => {
     action({ id: 'b', status: 'todo' }),
     action({ id: 'c', status: 'done' }),
     action({ id: 'd', status: 'cancelled', taskId: '4.1' }),
+    action({ id: 'e', status: 'on_hold' }),
   ]);
   const [plan] = dashboard[0]!.tasks;
-  assert.deepEqual(plan!.countByStatus, { todo: 2, in_progress: 0, done: 1, cancelled: 0 });
-  assert.deepEqual(dashboard[1]!.tasks[0]!.countByStatus, { todo: 0, in_progress: 0, done: 0, cancelled: 1 });
+  assert.deepEqual(plan!.countByStatus, { todo: 2, in_progress: 0, on_hold: 1, done: 1, cancelled: 0 });
+  assert.deepEqual(dashboard[1]!.tasks[0]!.countByStatus, { todo: 0, in_progress: 0, on_hold: 0, done: 0, cancelled: 1 });
 });
 
 test('une tâche sans aucune action n’est pas couverte ; une seule action, de tout statut, la couvre', () => {

@@ -106,7 +106,7 @@ export function AlertsPanel({
                       className="link"
                       onClick={() => open({ kind: 'action', initiativeId: action.initiative.id, actionId: action.id })}
                     >
-                      <span className="code">{action.initiative.code}</span> {action.title}
+                      <span className="code">{action.reference}</span> {action.title}
                     </button>
                     {isNew && <span className="badge tone-progress">{t('alerts.new')}</span>}
                     <small className="alert-detail">
