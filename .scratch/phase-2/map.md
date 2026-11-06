@@ -32,9 +32,11 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - [Éditeur de page](issues/08-editeur-de-page.md) : Tiptap, contenu enregistré en JSON (ADR-0019), écriture directe dans le rendu ; pleine page, arborescence à gauche, historique en volet ; comparaison dans un seul texte ; après un refus : comparer, enregistrer à la suite ou prendre la version de l'autre.
 - [Modèles de page](issues/09-modeles-de-page.md) : 22 modèles livrés, plan et texte d'aide en deux langues, globaux ; copiés à la création, sans effet sur la couverture ; conception portée par une page, objectifs métier en section, confirmation par une version ; page créée au premier enregistrement.
 - [Pièces jointes](issues/10-pieces-jointes.md) : sur les tickets et les pages ; liste fixe de formats, sans antivirus (risque accepté) ; 500 Mo par initiative, réglables ; un fichier appartient à la page, reste visible dans les anciens enregistrements, et ne se supprime pas s'il figure dans le dernier ; suppression tracée ; web seulement.
+- [Écrans des tickets](issues/11-ecrans-des-tickets.md) : entrées « Tickets » et « Pages » sous l'initiative, en pleine page ; tableau filtrable et triable, regroupement par Epic en option ; fiche en panneau ; création en panneau ou rapide, sauf l'Action en rapide.
 
 ## Zones floues
 
+- Coexistence de la nouvelle navigation avec l'existant : clic sur une initiative, section « Actions » du panneau d'initiative, bouton « + Action », palette, entrées ouvertes sur petit écran.
 - Alertes sur les autres types de ticket que l'Action (aujourd'hui limitées aux actions), et mention d'un membre dans un commentaire, écartée tant qu'elle ne peut pas prévenir la personne.
 - Nouvelles actions suggérées liées aux nouveaux types (ex. risque non traité).
 - Recherche transverse dans l'initiative (tickets et pages).
