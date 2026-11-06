@@ -29,7 +29,7 @@ Tranché avec la responsable fonctionnelle le 05.11.2026.
    - Exclus : programmes, archives ZIP, HTML et SVG.
 3. **Antivirus** : aucun, le socle n'en a pas (ADR-0007). Rien n'est analysé à l'envoi ; un fichier infecté d'un format accepté pourrait être partagé entre membres. Risque accepté pour cette phase par la responsable fonctionnelle, à noter dans un ADR à la réalisation.
 4. **Aperçu** : images et PDF s'ouvrent dans l'application, les autres formats se téléchargent. Tout membre, lecteur compris, ouvre et télécharge.
-5. **Limite par initiative** : 500 Mo par défaut, en plus des 10 Mo par fichier ; valeur réglée dans l'administration, pour toute l'application. Chaque fichier compte tant qu'il existe, même s'il n'est plus affiché que dans d'anciens enregistrements. Limite atteinte : ajout refusé avec un message ; l'occupation reste visible par les membres.
+5. **Limite par initiative** : 500 Mo par défaut, en plus des 10 Mo par fichier ; valeur réglée dans l'administration, pour toute l'application, entre 10 Mo et 1 Go (précisé dans « Écrans d'administration »). Chaque fichier compte tant qu'il existe, même s'il n'est plus affiché que dans d'anciens enregistrements. Limite atteinte : ajout refusé avec un message ; l'occupation reste visible par les membres.
 6. **Ajouter, renommer, supprimer** : par un propriétaire ou un contributeur, sur n'importe quel fichier du ticket ou de la page.
    - La liste montre le nom, le format, la taille, l'auteur et la date ; deux fichiers peuvent porter le même nom.
    - Pas de remplacement : une nouvelle version d'un fichier est un nouveau fichier.

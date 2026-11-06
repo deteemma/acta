@@ -33,19 +33,12 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - [Modèles de page](issues/09-modeles-de-page.md) : 22 modèles livrés, plan et texte d'aide en deux langues, globaux ; copiés à la création, sans effet sur la couverture ; conception portée par une page, objectifs métier en section, confirmation par une version ; page créée au premier enregistrement.
 - [Pièces jointes](issues/10-pieces-jointes.md) : sur les tickets et les pages ; liste fixe de formats, sans antivirus (risque accepté) ; 500 Mo par initiative, réglables ; un fichier appartient à la page, reste visible dans les anciens enregistrements, et ne se supprime pas s'il figure dans le dernier ; suppression tracée ; web seulement.
 - [Écrans des tickets](issues/11-ecrans-des-tickets.md) : entrées « Tickets » et « Pages » sous l'initiative, en pleine page ; tableau filtrable et triable, regroupement par Epic en option ; fiche en panneau ; création en panneau ou rapide, sauf l'Action en rapide.
+- [Coexistence de la navigation](issues/13-coexistence-de-la-navigation.md) : le clic sur une initiative ouvre sa fiche et déplie ses entrées ; changer d'écran ferme les panneaux ; « + Action » reste ; la palette trouve tickets et pages ; l'adresse suit Tickets, Pages et la page ouverte.
+- [Écrans d'administration](issues/14-ecrans-d-administration.md) : trois onglets de plus (types de ticket, modèles de page, pièces jointes) ; 10 Mo par fichier, fixe ; 500 Mo par initiative, réglables entre 10 Mo et 1 Go.
 
 ## Zones floues
 
-- Coexistence de la nouvelle navigation avec l'existant : clic sur une initiative, section « Actions » du panneau d'initiative, bouton « + Action », palette, entrées ouvertes sur petit écran.
-- Alertes sur les autres types de ticket que l'Action (aujourd'hui limitées aux actions), et mention d'un membre dans un commentaire, écartée tant qu'elle ne peut pas prévenir la personne.
-- Nouvelles actions suggérées liées aux nouveaux types (ex. risque non traité).
-- Recherche transverse dans l'initiative (tickets et pages).
-- Export tableur des tickets, sur le modèle de celui des exigences.
-- Évolution du tableau de bord pour montrer les autres types de ticket.
-- Écran d'administration des types de ticket et de leurs statuts (sur le modèle de celui des statuts d'exigence).
-- Une vue « mes tickets » (tous types dont je suis responsable), « Mes actions » restant limité aux Actions.
-- Volume synchronisé vers le téléphone (PowerSync) après le passage au ticket générique.
-- Rédaction de la spécification et découpage en tickets de réalisation (dernière étape).
+- Rédaction de la spécification et découpage en tickets de réalisation (dernière étape). La vérification du volume synchronisé vers le téléphone (PowerSync) après le passage au ticket générique y sera un ticket de réalisation.
 
 ## Hors périmètre
 
@@ -55,3 +48,4 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 - Hors-ligne mobile, et sur mobile tout écran autre que « Mes actions » : chantier hors-ligne.
 - Commentaires et pièces jointes sur les besoins et les exigences : écartés de la phase 2, à rouvrir plus tard.
 - Priorité des exigences (tâche BABOK 5.3) : ni champ ni modèle en phase 2, à rouvrir plus tard ([Modèles de page](issues/09-modeles-de-page.md)).
+- Reportés à plus tard par la responsable fonctionnelle (06.11.2026) : alertes sur les autres types de ticket et mention d'un membre dans un commentaire ; nouvelles actions suggérées liées aux nouveaux types ; recherche transverse dans l'initiative ; export tableur des tickets ; tableau de bord pour les autres types ; vue « mes tickets » toutes initiatives confondues.
