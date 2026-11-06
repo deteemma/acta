@@ -27,7 +27,7 @@ import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { canEditNeeds, NeedList } from './need-panels';
-import { Panel, useCloseSilently, usePanels } from './panels';
+import { Panel, useCloseSilently, usePanels, useSettleUnsaved } from './panels';
 import { canEditRequirements, ExportRequirementsButton, RequirementList } from './requirement-panels';
 import { TextWithReferences } from './rich-text';
 import { TeamSection } from './team-section';
@@ -393,6 +393,7 @@ function OwnerActions({
   onDeleted: () => void;
 }) {
   const { t } = useI18n();
+  const settleUnsaved = useSettleUnsaved();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
 
@@ -406,13 +407,15 @@ function OwnerActions({
   }
 
   const toggleArchive = () =>
-    run(async () =>
+    run(async () => {
+      // La fiche va passer en lecture seule : sa saisie ne doit pas se perdre (décision 12, point 9).
+      if (!initiative.archivedAt && !(await settleUnsaved())) return;
       onChanged(
         await (initiative.archivedAt
           ? api.unarchiveInitiative(initiative.id)
           : api.archiveInitiative(initiative.id)),
-      ),
-    );
+      );
+    });
 
   return (
     <section className="owner-actions">

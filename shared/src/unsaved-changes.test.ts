@@ -122,11 +122,11 @@ test('une valeur proposée d’office n’est pas une saisie, même si elle arri
 });
 
 test('un formulaire vidé après son envoi repart de ses nouvelles valeurs', async () => {
-  // Invitation d'un membre : le courriel se vide, le rôle choisi reste.
+  // Invitation d'un membre : le formulaire revient à ses valeurs de départ.
   const form = new TrackedForm({ email: '', role: 'contributor' }, async () => true);
-  form.update({ email: 'a@b.ch', role: 'reader' }, async () => ({ email: '', role: 'reader' }));
+  form.update({ email: 'a@b.ch', role: 'reader' }, async () => ({ email: '', role: 'contributor' }));
   assert.equal(await form.submit(), true);
-  form.update({ email: '', role: 'reader' }, async () => true);
+  form.update({ email: '', role: 'contributor' }, async () => true);
   assert.equal(form.isDirty(), false);
 });
 

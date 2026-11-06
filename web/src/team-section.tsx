@@ -192,11 +192,13 @@ function RoleOptions() {
   ));
 }
 
+const INITIAL_INVITE_ROLE: InitiativeRole = 'contributor';
+
 /** Invitation par courriel d'un utilisateur connecté au moins une fois (propriétaire). */
 function InviteForm({ initiativeId, onInvited }: { initiativeId: string; onInvited: () => void }) {
   const { t } = useI18n();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<InitiativeRole>('contributor');
+  const [role, setRole] = useState<InitiativeRole>(INITIAL_INVITE_ROLE);
   const [isTeamBa, setIsTeamBa] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
   const teamBa = canCarryTeamBa(role) && isTeamBa;
@@ -213,10 +215,11 @@ function InviteForm({ initiativeId, onInvited }: { initiativeId: string; onInvit
       await api.addMember(initiativeId, parsed.data);
       setError(null);
       setEmail('');
+      setRole(INITIAL_INVITE_ROLE);
       setIsTeamBa(false);
       onInvited();
-      // Le courriel se vide, le rôle choisi reste.
-      return { email: '', role, isTeamBa: false };
+      // Le formulaire revient à ses valeurs de départ (décision 12, point 12).
+      return { email: '', role: INITIAL_INVITE_ROLE, isTeamBa: false };
     } catch (e) {
       setError(toUiError(e));
       return false;

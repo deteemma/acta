@@ -80,6 +80,13 @@ const PanelsContext = createContext<Panels | null>(null);
 const CloseSilentlyContext = createContext<() => void>(() => undefined);
 export const useCloseSilently = () => useContext(CloseSilentlyContext);
 
+/**
+ * Passe le panneau en cours à l'alerte s'il est modifié, sans le fermer ; vrai si
+ * l'action demandée se poursuit (archivage : la fiche passe en lecture seule).
+ */
+const SettleUnsavedContext = createContext<() => Promise<boolean>>(() => Promise.resolve(true));
+export const useSettleUnsaved = () => useContext(SettleUnsavedContext);
+
 let nextId = 1;
 
 const panelTitleElement = (id: number) => document.getElementById(panelTitleId(id));
@@ -136,9 +143,12 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
     [update],
   );
 
-  /** Passe chaque panneau modifié de `entries` (du dessous vers le dessus) à l'alerte ; vrai si la sortie se poursuit. */
+  /**
+   * Passe chaque panneau modifié de `entries` (du dessous vers le dessus) à
+   * l'alerte ; `onSettled` reçoit chacun une fois réglé. Vrai si la sortie se poursuit.
+   */
   const leave = useCallback(
-    async (entries: Entry[]): Promise<boolean> => {
+    async (entries: Entry[], onSettled: (id: number) => void): Promise<boolean> => {
       leaving.current = true;
       const result = await leavePanels(
         entries.toReversed().map((entry) => ({ id: entry.id, forms: formsOf(entry.id) })),
@@ -154,7 +164,7 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
               },
             });
           }),
-        ({ id }) => closeWithoutAlert(id),
+        ({ id }) => onSettled(id),
       );
       leaving.current = false;
       setAsking(null);
@@ -166,7 +176,7 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
       }
       return result.outcome === 'left';
     },
-    [closeWithoutAlert, formsOf, update],
+    [formsOf, update],
   );
 
   /**
@@ -177,9 +187,19 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
     async (entries: Entry[], proceed: () => void): Promise<boolean> => {
       if (leaving.current) return false;
       const dirty = entries.some((e) => hasDirtyForm(formsOf(e.id)));
-      if (dirty && !(await leave(entries))) return false;
+      if (dirty && !(await leave(entries, closeWithoutAlert))) return false;
       proceed();
       return true;
+    },
+    [closeWithoutAlert, formsOf, leave],
+  );
+
+  const settleUnsaved = useCallback(
+    async (id: number): Promise<boolean> => {
+      if (leaving.current) return false;
+      const entry = stackRef.current.find((e) => e.id === id);
+      if (!entry || !hasDirtyForm(formsOf(id))) return true;
+      return leave([entry], () => undefined);
     },
     [formsOf, leave],
   );
@@ -246,7 +266,10 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
     () => ({ stack, open, replace, replaceSaved, close, leaveAll }),
     [stack, open, replace, replaceSaved, close, leaveAll],
   );
-  const registry = useMemo(() => ({ registerForm, closeWithoutAlert }), [registerForm, closeWithoutAlert]);
+  const registry = useMemo(
+    () => ({ registerForm, closeWithoutAlert, settleUnsaved }),
+    [registerForm, closeWithoutAlert, settleUnsaved],
+  );
   return (
     <PanelRegistryContext.Provider value={registry}>
       <PanelsContext.Provider value={value}>
@@ -262,6 +285,7 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
 const PanelRegistryContext = createContext<{
   registerForm: (id: number, form: GuardedForm) => () => void;
   closeWithoutAlert: (id: number) => void;
+  settleUnsaved: (id: number) => Promise<boolean>;
 } | null>(null);
 
 export function usePanels(): Panels {
@@ -290,10 +314,13 @@ function PanelSlot({ entry, children }: { entry: Entry; children: ReactNode }) {
   const { id } = entry;
   const register = useCallback((form: GuardedForm) => registry.registerForm(id, form), [registry, id]);
   const closeSilently = useCallback(() => registry.closeWithoutAlert(id), [registry, id]);
+  const settle = useCallback(() => registry.settleUnsaved(id), [registry, id]);
   return (
     <PanelEntryContext.Provider value={entry}>
       <FormRegistryContext.Provider value={register}>
-        <CloseSilentlyContext.Provider value={closeSilently}>{children}</CloseSilentlyContext.Provider>
+        <CloseSilentlyContext.Provider value={closeSilently}>
+          <SettleUnsavedContext.Provider value={settle}>{children}</SettleUnsavedContext.Provider>
+        </CloseSilentlyContext.Provider>
       </FormRegistryContext.Provider>
     </PanelEntryContext.Provider>
   );

@@ -33,4 +33,13 @@ Tranché avec la responsable fonctionnelle le 02.11.2026.
 7. **Plusieurs panneaux modifiés** : une alerte par panneau modifié, en commençant par celui du dessus ; « Continuer la saisie » arrête tout, les panneaux restants restent ouverts.
 8. **Panneau à plusieurs formulaires** (fiche d'initiative et invitation d'un membre ; administration) : une seule alerte pour le panneau. « Enregistrer » fait ce que ferait le bouton de chaque formulaire modifié, envoi d'une invitation compris. Si l'un échoue, les autres restent faits et le panneau reste ouvert avec l'erreur.
 
+Précisé avec la responsable fonctionnelle le 06.11.2026, à la réalisation (ticket 15) :
+
+9. **Archiver une initiative dont la fiche est modifiée** : l'alerte habituelle s'affiche d'abord. « Enregistrer » enregistre puis archive ; « Abandonner les modifications » archive sans enregistrer ; « Continuer la saisie » annule l'archivage ; si l'enregistrement échoue, l'archivage n'a pas lieu. Quand l'initiative a été archivée par quelqu'un d'autre, ou les droits retirés, ACTA ne peut plus enregistrer : pas d'alerte.
+10. **Supprimer un objet modifié, quitter l'initiative** : pas d'alerte, une confirmation existe déjà.
+11. **Palette → fiche au-dessus d'un panneau modifié** : pas d'alerte, le panneau modifié reste ouvert dessous et rien n'est perdu. L'alerte vaut quand un panneau modifié disparaît.
+12. **Après l'envoi d'une invitation** : le formulaire revient à ses valeurs de départ, rôle « Contributeur » compris.
+13. **Échec de l'enregistrement avec des panneaux non modifiés au-dessus** : ils se ferment, sinon ils cacheraient l'erreur.
+14. **Alerte** : le titre du panneau concerné figure en tête. Message anglais : *Some changes have not been saved. Do you want to save them before closing?*
+
 Glossaire `CONTEXT.md` mis à jour : Modification non enregistrée.
