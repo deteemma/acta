@@ -19,7 +19,7 @@ import {
   type StakeholderDto,
   updateInitiativeSchema,
 } from '@app/shared';
-import { Archive, ArchiveRestore, LayoutDashboard, Plus, Trash2, Users } from 'lucide-react';
+import { Archive, ArchiveRestore, LayoutDashboard, Plus, Ticket, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionList } from './action-panels';
 import { api, ApiError } from './api';
@@ -30,6 +30,7 @@ import { canEditNeeds, NeedList } from './need-panels';
 import { Panel, useCloseSilently, usePanels, useSettleUnsaved } from './panels';
 import { canEditRequirements, ExportRequirementsButton, RequirementList } from './requirement-panels';
 import { TextWithReferences } from './rich-text';
+import { useScreens } from './screens';
 import { TeamSection } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -67,6 +68,7 @@ export function InitiativePanel({
 }) {
   const { t, locale } = useI18n();
   const { open } = usePanels();
+  const { goTo } = useScreens();
   const closeSilently = useCloseSilently();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
@@ -166,6 +168,16 @@ export function InitiativePanel({
           </div>
           <ActionList actions={sortByDueDate(actions)} babok={babok} />
           {actions.length === 0 && <p>{t('actions.sectionEmpty')}</p>}
+          <div className="section-header">
+            {/* Tous types confondus : l'Action est le seul type jusqu'au ticket 18. */}
+            <h4>
+              {t('tickets.title')} <span className="count">{actions.length}</span>
+            </h4>
+            <button type="button" onClick={() => goTo({ kind: 'tickets', initiativeId })}>
+              <Ticket />
+              {t('tickets.open')}
+            </button>
+          </div>
           <div className="section-header">
             <h4>
               <span title={englishTermTooltip(locale, 'stakeholders.section')}>{t('stakeholders.section')}</span>{' '}

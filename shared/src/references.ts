@@ -62,14 +62,13 @@ export function checkAcronymChange(
 
 /** Objet référencé, tel que la palette le propose (toutes initiatives dont je suis membre). */
 export interface ReferenceDto {
-  /** Les actions rejoindront la palette avec l'écran Tickets (ticket 17). */
-  category: Exclude<ReferenceCategory, 'action'>;
+  category: ReferenceCategory;
   id: string;
   initiativeId: string;
   initiativeArchived: boolean;
   reference: string;
   title: string;
-  /** Exigence : son type et son statut, montrés par l'aperçu au survol ; null pour un besoin. */
+  /** Exigence : son type et son statut, montrés par l'aperçu au survol ; null pour les autres catégories. */
   requirement: { type: RequirementType; subtype: RequirementSubtype | null; status: RequirementStatus } | null;
 }
 

@@ -3,6 +3,7 @@
 // par la responsable fonctionnelle le 31.10.2026.
 import { type ActionDto, isOpenAction } from './actions.js';
 import type { MeDto } from './schemas.js';
+import { isOverdueTicket } from './tickets.js';
 
 export type AlertKind = 'assigned' | 'overdue';
 
@@ -48,7 +49,7 @@ export function myAlerts(
 ): Alert[] {
   const mine = actions.filter((a) => a.assignee.userId === me.id && isOpenAction(a) && !a.initiative.archived);
   const overdue = mine
-    .filter((a) => a.dueDate != null && a.dueDate < today)
+    .filter((a) => isOverdueTicket(a, today))
     .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!))
     .map((action) => ({ kind: 'overdue' as const, action }));
   const assigned = mine

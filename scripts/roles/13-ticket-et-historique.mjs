@@ -37,6 +37,16 @@ await check('la référence figure dans « Mes actions » et n’est pas modifia
   const r = await call(alice, 'PATCH', `${actions()}/${firstId}`, { reference: 'AUTRE-AC-999', title: 'Première' });
   assert.equal(r.body.reference, `${tkCode}-AC-001`);
 });
+await check('palette : chloé (lectrice) trouve le ticket par sa référence, admin (non-membre) non', async () => {
+  const found = (await call(chloe, 'GET', '/references')).body.find((r) => r.reference === `${tkCode}-AC-001`);
+  assert.deepEqual([found?.category, found?.id, found?.title], ['action', firstId, 'Première']);
+  const theirs = await call(admin, 'GET', '/references');
+  assert.ok(!theirs.body.some((r) => r.initiativeId === tkInitiativeId));
+});
+await check('écran Tickets : chloé (lectrice) lit la liste ; admin (non-membre) reçoit un refus', async () => {
+  assert.equal((await call(chloe, 'GET', actions())).status, 200);
+  assert.equal((await call(admin, 'GET', actions())).status, 404);
+});
 await check('une référence supprimée n’est jamais réutilisée', async () => {
   const third = await call(alice, 'POST', actions(), { title: 'À supprimer', taskId: '4.1' });
   assert.equal(third.body.reference, `${tkCode}-AC-003`);
