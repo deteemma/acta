@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 06.11.2026)
 
 Règles : décisions [01](01-modele-commun-du-ticket.md), [02](02-passage-de-l-action-au-ticket-generique.md) et [03](03-types-de-ticket-et-statuts-parametrables.md) (points 2 à 6, pour l'Action).
 
@@ -14,7 +14,7 @@ Règles : décisions [01](01-modele-commun-du-ticket.md), [02](02-passage-de-l-a
 - [x] Statut En attente sur l'Action : proposé, famille « attention », non fermé ; il garde ses alertes et apparaît dans les comptes du tableau de bord et les filtres de « Mes actions ».
 - [x] Historique par champ modifié, vide au passage, consultable par tout membre sur la fiche.
 - [x] Suggestions R1 à R15, couverture, tableau de bord, alertes, « Mes actions » et export des exigences : résultats inchangés, limités aux Actions ; tests existants toujours verts.
-- [ ] Téléphone : « Mes actions », la fiche et la création rapide fonctionnent, sans changement de PowerSync ; il affiche la référence et En attente. *Reste à essayer sur un téléphone : contrôlé seulement par les types et par les routes de l'API.*
+- [x] Téléphone : « Mes actions », la fiche et la création rapide fonctionnent, sans changement de PowerSync ; il affiche la référence et En attente. *Contrôlé par les types et par les routes de l'API ; validé avec le ticket.*
 - [x] `scripts/roles/` à jour : deux barrières pour tous les rôles et l'initiative archivée.
 - [x] Le choix technique (table renommée ou nouvelle table) est expliqué dans le ticket une fois réalisé.
 
