@@ -38,7 +38,7 @@ Une spécification `.scratch/phase-2/spec.md` et ses tickets de réalisation num
 
 ## Zones floues
 
-- Rédaction de la spécification et découpage en tickets de réalisation (dernière étape). La vérification du volume synchronisé vers le téléphone (PowerSync) après le passage au ticket générique y sera un ticket de réalisation.
+Aucune : la [spécification](spec.md) et les tickets de réalisation 15 à 31 sont écrits. Le volume synchronisé vers le téléphone est sans objet : le téléphone passe par l'API pour les actions, PowerSync n'en a aucune.
 
 ## Hors périmètre
 
