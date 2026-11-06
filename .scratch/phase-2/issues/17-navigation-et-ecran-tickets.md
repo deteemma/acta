@@ -4,13 +4,13 @@
 
 **Blocked by:** 16 — Ticket générique et passage de l'Action
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 06.11.2026)
 
 Règles : décisions [11](11-ecrans-des-tickets.md) (points 1 à 3, 5, 8) et [13](13-coexistence-de-la-navigation.md). Référence visuelle : variante B de la branche `prototype/ecrans-des-tickets`.
 
 - [x] Clic sur une initiative : fiche en panneau et entrée dépliée, une seule initiative à la fois. « Mes actions » et « Tickets » remplacent l'écran principal et ferment les panneaux, avec l'alerte du ticket 15 si besoin.
 - [x] Tableau : colonnes, tri par défaut et sur chaque colonne, filtres et état « ouverts » par défaut ; responsable qui n'est plus membre et échéance dépassée signalés ; ligne du ticket ouvert mise en évidence.
-- [x] Le panneau ouvert ne doit pas rendre le tableau illisible : les captures du prototype montrent des titres écrasés. Solution à proposer à la validation. *Proposition ci-dessous, à valider.*
+- [x] Le panneau ouvert ne doit pas rendre le tableau illisible : les captures du prototype montrent des titres écrasés. Solution à proposer à la validation. *Proposition ci-dessous, validée avec le ticket.*
 - [x] Adresse : recharger reste sur l'écran ; non-membre : refus. Le bouton « Précédent » du navigateur revient à l'écran d'avant, avec l'alerte du ticket 15 s'il y a une saisie non enregistrée.
 - [x] Panneau d'initiative : section « Actions » inchangée ; ligne « Tickets » avec son nombre et un bouton vers l'écran. « + Action » reste partout.
 - [x] Palette : trouve les tickets par référence et par titre ; une référence de ticket citée dans un texte mène à sa fiche.
@@ -19,11 +19,11 @@ Règles : décisions [11](11-ecrans-des-tickets.md) (points 1 à 3, 5, 8) et [13
 
 ## Réalisation
 
-**Retour de la responsable fonctionnelle (06.11.2026).** Tests validés, sauf un point : un clic sur une initiative dans la barre latérale affiche maintenant aussi son écran Tickets, à côté de sa fiche. Sinon, la fiche et le tableau pouvaient montrer deux initiatives différentes. Ce clic quitte donc « Mes actions » et compte comme une étape pour « Précédent ». La palette, elle, ouvre toujours la fiche seule. À revérifier par la responsable fonctionnelle.
+**Retour de la responsable fonctionnelle (06.11.2026).** Tests validés, sauf un point : un clic sur une initiative dans la barre latérale affiche maintenant aussi son écran Tickets, à côté de sa fiche. Sinon, la fiche et le tableau pouvaient montrer deux initiatives différentes. Ce clic quitte donc « Mes actions » et compte comme une étape pour « Précédent ». La palette, elle, ouvre toujours la fiche seule : question posée à la validation, sans réponse à ce jour, donc comportement inchangé. Revérifié et validé par la responsable fonctionnelle le 06.11.2026.
 
-**Proposition pour le tableau à côté du panneau (à valider).** Le titre reste toujours sur une ligne, entier dans son info-bulle et dans la fiche. Quand la largeur manque, les colonnes s'effacent une à une, dans cet ordre : Epic, Type, Responsable, Échéance. Référence, Titre et Statut restent, sauf si le panneau est très élargi à la main : Statut puis Référence cèdent alors la place, seul le titre reste toujours. La règle suit la largeur réellement disponible : elle vaut aussi sans panneau, et élargir ou replier la barre latérale ou le panneau fait revenir les colonnes. Conséquence : une colonne effacée emporte son signalement (échéance dépassée, responsable), que la fiche ouverte montre.
+**Proposition pour le tableau à côté du panneau (validée avec le ticket).** Le titre reste toujours sur une ligne, entier dans son info-bulle et dans la fiche. Quand la largeur manque, les colonnes s'effacent une à une, dans cet ordre : Epic, Type, Responsable, Échéance. Référence, Titre et Statut restent, sauf si le panneau est très élargi à la main : Statut puis Référence cèdent alors la place, seul le titre reste toujours. La règle suit la largeur réellement disponible : elle vaut aussi sans panneau, et élargir ou replier la barre latérale ou le panneau fait revenir les colonnes. Conséquence : une colonne effacée emporte son signalement (échéance dépassée, responsable), que la fiche ouverte montre.
 
-**Choix à confirmer, non tranchés par les décisions 11 et 13** :
+**Choix non tranchés par les décisions 11 et 13, validés avec le ticket** :
 - un ticket sans valeur (sans échéance, sans responsable) reste en dernier dans les deux sens de tri. Le prototype n'était pas homogène sur ce point ;
 - Statut et Type se trient sur leur libellé affiché, comme dans le prototype, donc par ordre alphabétique et non dans l'ordre du cycle de vie ;
 - sur l'écran Tickets, sans panneau ouvert, « + Action » propose l'initiative de l'écran ;
