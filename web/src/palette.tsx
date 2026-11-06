@@ -13,8 +13,9 @@ import { type KeyboardEvent, useEffect, useState } from 'react';
 import { api } from './api';
 import { BabokName } from './babok-panels';
 import { useI18n } from './i18n';
-import { Panel, type PanelContent, usePanels } from './panels';
+import { Panel, usePanels } from './panels';
 import { referenceTarget } from './references';
+import { useScreens } from './screens';
 
 type Result =
   | { kind: 'initiative'; item: InitiativeDto }
@@ -52,6 +53,7 @@ export function Palette({
 }) {
   const { t } = useI18n();
   const { replace } = usePanels();
+  const { showInitiative } = useScreens();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   // Rechargées à chaque ouverture ; sans réponse, la palette garde les autres résultats.
@@ -67,18 +69,17 @@ export function Palette({
   ];
   const current = Math.min(active, results.length - 1);
 
-  const target = (result: Result): PanelContent => {
+  const optionId = (result: Result) => `palette-${result.kind}-${result.item.id}`;
+  const select = (result: Result) => {
     switch (result.kind) {
       case 'initiative':
-        return { kind: 'initiative', initiativeId: result.item.id };
+        return showInitiative(result.item.id);
       case 'reference':
-        return referenceTarget(result.item);
+        return replace(referenceTarget(result.item));
       case 'babok':
-        return { kind: 'babokElement', elementId: result.item.id };
+        return replace({ kind: 'babokElement', elementId: result.item.id });
     }
   };
-  const optionId = (result: Result) => `palette-${result.kind}-${result.item.id}`;
-  const select = (result: Result) => replace(target(result));
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {

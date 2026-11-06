@@ -429,7 +429,7 @@ function actionOrigin(content: PanelContent): { initiativeId: string; from?: Ana
 
 function InitiativeList({ initiatives, expandedId }: { initiatives: InitiativeDto[]; expandedId: string | null }) {
   const { t } = useI18n();
-  const { screen, goTo } = useScreens();
+  const { screen, goTo, showInitiative } = useScreens();
   return (
     <ul className="nav-list">
       {initiatives.map((i) => (
@@ -438,7 +438,7 @@ function InitiativeList({ initiatives, expandedId }: { initiatives: InitiativeDt
           <button
             type="button"
             className="nav-item"
-            onClick={() => goTo({ kind: 'tickets', initiativeId: i.id }, { kind: 'initiative', initiativeId: i.id })}
+            onClick={() => showInitiative(i.id)}
           >
             <span className="code">{i.code}</span>
             <span>

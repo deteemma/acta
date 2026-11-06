@@ -9,6 +9,8 @@ interface Screens {
   screen: Screen;
   /** Ferme les panneaux, avec l'alerte, puis affiche l'écran et, s'il est fourni, ce panneau. */
   goTo: (screen: Screen, panel?: PanelContent) => void;
+  /** Affiche les tickets de l'initiative et sa fiche : l'écran et la fiche montrent la même (décision 13). */
+  showInitiative: (initiativeId: string) => void;
   /** L'initiative n'est plus accessible (supprimée, quittée) : son écran laisse place à l'accueil. */
   initiativeGone: (initiativeId: string) => void;
 }
@@ -44,6 +46,11 @@ export function ScreensProvider({ children }: { children: ReactNode }) {
     [leaveAll, open, show],
   );
 
+  const showInitiative = useCallback(
+    (initiativeId: string) => goTo({ kind: 'tickets', initiativeId }, { kind: 'initiative', initiativeId }),
+    [goTo],
+  );
+
   const initiativeGone = useCallback(
     (initiativeId: string) => {
       const current = shown.current.screen;
@@ -77,7 +84,10 @@ export function ScreensProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('popstate', listener);
   }, [leaveAll, show]);
 
-  const value = useMemo(() => ({ screen, goTo, initiativeGone }), [screen, goTo, initiativeGone]);
+  const value = useMemo(
+    () => ({ screen, goTo, showInitiative, initiativeGone }),
+    [screen, goTo, showInitiative, initiativeGone],
+  );
   return <ScreensContext.Provider value={value}>{children}</ScreensContext.Provider>;
 }
 
