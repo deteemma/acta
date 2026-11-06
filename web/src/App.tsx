@@ -429,13 +429,17 @@ function actionOrigin(content: PanelContent): { initiativeId: string; from?: Ana
 
 function InitiativeList({ initiatives, expandedId }: { initiatives: InitiativeDto[]; expandedId: string | null }) {
   const { t } = useI18n();
-  const { open } = usePanels();
   const { screen, goTo } = useScreens();
   return (
     <ul className="nav-list">
       {initiatives.map((i) => (
         <li key={i.id}>
-          <button type="button" className="nav-item" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>
+          {/* L'écran Tickets suit la fiche ouverte (précision de la décision 13, point 1). */}
+          <button
+            type="button"
+            className="nav-item"
+            onClick={() => goTo({ kind: 'tickets', initiativeId: i.id }, { kind: 'initiative', initiativeId: i.id })}
+          >
             <span className="code">{i.code}</span>
             <span>
               {i.name}

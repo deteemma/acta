@@ -19,6 +19,8 @@ Règles : décisions [11](11-ecrans-des-tickets.md) (points 1 à 3, 5, 8) et [13
 
 ## Réalisation
 
+**Retour de la responsable fonctionnelle (06.11.2026).** Tests validés, sauf un point : un clic sur une initiative dans la barre latérale affiche maintenant aussi son écran Tickets, à côté de sa fiche. Sinon, la fiche et le tableau pouvaient montrer deux initiatives différentes. Ce clic quitte donc « Mes actions » et compte comme une étape pour « Précédent ». La palette, elle, ouvre toujours la fiche seule. À revérifier par la responsable fonctionnelle.
+
 **Proposition pour le tableau à côté du panneau (à valider).** Le titre reste toujours sur une ligne, entier dans son info-bulle et dans la fiche. Quand la largeur manque, les colonnes s'effacent une à une, dans cet ordre : Epic, Type, Responsable, Échéance. Référence, Titre et Statut restent, sauf si le panneau est très élargi à la main : Statut puis Référence cèdent alors la place, seul le titre reste toujours. La règle suit la largeur réellement disponible : elle vaut aussi sans panneau, et élargir ou replier la barre latérale ou le panneau fait revenir les colonnes. Conséquence : une colonne effacée emporte son signalement (échéance dépassée, responsable), que la fiche ouverte montre.
 
 **Choix à confirmer, non tranchés par les décisions 11 et 13** :

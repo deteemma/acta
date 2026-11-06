@@ -3,12 +3,12 @@
 // l'adresse du navigateur suit l'écran, et « Précédent » est un changement d'écran.
 import { parseScreenPath, sameScreen, type Screen, screenPath } from '@app/shared';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { usePanels } from './panels';
+import { type PanelContent, usePanels } from './panels';
 
 interface Screens {
   screen: Screen;
-  /** Ferme les panneaux, avec l'alerte, puis affiche l'écran. */
-  goTo: (screen: Screen) => void;
+  /** Ferme les panneaux, avec l'alerte, puis affiche l'écran et, s'il est fourni, ce panneau. */
+  goTo: (screen: Screen, panel?: PanelContent) => void;
   /** L'initiative n'est plus accessible (supprimée, quittée) : son écran laisse place à l'accueil. */
   initiativeGone: (initiativeId: string) => void;
 }
@@ -19,7 +19,7 @@ const ScreensContext = createContext<Screens | null>(null);
 const currentIndex = () => (window.history.state as { screenIndex?: number } | null)?.screenIndex ?? 0;
 
 export function ScreensProvider({ children }: { children: ReactNode }) {
-  const { leaveAll } = usePanels();
+  const { leaveAll, open } = usePanels();
   const [screen, setScreen] = useState(() => parseScreenPath(window.location.pathname));
   // Écran affiché et son rang : l'adresse peut déjà être ailleurs pendant une alerte.
   const shown = useRef({ screen, index: currentIndex() });
@@ -30,15 +30,18 @@ export function ScreensProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const goTo = useCallback(
-    (next: Screen) => {
+    (next: Screen, panel?: PanelContent) => {
       void leaveAll().then((left) => {
-        if (!left || sameScreen(next, shown.current.screen)) return;
-        const index = shown.current.index + 1;
-        window.history.pushState({ screenIndex: index }, '', screenPath(next));
-        show(next, index);
+        if (!left) return;
+        if (!sameScreen(next, shown.current.screen)) {
+          const index = shown.current.index + 1;
+          window.history.pushState({ screenIndex: index }, '', screenPath(next));
+          show(next, index);
+        }
+        if (panel) open(panel);
       });
     },
-    [leaveAll, show],
+    [leaveAll, open, show],
   );
 
   const initiativeGone = useCallback(

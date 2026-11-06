@@ -12,7 +12,7 @@ Comment les entrées « Tickets » et « Pages » en pleine page cohabitent-elle
 
 Tranché avec la responsable fonctionnelle le 06.11.2026.
 
-1. **Clic sur une initiative** : ouvre toujours sa fiche en panneau et déplie « Tickets » et « Pages » dessous. Une seule initiative est dépliée à la fois.
+1. **Clic sur une initiative** : ouvre toujours sa fiche en panneau et déplie « Tickets » et « Pages » dessous. Une seule initiative est dépliée à la fois. L'écran principal affiche en même temps les tickets de cette initiative, pour que l'écran et la fiche montrent la même initiative (précisé le 06.11.2026 à la validation du ticket 17).
 2. **Écran principal** : « Mes actions », « Tickets » et « Pages » le remplacent. En changer ferme les panneaux ouverts, avec l'alerte habituelle s'il y a une saisie non enregistrée.
 3. **Panneau d'initiative** : la section « Actions » reste telle quelle, avec le tableau de bord. S'y ajoutent une ligne « Tickets » et une ligne « Pages », avec leur nombre et un bouton vers l'écran en pleine page. Une action ouverte depuis n'importe quelle liste montre la même fiche de ticket.
 4. **Bouton flottant « + Action »** : reste, partout comme aujourd'hui, et ne crée que des Actions. Les autres types passent par « Nouveau ticket » de l'écran Tickets.
