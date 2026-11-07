@@ -493,7 +493,8 @@ export function CreateInitiativePanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { replaceSaved } = usePanels();
+  const closeSilently = useCloseSilently();
+  const { showInitiative } = useScreens();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<UiError | null>(null);
@@ -509,7 +510,10 @@ export function CreateInitiativePanel({
     try {
       const initiative = await api.createInitiative(parsed.data);
       onCreated(initiative);
-      replaceSaved({ kind: 'initiative', initiativeId: initiative.id });
+      // Saisie enregistrée : pas d'alerte. Enregistrée depuis l'alerte, la sortie demandée
+      // se poursuit et l'écran ne suit pas la nouvelle initiative.
+      closeSilently();
+      showInitiative(initiative.id);
       return true;
     } catch (e) {
       setError(toUiError(e));
