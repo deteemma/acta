@@ -19,6 +19,7 @@ function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
     assignedBy: bruno,
     assignedAt: '2026-10-20T12:00:00.000Z',
     dueDate: null,
+    epic: null,
     status: 'todo',
     stakeholders: [],
     needs: [],

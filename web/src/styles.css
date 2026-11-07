@@ -1662,6 +1662,69 @@ button.link.pill:hover {
 }
 
 /* Écran Tickets (ticket 17) */
+.tickets-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.ticket-quick-create {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.ticket-quick-create input {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.ticket-quick-create select {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.ticket-group-toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  white-space: nowrap;
+}
+/* En-tête de groupe du regroupement par Epic (ticket 18). */
+.ticket-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+.ticket-group .ticket-title {
+  flex: 1 1 8rem;
+  min-width: 0;
+  font-weight: 600;
+}
+.ticket-group-name {
+  flex: 1 1 8rem;
+  font-weight: 600;
+}
+.ticket-group-progress {
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* Pas au-dessus de la ligne ouverte, mise en évidence (.selected). */
+.ticket-table tbody tr.ticket-group-row:not(.selected),
+.ticket-compact li.ticket-group-row:not(.selected) {
+  background: var(--bg);
+}
+.ticket-table .ticket-group-row td {
+  border-top: 1px solid var(--border);
+}
+.epic-tickets ul li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
 .tickets .panel-kicker {
   margin-bottom: var(--space-1);
 }
@@ -1670,7 +1733,7 @@ button.link.pill:hover {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-.ticket-filters input {
+.ticket-filters input[type='search'] {
   flex: 1 1 14rem;
   min-width: 0;
 }
@@ -1784,7 +1847,10 @@ button.link.pill:hover {
   width: 8.5rem;
 }
 .ticket-table .col-type {
-  width: 5.5rem;
+  width: 6.5rem;
+}
+.ticket-table .col-type .ticket-type {
+  white-space: normal;
 }
 .ticket-table .col-status {
   width: 8rem;

@@ -22,6 +22,7 @@ import { ReferencesProvider } from './references';
 import { RequirementPanel } from './requirement-panels';
 import { ResizeHandle, SIDEBAR } from './resize';
 import { ScreensProvider, useScreens } from './screens';
+import { CreateTicketPanel, TicketPanel } from './ticket-panels';
 import { TicketsScreen } from './tickets-screen';
 
 export function App({ user }: { user: User | null }) {
@@ -107,7 +108,7 @@ function Shell({ user }: { user: User }) {
   const [me, setMe] = useState<MeDto | null>(null);
   const [babok, setBabok] = useState<BabokDto | null>(null);
   const [error, setError] = useState<UiError | null>(null);
-  // Incrémenté à chaque écriture sur une action : les listes se rechargent.
+  // Incrémenté à chaque écriture sur un ticket, de tout type : les listes se rechargent.
   const [actionsVersion, setActionsVersion] = useState(0);
   const actionsChanged = () => setActionsVersion((v) => v + 1);
   // De même pour les parties prenantes.
@@ -260,6 +261,7 @@ function Shell({ user }: { user: User }) {
                   initiativeId={screen.initiativeId}
                   initiative={initiatives.find((i) => i.id === screen.initiativeId)}
                   version={actionsVersion}
+                  onChanged={actionsChanged}
                 />
               ) : (
                 <>
@@ -354,6 +356,33 @@ function Shell({ user }: { user: User }) {
                     />
                   )
                 );
+              case 'ticket':
+                return (
+                  <TicketPanel
+                    initiativeId={content.initiativeId}
+                    ticketId={content.ticketId}
+                    ticketsVersion={actionsVersion}
+                    stakeholdersVersion={stakeholdersVersion}
+                    onChanged={actionsChanged}
+                    onClose={close}
+                  />
+                );
+              case 'createTicket': {
+                const initiative = active.find((i) => i.id === content.initiativeId);
+                return (
+                  babok &&
+                  initiative && (
+                    <CreateTicketPanel
+                      babok={babok}
+                      initiative={initiative}
+                      epicId={content.epicId}
+                      myId={me?.id ?? null}
+                      onCreated={actionsChanged}
+                      onClose={close}
+                    />
+                  )
+                );
+              }
               case 'stakeholders':
                 return (
                   <StakeholdersPanel initiativeId={content.initiativeId} version={stakeholdersVersion} onClose={close} />
@@ -411,6 +440,8 @@ function actionOrigin(content: PanelContent): { initiativeId: string; from?: Ana
     case 'initiative':
     case 'dashboard':
     case 'action':
+    case 'ticket':
+    case 'createTicket':
     case 'stakeholders':
       return { initiativeId: content.initiativeId };
     case 'stakeholder':

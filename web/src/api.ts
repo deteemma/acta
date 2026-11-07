@@ -1,7 +1,11 @@
 import type {
   AccountDto,
   ActionDto,
-  ActionVersionDto,
+  CreateTicketInput,
+  TicketDto,
+  TicketRow,
+  TicketVersionDto,
+  UpdateTicketInput,
   AdminRequirementStatusDto,
   CreateActionInput,
   UpdateActionInput,
@@ -97,10 +101,20 @@ export const api = {
   listOwnerDesignations: (id: string) => request<OwnerDesignationDto[]>(`/initiatives/${id}/owner-designations`),
   // Actions (ticket 07).
   listMyActions: () => request<ActionDto[]>('/actions/mine'),
+  listTickets: (id: string) => request<TicketRow[]>(`/initiatives/${id}/tickets`),
+  getTicket: (id: string, ticketId: string) => request<TicketDto>(`/initiatives/${id}/tickets/${ticketId}`),
+  ticketHistory: (id: string, ticketId: string) =>
+    request<TicketVersionDto[]>(`/initiatives/${id}/tickets/${ticketId}/history`),
+  createTicket: (id: string, input: CreateTicketInput) =>
+    request<TicketDto>(`/initiatives/${id}/tickets`, { method: 'POST', body: JSON.stringify(input) }),
+  updateTicket: (id: string, ticketId: string, input: UpdateTicketInput) =>
+    request<TicketDto>(`/initiatives/${id}/tickets/${ticketId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deleteTicket: (id: string, ticketId: string) =>
+    request<void>(`/initiatives/${id}/tickets/${ticketId}`, { method: 'DELETE' }),
   listActions: (id: string) => request<ActionDto[]>(`/initiatives/${id}/actions`),
   getAction: (id: string, actionId: string) => request<ActionDto>(`/initiatives/${id}/actions/${actionId}`),
   actionHistory: (id: string, actionId: string) =>
-    request<ActionVersionDto[]>(`/initiatives/${id}/actions/${actionId}/history`),
+    request<TicketVersionDto[]>(`/initiatives/${id}/actions/${actionId}/history`),
   createAction: (id: string, input: CreateActionInput) =>
     request<ActionDto>(`/initiatives/${id}/actions`, { method: 'POST', body: JSON.stringify(input) }),
   updateAction: (id: string, actionId: string, input: UpdateActionInput) =>

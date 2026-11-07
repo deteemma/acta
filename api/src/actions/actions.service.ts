@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   type ActionDto,
-  type ActionRefusal,
-  type ActionVersionDto,
+  type ActionStatus,
   canBeAssignee,
   type CreateActionInput,
   type NeedRefDto,
@@ -11,6 +10,7 @@ import {
   sortByName,
   sortByReference,
   type StakeholderRefDto,
+  type TicketVersionDto,
   type UpdateActionInput,
 } from '@app/shared';
 import { sql } from 'kysely';
@@ -20,6 +20,7 @@ import { needRefusal } from '../needs/needs.service.js';
 import { requirementRefusal } from '../requirements/requirements.service.js';
 import { stakeholderRefusal } from '../stakeholders/stakeholders.service.js';
 import { SuggestedActionsService } from '../suggested-actions/suggested-actions.service.js';
+import { actionRefusal, checkAssignee, checkEpic, isEpicViolation, loadTicketVersions, ticketRefusal } from '../tickets/ticket-rules.js';
 
 @Injectable()
 export class ActionsService {
@@ -50,23 +51,11 @@ export class ActionsService {
     return this.database.asUser(userId, (tx) => this.loadAction(tx, userId, initiativeId, actionId));
   }
 
-  /** Modifications enregistrées par la base, la plus ancienne d'abord (actionHistory les compare). */
-  history(userId: string, initiativeId: string, actionId: string): Promise<ActionVersionDto[]> {
+  /** Modifications enregistrées par la base, la plus ancienne d'abord (ticketHistory les compare). */
+  history(userId: string, initiativeId: string, actionId: string): Promise<TicketVersionDto[]> {
     return this.database.asUser(userId, async (tx) => {
       await this.loadAction(tx, userId, initiativeId, actionId);
-      const rows = await tx
-        .selectFrom('ticket_version as v')
-        .leftJoin('app_user as u', 'u.id', 'v.changed_by')
-        .select(['v.changed_at', 'v.changed_by', 'u.email', 'u.display_name', 'v.snapshot_before', 'v.snapshot_after'])
-        .where('v.ticket_id', '=', actionId)
-        .orderBy('v.id')
-        .execute();
-      return rows.map((r) => ({
-        changedAt: r.changed_at.toISOString(),
-        changedBy: { userId: r.changed_by, email: r.email, displayName: r.display_name },
-        before: r.snapshot_before,
-        after: r.snapshot_after,
-      }));
+      return loadTicketVersions(tx, actionId);
     });
   }
 
@@ -75,11 +64,12 @@ export class ActionsService {
     const id = randomUUID();
     const assigneeId = input.assigneeId ?? userId;
     return this.database.asUser(userId, async (tx) => {
-      await this.checkAssignee(tx, initiativeId, assigneeId);
+      await checkAssignee(tx, initiativeId, assigneeId);
       // Une origine inventée masquerait une suggestion sans raison (G6).
       if (input.suggestionKey && !(await this.suggestedActions.isOffered(tx, initiativeId, input.suggestionKey))) {
         throw actionRefusal('suggestionNotOffered');
       }
+      if (input.epicId) await checkEpic(tx, initiativeId, input.epicId);
       if (input.stakeholderIds) await this.checkStakeholders(tx, initiativeId, input.stakeholderIds);
       if (input.needIds) await this.checkNeeds(tx, initiativeId, input.needIds);
       if (input.requirementIds) await this.checkRequirements(tx, initiativeId, input.requirementIds);
@@ -96,6 +86,7 @@ export class ActionsService {
             technique_id: input.techniqueId ?? null,
             assignee_id: assigneeId,
             due_date: input.dueDate ?? null,
+            epic_id: input.epicId ?? null,
             suggestion_key: input.suggestionKey ?? null,
           })
           .execute(),
@@ -124,8 +115,9 @@ export class ActionsService {
       if (!fieldsChange && !linksChange) return current;
       // Le responsable n'est vérifié qu'à son attribution : il le reste s'il quitte l'initiative.
       if (input.assigneeId !== undefined && input.assigneeId !== current.assignee.userId) {
-        await this.checkAssignee(tx, initiativeId, input.assigneeId);
+        await checkAssignee(tx, initiativeId, input.assigneeId);
       }
+      if (input.epicId && input.epicId !== current.epic?.id) await checkEpic(tx, initiativeId, input.epicId);
       if (stakeholdersChange) {
         await this.checkStakeholders(tx, initiativeId, stakeholderIds);
         await tx.deleteFrom('action_stakeholder').where('ticket_id', '=', actionId).execute();
@@ -155,6 +147,7 @@ export class ActionsService {
                   technique_id: input.techniqueId,
                   assignee_id: input.assigneeId,
                   due_date: input.dueDate,
+                  epic_id: input.epicId,
                   status: input.status,
                 }
               : { status: current.status },
@@ -317,17 +310,6 @@ export class ActionsService {
     });
   }
 
-  /** Première barrière : le responsable est propriétaire ou contributeur de l'initiative. */
-  private async checkAssignee(tx: Tx, initiativeId: string, assigneeId: string): Promise<void> {
-    const member = await tx
-      .selectFrom('initiative_member')
-      .select('role')
-      .where('initiative_id', '=', initiativeId)
-      .where('user_id', '=', assigneeId)
-      .executeTakeFirst();
-    if (!canBeAssignee(member?.role)) throw actionRefusal('assigneeNotEligible');
-  }
-
   private async loadAction(tx: Tx, userId: string, initiativeId: string, actionId: string): Promise<ActionDto> {
     const row = await this.selectActions(tx, userId)
       .where('a.id', '=', actionId)
@@ -353,6 +335,7 @@ export class ActionsService {
       .leftJoin('app_user as bu', 'bu.id', 'a.assigned_by')
       .leftJoin('app_user as cu', 'cu.id', 'a.created_by')
       .leftJoin('app_user as uu', 'uu.id', 'a.updated_by')
+      .leftJoin('ticket as e', 'e.id', 'a.epic_id')
       .select([
         'a.id',
         'a.initiative_id',
@@ -376,6 +359,9 @@ export class ActionsService {
         // Sans conversion, pg renverrait un Date à minuit local (décalage de fuseau).
         sql<string | null>`a.due_date::text`.as('due_date'),
         'a.status',
+        'e.id as epic_id',
+        'e.reference as epic_reference',
+        'e.title as epic_title',
         'a.created_at',
         'a.created_by',
         'cu.email as created_by_email',
@@ -412,10 +398,11 @@ function toDto(
     reference: r.reference,
     title: r.title,
     description: r.description,
-    taskId: r.task_id,
+    // Une Action a toujours une tâche et un responsable (contrainte ticket_action_fields).
+    taskId: r.task_id!,
     techniqueId: r.technique_id,
     assignee: {
-      userId: r.assignee_id,
+      userId: r.assignee_id!,
       email: r.assignee_email,
       displayName: r.assignee_display_name,
       eligible: canBeAssignee(r.assignee_role),
@@ -423,7 +410,8 @@ function toDto(
     assignedBy: { userId: r.assigned_by, email: r.assigned_by_email, displayName: r.assigned_by_display_name },
     assignedAt: r.assigned_at.toISOString(),
     dueDate: r.due_date,
-    status: r.status,
+    status: r.status as ActionStatus,
+    epic: r.epic_id ? { id: r.epic_id, reference: r.epic_reference!, title: r.epic_title! } : null,
     stakeholders,
     needs,
     requirements,
@@ -440,16 +428,11 @@ async function write(run: () => Promise<unknown>): Promise<void> {
     await run();
   } catch (error) {
     if (isConstraintViolation(error, 'ticket_assignee_eligible')) throw actionRefusal('assigneeNotEligible');
+    if (isEpicViolation(error)) throw ticketRefusal('unknownEpic');
     // Tâche ou technique absente du référentiel.
     if (isConstraintViolation(error, 'ticket_task_id_fkey') || isConstraintViolation(error, 'ticket_technique_id_fkey')) {
       throw actionRefusal('unknownBabokElement');
     }
     throw error;
   }
-}
-
-function actionRefusal(refusal: ActionRefusal) {
-  return refusal === 'linked'
-    ? new ConflictException({ statusCode: 409, refusal })
-    : new BadRequestException({ statusCode: 400, refusal });
 }

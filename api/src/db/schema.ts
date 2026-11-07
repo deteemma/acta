@@ -1,8 +1,6 @@
 // Types Kysely des tables (voir api/migrations). À tenir à jour avec les migrations.
 import type { ColumnType, Generated } from 'kysely';
 import type {
-  ActionSnapshot,
-  ActionStatus,
   AnalysisApproach,
   InitiativeRole,
   Locale,
@@ -15,6 +13,10 @@ import type {
   StakeholderKind,
   StakeholderLevel,
   StakeholderRole,
+  RiskLevel,
+  TicketSnapshot,
+  TicketStatus,
+  TicketType,
 } from '@app/shared';
 
 type Timestamp = ColumnType<Date, Date | string | undefined, Date | string>;
@@ -69,23 +71,29 @@ export interface OwnerDesignationTable {
   designated_at: Timestamp;
 }
 
-/** Ticket (migrations 0010, 0018) : référence, auteurs et dates écrits par un déclencheur. Seul type pour l'instant : l'Action. */
+/** Ticket (migrations 0010, 0018, 0019) : référence, statut initial, auteurs et dates écrits par un déclencheur. */
 export interface TicketTable {
   id: string;
   initiative_id: string;
-  type: 'action';
+  type: ColumnType<TicketType, TicketType, never>;
   reference: ColumnType<string, never, never>;
   title: string;
   description: Optional<string>;
-  task_id: string;
+  /** Action seulement ; obligatoire pour elle (contrainte ticket_action_fields). */
+  task_id: Optional<string>;
   technique_id: Optional<string>;
-  assignee_id: string;
+  /** Obligatoire pour l'Action, facultatif pour les autres types. */
+  assignee_id: Optional<string>;
   /** Dernière attribution (migration 0016) : écrite par un déclencheur. */
   assigned_by: ColumnType<string, never, never>;
   assigned_at: ColumnType<Date, never, never>;
   /** Colonne « date » : lue en texte AAAA-MM-JJ (voir ActionsService). */
   due_date: Optional<string>;
-  status: Generated<ActionStatus>;
+  status: Generated<TicketStatus>;
+  epic_id: Optional<string>;
+  /** Risque seulement. */
+  probability: Optional<RiskLevel>;
+  impact: Optional<RiskLevel>;
   /** Suggestion d'où l'action est créée (migration 0015) ; fixée à la création. */
   suggestion_key: Optional<string>;
   created_by: ColumnType<string, never, never>;
@@ -125,6 +133,14 @@ export interface StakeholderTable {
 export interface ActionStakeholderTable {
   initiative_id: string;
   ticket_id: string;
+  stakeholder_id: string;
+}
+
+/** Partie prenante interrogée par une question (migration 0019) : créé ou retiré, jamais modifié. */
+export interface QuestionStakeholderTable {
+  initiative_id: string;
+  ticket_id: string;
+  ticket_type: Generated<'question'>;
   stakeholder_id: string;
 }
 
@@ -232,8 +248,8 @@ export interface TicketVersionTable {
   ticket_id: ColumnType<string, never, never>;
   changed_by: ColumnType<string, never, never>;
   changed_at: ColumnType<Date, never, never>;
-  snapshot_before: ColumnType<ActionSnapshot, never, never>;
-  snapshot_after: ColumnType<ActionSnapshot, never, never>;
+  snapshot_before: ColumnType<TicketSnapshot, never, never>;
+  snapshot_after: ColumnType<TicketSnapshot, never, never>;
 }
 
 /** Référentiel BABOK (migration 0009) : lecture seule, aucune écriture possible. */
@@ -281,6 +297,7 @@ export interface Database {
   requirement_version: RequirementVersionTable;
   stakeholder: StakeholderTable;
   suggestion_dismissal: SuggestionDismissalTable;
+  question_stakeholder: QuestionStakeholderTable;
   ticket: TicketTable;
   ticket_need: TicketNeedTable;
   ticket_requirement: TicketRequirementTable;

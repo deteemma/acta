@@ -8,6 +8,7 @@ import {
   isRequirementStatusRefusal,
   isStakeholderRefusal,
   isTeamRefusal,
+  isTicketRefusal,
   type MessageKey,
   type TeamRefusal,
 } from '@app/shared';
@@ -22,6 +23,7 @@ export function toUiError(error: unknown): UiError {
     if (isTeamRefusal(error.refusal)) return teamRefusalError(error.refusal);
     if (isAdminRefusal(error.refusal)) return adminRefusalError(error.refusal);
     if (isActionRefusal(error.refusal)) return { key: `action.refusal.${error.refusal}` };
+    if (isTicketRefusal(error.refusal)) return { key: `ticket.refusal.${error.refusal}` };
     if (isStakeholderRefusal(error.refusal)) return { key: `stakeholder.refusal.${error.refusal}` };
     if (isNeedRefusal(error.refusal)) return { key: `need.refusal.${error.refusal}` };
     if (isReferenceRefusal(error.refusal)) return { key: `reference.refusal.${error.refusal}` };

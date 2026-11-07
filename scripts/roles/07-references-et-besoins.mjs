@@ -30,7 +30,7 @@ await check('alice crée l’initiative et invite bruno (contributeur) et chloé
 await check('admin consulte les acronymes ; bruno, chloé (non administrateurs) : 403', async () => {
   const r = await call(admin, 'GET', categories);
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body.map((c) => c.category), ['need', 'requirement', 'action']);
+  assert.deepEqual(r.body.map((c) => c.category), ['need', 'requirement', 'action', 'question', 'decision', 'risk', 'change_request', 'epic']);
   needAcronym = r.body[0].acronym;
   assert.equal((await call(bruno, 'GET', categories)).status, 403);
   assert.equal((await call(chloe, 'PATCH', `${categories}/need`, { acronym: 'BS' })).status, 403);

@@ -2,9 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ACTION_DESCRIPTION_MAX_LENGTH,
-  actionHistory,
   type ActionDto,
-  type ActionSnapshot,
   canBeAssignee,
   canCreateActionIn,
   createActionSchema,
@@ -31,6 +29,7 @@ function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
     assignedBy: person('alice'),
     assignedAt: '2026-10-01T08:00:00.000Z',
     dueDate: null,
+    epic: null,
     status: 'todo',
     stakeholders: [],
     needs: [],
@@ -185,63 +184,3 @@ test('création rapide : initiatives où l’on peut créer une action (proprié
   assert.equal(canCreateActionIn({ myRole: 'owner', archivedAt: '2026-10-01T08:00:00.000Z' }), false);
 });
 
-const snapshot = (fields: Partial<ActionSnapshot> = {}): ActionSnapshot => ({
-  title: 'Préparer',
-  description: null,
-  status: 'todo',
-  taskId: '4.1',
-  techniqueId: null,
-  dueDate: null,
-  assignee: person('alice'),
-  stakeholders: [],
-  ...fields,
-});
-const version = (changedAt: string, before: ActionSnapshot, after: ActionSnapshot) => ({
-  changedAt,
-  changedBy: person('bruno'),
-  before,
-  after,
-});
-
-test('historique : sans version, il est vide (action reprise de la phase 1, aucune entrée reconstituée)', () => {
-  assert.deepEqual(actionHistory([]), []);
-});
-
-test('historique : qui, quand et chaque champ modifié, la modification la plus récente en tête', () => {
-  const entries = actionHistory([
-    version('2026-11-01T08:00:00.000Z', snapshot(), snapshot({ status: 'on_hold', dueDate: '2026-12-01' })),
-    version('2026-11-02T08:00:00.000Z', snapshot({ title: 'Préparer' }), snapshot({ title: 'Préparer les entretiens' })),
-  ]);
-  assert.deepEqual(entries, [
-    {
-      changedAt: '2026-11-02T08:00:00.000Z',
-      changedBy: person('bruno'),
-      changes: [{ field: 'title', from: 'Préparer', to: 'Préparer les entretiens' }],
-    },
-    {
-      changedAt: '2026-11-01T08:00:00.000Z',
-      changedBy: person('bruno'),
-      changes: [
-        { field: 'status', from: 'todo', to: 'on_hold' },
-        { field: 'dueDate', from: null, to: '2026-12-01' },
-      ],
-    },
-  ]);
-});
-
-test('historique : le responsable et les parties prenantes changent si les personnes changent, pas leur nom', () => {
-  const sponsor = { id: 's1', name: 'Sponsor' };
-  const entries = actionHistory([
-    version(
-      '2026-11-01T08:00:00.000Z',
-      snapshot({ assignee: person('alice'), stakeholders: [sponsor] }),
-      snapshot({ assignee: { ...person('alice'), displayName: 'Alice D.' }, stakeholders: [{ id: 's1', name: 'Direction' }], taskId: '4.2' }),
-    ),
-    version('2026-11-02T08:00:00.000Z', snapshot({ assignee: person('alice'), stakeholders: [sponsor] }), snapshot({ assignee: person('bruno'), stakeholders: [] })),
-  ]);
-  assert.deepEqual(entries.map((e) => e.changes.map((c) => c.field)), [['assignee', 'stakeholders'], ['taskId']]);
-});
-
-test('historique : une version sans champ modifié n’apparaît pas', () => {
-  assert.deepEqual(actionHistory([version('2026-11-01T08:00:00.000Z', snapshot(), snapshot())]), []);
-});

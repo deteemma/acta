@@ -73,6 +73,7 @@ export function InitiativePanel({
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
+  const [ticketCount, setTicketCount] = useState(0);
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[]>([]);
   const [needs, setNeeds] = useState<NeedDto[]>([]);
@@ -98,6 +99,7 @@ export function InitiativePanel({
 
   useEffect(() => {
     api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
+    api.listTickets(initiativeId).then((rows) => setTicketCount(rows.length), (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, actionsVersion]);
 
   useEffect(() => {
@@ -169,9 +171,9 @@ export function InitiativePanel({
           <ActionList actions={sortByDueDate(actions)} babok={babok} />
           {actions.length === 0 && <p>{t('actions.sectionEmpty')}</p>}
           <div className="section-header">
-            {/* Tous types confondus : l'Action est le seul type jusqu'au ticket 18. */}
+            {/* Tous types confondus. */}
             <h4>
-              {t('tickets.title')} <span className="count">{actions.length}</span>
+              {t('tickets.title')} <span className="count">{ticketCount}</span>
             </h4>
             <button type="button" onClick={() => goTo({ kind: 'tickets', initiativeId })}>
               <Ticket />

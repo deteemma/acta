@@ -5,9 +5,10 @@ import { z } from 'zod';
 import type { BabokDto, TechniqueDto } from './babok.js';
 import { can, hasAtLeast, type InitiativeRole } from './roles.js';
 import { needIdsSchema, type NeedRefDto } from './needs.js';
-import { requirementIdsSchema, type RequirementRefDto, sameIdSet } from './requirements.js';
+import { requirementIdsSchema, type RequirementRefDto } from './requirements.js';
 import type { InitiativeDto, MemberNameDto } from './schemas.js';
 import { stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
+import type { TicketEpicRef } from './tickets.js';
 
 /** Statuts d'une action, dans l'ordre affiché ; tout statut peut passer à tout autre. */
 export const ACTION_STATUSES = ['todo', 'in_progress', 'on_hold', 'done', 'cancelled'] as const;
@@ -42,6 +43,7 @@ export const createActionSchema = z.object({
   techniqueId: babokIdSchema.nullable().optional(),
   assigneeId: z.string().min(1).optional(),
   dueDate: z.iso.date().nullable().optional(),
+  epicId: z.uuid().nullable().optional(),
   description: actionDescriptionSchema.optional(),
   stakeholderIds: stakeholderIdsSchema.optional(),
   needIds: needIdsSchema.optional(),
@@ -60,6 +62,7 @@ export const updateActionSchema = z
     techniqueId: babokIdSchema.nullable(),
     assigneeId: z.string().min(1),
     dueDate: z.iso.date().nullable(),
+    epicId: z.uuid().nullable(),
     status: actionStatusSchema,
     /** Remplace l'ensemble des parties prenantes liées. */
     stakeholderIds: stakeholderIdsSchema,
@@ -92,6 +95,8 @@ export interface ActionDto {
   /** AAAA-MM-JJ */
   dueDate: string | null;
   status: ActionStatus;
+  /** Epic, le cas échéant (ticket 18). */
+  epic: TicketEpicRef | null;
   /** Parties prenantes liées, par ordre alphabétique. */
   stakeholders: StakeholderRefDto[];
   /** Besoins liés, par référence. */
@@ -105,7 +110,7 @@ export interface ActionDto {
 }
 
 /** Statuts fermés : l'action est terminée. En attente n'en fait pas partie. */
-const CLOSED_ACTION_STATUSES: readonly ActionStatus[] = ['done', 'cancelled'];
+export const CLOSED_ACTION_STATUSES: readonly ActionStatus[] = ['done', 'cancelled'];
 
 /** Action ouverte : son statut n'est pas fermé (ni Terminée ni Annulée). */
 export const isOpenAction = (action: Pick<ActionDto, 'status'>) => !CLOSED_ACTION_STATUSES.includes(action.status);
@@ -149,66 +154,6 @@ export function sortByDueDate(actions: readonly ActionDto[]): ActionDto[] {
     (a, b) =>
       (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') || a.createdAt.localeCompare(b.createdAt),
   );
-}
-
-/** État des champs d'une action, enregistré par la base à chaque modification (migration 0018). */
-export interface ActionSnapshot {
-  title: string;
-  description: string | null;
-  status: ActionStatus;
-  taskId: string;
-  techniqueId: string | null;
-  dueDate: string | null;
-  assignee: MemberNameDto;
-  /** Parties prenantes concernées. */
-  stakeholders: StakeholderRefDto[];
-}
-
-/** Modification d'une action, telle que renvoyée par l'API, la plus ancienne d'abord. */
-export interface ActionVersionDto {
-  changedAt: string;
-  changedBy: MemberNameDto;
-  before: ActionSnapshot;
-  after: ActionSnapshot;
-}
-
-/** Champ modifié : ancienne et nouvelle valeur. */
-export type ActionChange = {
-  [F in keyof ActionSnapshot]: { field: F; from: ActionSnapshot[F]; to: ActionSnapshot[F] };
-}[keyof ActionSnapshot];
-
-export interface ActionHistoryEntry {
-  changedAt: string;
-  changedBy: MemberNameDto;
-  changes: ActionChange[];
-}
-
-const ACTION_VALUE_FIELDS = ['title', 'description', 'status', 'taskId', 'techniqueId', 'dueDate'] as const;
-
-function actionChangesBetween(before: ActionSnapshot, after: ActionSnapshot): ActionChange[] {
-  const changes: ActionChange[] = [];
-  for (const field of ACTION_VALUE_FIELDS) {
-    if (before[field] !== after[field]) changes.push({ field, from: before[field], to: after[field] } as ActionChange);
-  }
-  // Une personne change si c'en est une autre, pas si son nom a changé.
-  if (before.assignee.userId !== after.assignee.userId) {
-    changes.push({ field: 'assignee', from: before.assignee, to: after.assignee });
-  }
-  if (!sameIdSet(before.stakeholders, after.stakeholders)) changes.push({ field: 'stakeholders', from: before.stakeholders, to: after.stakeholders });
-  return changes;
-}
-
-/**
- * Historique d'une action d'après ses modifications (la plus ancienne d'abord),
- * la plus récente en tête. Il commence à la première modification qui suit le
- * passage au ticket : aucune entrée n'est reconstituée. Les liens avec les
- * besoins et les exigences n'y figurent pas.
- */
-export function actionHistory(versions: readonly ActionVersionDto[]): ActionHistoryEntry[] {
-  return versions
-    .map(({ changedAt, changedBy, before, after }) => ({ changedAt, changedBy, changes: actionChangesBetween(before, after) }))
-    .filter((entry) => entry.changes.length > 0)
-    .reverse();
 }
 
 /** Responsable possible d'une action : un membre propriétaire ou contributeur de l'initiative. */

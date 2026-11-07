@@ -45,6 +45,10 @@ export type PanelContent =
    */
   | { kind: 'createAction'; initiativeId?: string; from?: AnalysisObjectRef }
   | { kind: 'action'; initiativeId: string; actionId: string }
+  /** Ticket d'un autre type que l'Action (ticket 18). */
+  | { kind: 'ticket'; initiativeId: string; ticketId: string }
+  /** « Nouveau ticket » ; avec `epicId`, ouvert depuis le « + Ticket » de cet Epic. */
+  | { kind: 'createTicket'; initiativeId: string; epicId?: string }
   | { kind: 'stakeholders'; initiativeId: string }
   /** Sans `stakeholderId`, création d'une partie prenante. */
   | { kind: 'stakeholder'; initiativeId: string; stakeholderId?: string }

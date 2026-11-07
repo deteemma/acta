@@ -48,7 +48,7 @@ export class NeedsService {
       const tickets = await tx
         .selectFrom('ticket as t')
         .innerJoin('initiative as i', 'i.id', 't.initiative_id')
-        .select(['t.id', 't.initiative_id', 'i.archived_at', 't.reference', 't.title'])
+        .select(['t.id', 't.type', 't.initiative_id', 'i.archived_at', 't.reference', 't.title'])
         .execute();
       return sortByReference([
         ...needs.map((r) => ({
@@ -70,7 +70,7 @@ export class NeedsService {
           requirement: { type: r.type, subtype: r.subtype, status: r.status },
         })),
         ...tickets.map((r) => ({
-          category: 'action' as const,
+          category: r.type,
           id: r.id,
           initiativeId: r.initiative_id,
           initiativeArchived: r.archived_at != null,

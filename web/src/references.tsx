@@ -7,6 +7,7 @@ import { api } from './api';
 import { useI18n } from './i18n';
 import { type PanelContent, usePanels } from './panels';
 import { StatusLabel } from './requirement-statuses';
+import { ticketTarget } from './ticket-parts';
 
 const ReferencesContext = createContext<ReadonlyMap<string, ReferenceDto>>(new Map());
 
@@ -26,8 +27,8 @@ export function referenceTarget(item: ReferenceDto): PanelContent {
       return { kind: 'need', initiativeId: item.initiativeId, needId: item.id };
     case 'requirement':
       return { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.id };
-    case 'action':
-      return { kind: 'action', initiativeId: item.initiativeId, actionId: item.id };
+    default:
+      return ticketTarget(item.initiativeId, { id: item.id, type: item.category });
   }
 }
 
