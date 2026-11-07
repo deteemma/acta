@@ -10,7 +10,7 @@ Blocked by: 07
 
 ## Réponse
 
-Tranché avec la responsable fonctionnelle le 05.11.2026, après manipulation du prototype. Prototype conservé sur la branche jetable `prototype/editeur-de-page` (à ne jamais fusionner) : `pnpm dev:web`, puis `/prototype-page.html?variant=D`. Choix technique : [ADR-0019](../../../docs/adr/0019-editeur-de-page-tiptap-json.md).
+Tranché avec la responsable fonctionnelle le 05.11.2026, après manipulation du prototype. Prototype (variante D) supprimé le 07.11.2026 à la demande de la responsable fonctionnelle. Choix technique : [ADR-0019](../../../docs/adr/0019-editeur-de-page-tiptap-json.md).
 
 1. **Écriture** : Tiptap, directement dans le rendu final, avec une barre d'outils ; contenu enregistré dans le format JSON de Tiptap. Le prototype enregistrait en Markdown : ce format a déformé des textes à la réouverture, le JSON n'est donc pas prototypé mais seulement testé sur ces textes.
 2. **Mise en forme disponible** : titres de trois niveaux, gras, italique, lien, listes à puces et numérotées, tableau (ajouter ou retirer une ligne ou une colonne, retirer le tableau ; pas de largeur de colonne réglable), image, annuler et rétablir. La responsable fonctionnelle n'a rien à ajouter ni à retirer pour l'instant.

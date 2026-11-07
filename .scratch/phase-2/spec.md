@@ -33,7 +33,7 @@ Chaque règle vit dans un seul ticket de décision. Les tickets de réalisation 
 | Navigation | [13](issues/13-coexistence-de-la-navigation.md) |
 | Écrans d'administration | [14](issues/14-ecrans-d-administration.md) |
 
-Vocabulaire : [`CONTEXT.md`](../../CONTEXT.md). Prototypes, à ne jamais fusionner : branches `prototype/editeur-de-page` et `prototype/ecrans-des-tickets`. Ils servent de référence visuelle : leur code n'est pas à reprendre, et le menu du haut du premier n'existe pas dans ACTA.
+Vocabulaire : [`CONTEXT.md`](../../CONTEXT.md). Les prototypes de l'éditeur de page et des écrans des tickets ont été supprimés le 07.11.2026 : les décisions 08 et 11 font foi. Le menu du haut du premier n'existe pas dans ACTA.
 
 ## Contraintes techniques
 

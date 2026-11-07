@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-Règles : décisions [07](07-modele-de-la-page.md) (points 1 à 3, 7, 8), [08](08-editeur-de-page.md) (points 1 à 4, 6, 7), [13](13-coexistence-de-la-navigation.md), ADR-0019. Référence visuelle : variante D de la branche `prototype/editeur-de-page`.
+Règles : décisions [07](07-modele-de-la-page.md) (points 1 à 3, 7, 8), [08](08-editeur-de-page.md) (points 1 à 4, 6, 7), [13](13-coexistence-de-la-navigation.md), ADR-0019. Le prototype de l'éditeur a été supprimé le 07.11.2026 : plus de référence visuelle, les règles ci-dessus font foi.
 
 - [ ] Tiptap déclaré en dépendance, en version fixée et sortie depuis au moins deux semaines ; code chargé à la demande ; barre d'outils sur les tokens de design.
 - [ ] Contenu enregistré en JSON : vérifier en priorité l'affichage en lecture seule, jamais prototypé, et le retour à « non modifié » après une annulation (alerte du ticket 15). Refaire les essais de fidélité : `# Budget 2027`, `2026. Une année`, `a < b & c`.

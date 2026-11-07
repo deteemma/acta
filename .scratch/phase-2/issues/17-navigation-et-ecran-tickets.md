@@ -6,7 +6,7 @@
 
 **Status:** done (validé par la responsable fonctionnelle le 06.11.2026)
 
-Règles : décisions [11](11-ecrans-des-tickets.md) (points 1 à 3, 5, 8) et [13](13-coexistence-de-la-navigation.md). Référence visuelle : variante B de la branche `prototype/ecrans-des-tickets`.
+Règles : décisions [11](11-ecrans-des-tickets.md) (points 1 à 3, 5, 8) et [13](13-coexistence-de-la-navigation.md). Référence visuelle : variante B du prototype, supprimé depuis (07.11.2026).
 
 - [x] Clic sur une initiative : fiche en panneau et entrée dépliée, une seule initiative à la fois. « Mes actions » et « Tickets » remplacent l'écran principal et ferment les panneaux, avec l'alerte du ticket 15 si besoin.
 - [x] Tableau : colonnes, tri par défaut et sur chaque colonne, filtres et état « ouverts » par défaut ; responsable qui n'est plus membre et échéance dépassée signalés ; ligne du ticket ouvert mise en évidence.
