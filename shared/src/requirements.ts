@@ -46,6 +46,11 @@ export interface RequirementShape {
   parentId: string | null;
 }
 
+/** Le sous-type n'existe que pour une exigence de solution : celui à retenir pour ce type. */
+export function subtypeForType(type: RequirementType, subtype: RequirementSubtype): RequirementSubtype | null {
+  return type === 'solution' ? subtype : null;
+}
+
 /**
  * Vérifie une exigence complète ; null si elle est permise :
  * - le sous-type est obligatoire pour une exigence de solution, absent sinon ;
@@ -175,7 +180,7 @@ export interface RequirementHistoryEntry {
 const VALUE_FIELDS: readonly ValueField[] = ['title', 'statement', 'type', 'subtype', 'status'];
 const LIST_FIELDS: readonly ListField[] = ['stakeholders', 'needs'];
 
-const sameIdSet = (a: readonly { id: string }[], b: readonly { id: string }[]) =>
+export const sameIdSet = (a: readonly { id: string }[], b: readonly { id: string }[]) =>
   a.length === b.length && a.every((x) => b.some((y) => y.id === x.id));
 
 function changesBetween(before: RequirementSnapshot, after: RequirementSnapshot): RequirementChange[] {

@@ -17,16 +17,17 @@ import {
   type StakeholderDto,
   sortByDueDate,
 } from '@app/shared';
-import { type FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { Panel, usePanels } from './panels';
+import { Panel, useCloseSilently, usePanels } from './panels';
 import { RequirementList } from './requirement-panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
 import { formatDateTime } from './team-section';
+import { useUnsavedForm } from './unsaved-changes';
 
 export const canEditNeeds = (initiative: InitiativeDto) =>
   can(initiative.myRole, 'editNeeds', { archived: initiative.archivedAt != null });
@@ -83,7 +84,8 @@ export function NeedPanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { replace } = usePanels();
+  const { replaceSaved } = usePanels();
+  const closeSilently = useCloseSilently();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [need, setNeed] = useState<NeedDto | null>(null);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
@@ -141,7 +143,7 @@ export function NeedPanel({
               onSaved={(next) => {
                 setNeed(next);
                 onChanged();
-                if (!need) replace({ kind: 'need', initiativeId, needId: next.id });
+                if (!need) replaceSaved({ kind: 'need', initiativeId, needId: next.id });
               }}
             />
           ) : (
@@ -169,7 +171,7 @@ export function NeedPanel({
                   need={need}
                   onDeleted={() => {
                     onChanged();
-                    onClose();
+                    closeSilently();
                   }}
                 />
               )}
@@ -231,19 +233,19 @@ function NeedForm({
   const [stakeholderIds, setStakeholderIds] = useState<readonly string[]>(need?.stakeholders.map((s) => s.id) ?? []);
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
+  const submit = useUnsavedForm({ title, nature, description, stakeholderIds }, save);
 
   const toggleStakeholder = (id: string) =>
     setStakeholderIds((current) => (current.includes(id) ? current.filter((s) => s !== id) : [...current, id]));
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save(): Promise<boolean> {
     setSaved(false);
     // Même schéma de validation que l'API (@app/shared) ; le formulaire envoie
     // tous les champs, la fiche complète vaut aussi pour une modification.
     const parsed = createNeedSchema.safeParse({ title, nature, description, stakeholderIds });
     if (!parsed.success) {
       setError({ key: 'need.invalid' });
-      return;
+      return false;
     }
     try {
       onSaved(
@@ -253,13 +255,15 @@ function NeedForm({
       );
       setError(null);
       setSaved(true);
+      return true;
     } catch (e) {
       setError(e instanceof ApiError && e.status === 400 && !e.refusal ? { key: 'need.invalid' } : toUiError(e));
+      return false;
     }
   }
 
   return (
-    <form className="stacked" onSubmit={(e) => void save(e)} onChange={() => setSaved(false)}>
+    <form className="stacked" onSubmit={submit} onChange={() => setSaved(false)}>
       {/* Référence et titre sur une ligne (ticket 04, lot 1). */}
       <div className="field-row reference-title">
         {need && (

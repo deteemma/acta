@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { describeError, useI18n } from './i18n';
 import { type AppTheme, useStyles, useTheme } from './theme';
 import { Text, useUiStyles } from './ui';
+import { useUnsavedForm } from './unsaved-changes';
 
 /** Saisie d'une nouvelle initiative, validée avec le schéma partagé (@app/shared). */
 export function InitiativeForm({ onCreate }: { onCreate: (code: string, name: string) => Promise<void> }) {
@@ -15,20 +16,24 @@ export function InitiativeForm({ onCreate }: { onCreate: (code: string, name: st
   const [name, setName] = useState('');
   // Erreur gardée telle quelle pour suivre un changement de langue.
   const [failure, setFailure] = useState<unknown>(null);
+  const submit = useUnsavedForm({ code, name }, create);
 
-  async function submit() {
+  async function create() {
     const parsed = createInitiativeSchema.safeParse({ code, name });
     if (!parsed.success) {
       setFailure({ invalid: true });
-      return;
+      return false;
     }
     try {
       await onCreate(parsed.data.code, parsed.data.name);
       setCode('');
       setName('');
       setFailure(null);
+      // Le formulaire se vide : il repart de ses valeurs de départ.
+      return { code: '', name: '' };
     } catch (e) {
       setFailure(e);
+      return false;
     }
   }
 

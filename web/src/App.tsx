@@ -1,6 +1,6 @@
 import { type AnalysisObjectRef, type BabokDto, findBabokElement, type InitiativeDto, type MeDto } from '@app/shared';
 import type { User } from 'oidc-client-ts';
-import { Archive, BookOpen, ListChecks, LogOut, PanelLeft, Plus, Search, Settings2 } from 'lucide-react';
+import { Archive, BookOpen, ListChecks, LogOut, PanelLeft, Plus, Search, Settings2, Ticket } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
@@ -21,6 +21,8 @@ import { FabContext, PanelHost, type PanelContent, PanelsProvider, usePanels } f
 import { ReferencesProvider } from './references';
 import { RequirementPanel } from './requirement-panels';
 import { ResizeHandle, SIDEBAR } from './resize';
+import { ScreensProvider, useScreens } from './screens';
+import { TicketsScreen } from './tickets-screen';
 
 export function App({ user }: { user: User | null }) {
   return (
@@ -89,7 +91,9 @@ function LoginIllustration() {
 function SignedIn({ user }: { user: User }) {
   return (
     <PanelsProvider>
-      <Shell user={user} />
+      <ScreensProvider>
+        <Shell user={user} />
+      </ScreensProvider>
     </PanelsProvider>
   );
 }
@@ -97,7 +101,8 @@ function SignedIn({ user }: { user: User }) {
 /** Coque de navigation : « Mes actions », initiatives, palette (Ctrl+K), bouton « + Action » et panneaux. */
 function Shell({ user }: { user: User }) {
   const { t } = useI18n();
-  const { stack, open } = usePanels();
+  const { stack, open, leaveAll } = usePanels();
+  const { screen, goTo, initiativeGone } = useScreens();
   const [initiatives, setInitiatives] = useState<InitiativeDto[]>([]);
   const [me, setMe] = useState<MeDto | null>(null);
   const [babok, setBabok] = useState<BabokDto | null>(null);
@@ -133,9 +138,19 @@ function Shell({ user }: { user: User }) {
 
   const active = initiatives.filter((i) => !i.archivedAt);
   const archived = initiatives.filter((i) => i.archivedAt);
+  const ticketsInitiativeId = screen.kind === 'tickets' ? screen.initiativeId : null;
+  // Une seule initiative dépliée à la fois : celle de la fiche ouverte, sinon celle
+  // de l'écran Tickets ; elle le reste une fois la fiche refermée (décision 13).
+  const shownInitiativeId =
+    stack.map((e) => e.content).findLast((content) => content.kind === 'initiative')?.initiativeId ?? ticketsInitiativeId;
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  if (shownInitiativeId && shownInitiativeId !== expandedId) setExpandedId(shownInitiativeId);
   // Panneau le plus haut qui montre une initiative ou l'un de ses objets : la
-  // création rapide propose cette initiative, et part de cet objet (ticket 13).
-  const fabOrigin = stack.map((e) => actionOrigin(e.content)).findLast((origin) => origin !== undefined);
+  // création rapide propose cette initiative, et part de cet objet (ticket 13) ;
+  // sans panneau, celle de l'écran Tickets.
+  const fabOrigin =
+    stack.map((e) => actionOrigin(e.content)).findLast((origin) => origin !== undefined) ??
+    (ticketsInitiativeId ? { initiativeId: ticketsInitiativeId } : undefined);
   const fab = (
     <button
       type="button"
@@ -151,8 +166,8 @@ function Shell({ user }: { user: User }) {
   );
 
   return (
-    // Les références citées dans un texte suivent les besoins et exigences créés, modifiés ou supprimés.
-    <ReferencesProvider version={needsVersion + requirementsVersion}>
+    // Les références citées dans un texte suivent les besoins, exigences et tickets créés, modifiés ou supprimés.
+    <ReferencesProvider version={needsVersion + requirementsVersion + actionsVersion}>
       <FabContext.Provider value={fab}>
         <div className="shell">
           {/* Barre latérale (refonte du design, ticket 03) : repliable, le choix est retenu sur ce navigateur. */}
@@ -160,10 +175,15 @@ function Shell({ user }: { user: User }) {
             <nav id="sidebar" className="sidebar" aria-label={t('shell.navigation')}>
               <ResizeHandle area={SIDEBAR} label={t('shell.resizeNav')} className="sidebar-resize" />
               <span className="logotype">{t('app.title')}</span>
-              <span className="nav-item" aria-current="page">
+              <button
+                type="button"
+                className="nav-item"
+                aria-current={screen.kind === 'myActions' ? 'page' : undefined}
+                onClick={() => goTo({ kind: 'myActions' })}
+              >
                 <ListChecks />
                 {t('actions.title')}
-              </span>
+              </button>
               <div className="nav-section">
                 <h2>{t('initiatives.title')}</h2>
                 <button type="button" className="ghost" onClick={() => open({ kind: 'createInitiative' })}>
@@ -171,7 +191,7 @@ function Shell({ user }: { user: User }) {
                   {t('initiatives.new')}
                 </button>
               </div>
-              <InitiativeList initiatives={active} />
+              <InitiativeList initiatives={active} expandedId={expandedId} />
               {initiatives.length === 0 && (
                 <EmptyState
                   subject="initiatives"
@@ -181,12 +201,13 @@ function Shell({ user }: { user: User }) {
                 />
               )}
               {archived.length > 0 && (
-                <details className="archived">
+                // Ouverte si l'initiative dépliée en fait partie, sans quoi son entrée resterait cachée.
+                <details className="archived" open={archived.some((i) => i.id === expandedId)}>
                   <summary>
                     <Archive />
                     {t('initiatives.archivedSection', { count: archived.length })}
                   </summary>
-                  <InitiativeList initiatives={archived} />
+                  <InitiativeList initiatives={archived} expandedId={expandedId} />
                 </details>
               )}
               {me?.isAdmin && (
@@ -225,16 +246,27 @@ function Shell({ user }: { user: User }) {
                 <AlertsButton alerts={alerts} />
                 <small>{user.profile.name ?? user.profile.preferred_username}</small>
                 <LanguageSelector />
-                <button type="button" className="ghost" onClick={() => void logout()}>
+                <button type="button" className="ghost" onClick={() => void leaveAll().then((left) => (left ? logout() : undefined))}>
                   <LogOut />
                   {t('auth.logout')}
                 </button>
               </span>
             </header>
             <main className="page">
-              <h1>{t('actions.title')}</h1>
               <ErrorMessage error={error} />
-              <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
+              {screen.kind === 'tickets' ? (
+                <TicketsScreen
+                  key={screen.initiativeId}
+                  initiativeId={screen.initiativeId}
+                  initiative={initiatives.find((i) => i.id === screen.initiativeId)}
+                  version={actionsVersion}
+                />
+              ) : (
+                <>
+                  <h1>{t('actions.title')}</h1>
+                  <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
+                </>
+              )}
             </main>
           </div>
           {fab}
@@ -262,7 +294,10 @@ function Shell({ user }: { user: User }) {
                       setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)));
                       setInitiativeVersion((v) => v + 1);
                     }}
-                    onDeleted={(id) => setInitiatives((list) => list.filter((i) => i.id !== id))}
+                    onDeleted={(id) => {
+                      setInitiatives((list) => list.filter((i) => i.id !== id));
+                      initiativeGone(id);
+                    }}
                     onClose={close}
                   />
                 );
@@ -392,20 +427,36 @@ function actionOrigin(content: PanelContent): { initiativeId: string; from?: Ana
   }
 }
 
-function InitiativeList({ initiatives }: { initiatives: InitiativeDto[] }) {
+function InitiativeList({ initiatives, expandedId }: { initiatives: InitiativeDto[]; expandedId: string | null }) {
   const { t } = useI18n();
-  const { open } = usePanels();
+  const { screen, goTo, showInitiative } = useScreens();
   return (
     <ul className="nav-list">
       {initiatives.map((i) => (
         <li key={i.id}>
-          <button type="button" className="nav-item" onClick={() => open({ kind: 'initiative', initiativeId: i.id })}>
+          {/* L'écran Tickets suit la fiche ouverte (précision de la décision 13, point 1). */}
+          <button
+            type="button"
+            className="nav-item"
+            onClick={() => showInitiative(i.id)}
+          >
             <span className="code">{i.code}</span>
             <span>
               {i.name}
               <small>{t(`role.${i.myRole}`)}</small>
             </span>
           </button>
+          {i.id === expandedId && (
+            <button
+              type="button"
+              className="nav-item nav-sub"
+              aria-current={screen.kind === 'tickets' && screen.initiativeId === i.id ? 'page' : undefined}
+              onClick={() => goTo({ kind: 'tickets', initiativeId: i.id })}
+            >
+              <Ticket />
+              {t('tickets.title')}
+            </button>
+          )}
         </li>
       ))}
     </ul>

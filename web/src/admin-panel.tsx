@@ -24,12 +24,13 @@ import {
   type UpdateAccountInput,
   type UpdateRequirementStatusInput,
 } from '@app/shared';
-import { type FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import { adminRefusalError, ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { Panel } from './panels';
 import { setRequirementStatuses } from './requirement-statuses';
+import { RevealFormContext, useUnsavedForm } from './unsaved-changes';
 
 /**
  * Erreur de l'administration : ses refus d'abord (certains portent le même nom
@@ -86,16 +87,22 @@ export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => voi
         ))}
       </div>
       <div {...panel('accounts')}>
-        <AccountsSection myId={myId} onCount={setAccountCount} />
+        <RevealFormContext.Provider value={() => setTab('accounts')}>
+          <AccountsSection myId={myId} onCount={setAccountCount} />
+        </RevealFormContext.Provider>
       </div>
       <div {...panel('orphans')}>
         <OrphanInitiativesSection onCount={setOrphanCount} />
       </div>
       <div {...panel('references')}>
-        <ReferenceCategoriesSection />
+        <RevealFormContext.Provider value={() => setTab('references')}>
+          <ReferenceCategoriesSection />
+        </RevealFormContext.Provider>
       </div>
       <div {...panel('statuses')}>
-        <RequirementStatusesSection />
+        <RevealFormContext.Provider value={() => setTab('statuses')}>
+          <RequirementStatusesSection />
+        </RevealFormContext.Provider>
       </div>
     </Panel>
   );
@@ -190,14 +197,14 @@ function CreateAccountForm({ onCreated }: { onCreated: (account: AccountDto) => 
   const [form, setForm] = useState(emptyAccount);
   const [error, setError] = useState<UiError | null>(null);
   const [created, setCreated] = useState<string | null>(null);
+  const submit = useUnsavedForm(form, create);
 
-  async function create(event: FormEvent) {
-    event.preventDefault();
+  async function create() {
     // Même schéma de validation que l'API (@app/shared).
     const parsed = createAccountSchema.safeParse(form);
     if (!parsed.success) {
       setError({ key: 'admin.account.invalid' });
-      return;
+      return false;
     }
     try {
       const account = await api.createAccount(parsed.data);
@@ -205,9 +212,11 @@ function CreateAccountForm({ onCreated }: { onCreated: (account: AccountDto) => 
       setForm(emptyAccount);
       setCreated(account.username);
       onCreated(account);
+      return emptyAccount;
     } catch (e) {
       setCreated(null);
       setError(adminError(e));
+      return false;
     }
   }
 
@@ -224,7 +233,7 @@ function CreateAccountForm({ onCreated }: { onCreated: (account: AccountDto) => 
   );
 
   return (
-    <form className="stacked invite" onSubmit={(e) => void create(e)}>
+    <form className="stacked invite" onSubmit={submit}>
       <h4>{t('admin.account.createTitle')}</h4>
       {field('username')}
       {field('email', 'email')}
@@ -324,20 +333,22 @@ function ReferenceCategoriesSection() {
     api.listReferenceCategories().then(setCategories, (e: unknown) => setError(toUiError(e)));
   }, []);
 
-  async function save(category: ReferenceCategoryDto, acronym: string) {
+  async function save(category: ReferenceCategoryDto, acronym: string): Promise<boolean> {
     const refusal = checkAcronymChange(categories ?? [], category.category, acronym);
     if (refusal) {
       setDone(null);
       setError({ key: `reference.refusal.${refusal}` });
-      return;
+      return false;
     }
     try {
       setCategories(await api.updateReferenceCategory(category.category, { acronym }));
       setError(null);
       setDone(t('admin.reference.saved', { category: t(`referenceCategory.${category.category}`), acronym }));
+      return true;
     } catch (e) {
       setDone(null);
       setError(toUiError(e));
+      return false;
     }
   }
 
@@ -352,7 +363,7 @@ function ReferenceCategoriesSection() {
       {categories && (
         <ul className="links dense-list team-members">
           {categories.map((category) => (
-            <AcronymForm key={category.category} category={category} onSave={(acronym) => void save(category, acronym)} />
+            <AcronymForm key={category.category} category={category} onSave={(acronym) => save(category, acronym)} />
           ))}
         </ul>
       )}
@@ -360,9 +371,16 @@ function ReferenceCategoriesSection() {
   );
 }
 
-function AcronymForm({ category, onSave }: { category: ReferenceCategoryDto; onSave: (acronym: string) => void }) {
+function AcronymForm({
+  category,
+  onSave,
+}: {
+  category: ReferenceCategoryDto;
+  onSave: (acronym: string) => Promise<boolean>;
+}) {
   const { t } = useI18n();
   const [acronym, setAcronym] = useState(category.acronym);
+  const submit = useUnsavedForm({ acronym }, () => onSave(acronym));
   const name = t(`referenceCategory.${category.category}`);
   const former = category.usedAcronyms.filter((a) => a !== category.acronym);
   return (
@@ -371,13 +389,7 @@ function AcronymForm({ category, onSave }: { category: ReferenceCategoryDto; onS
         {name}
         {former.length > 0 && <small> · {t('admin.reference.former', { list: former.join(', ') })}</small>}
       </span>
-      <form
-        className="team-controls"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSave(acronym);
-        }}
-      >
+      <form className="team-controls" onSubmit={submit}>
         <input
           value={acronym}
           size={5}
@@ -438,7 +450,7 @@ function RequirementStatusesSection() {
     }
   }
 
-  function update(status: AdminRequirementStatusDto, change: UpdateRequirementStatusInput) {
+  function update(status: AdminRequirementStatusDto, change: UpdateRequirementStatusInput): Promise<boolean> {
     const label = (change.labels ?? status.labels)[locale];
     const message =
       change.active === undefined
@@ -446,7 +458,7 @@ function RequirementStatusesSection() {
         : change.active
           ? 'admin.requirementStatus.reactivated'
           : 'admin.requirementStatus.deactivated';
-    void run(
+    return run(
       checkStatusUpdate(statuses ?? [], status.code, change),
       () => api.updateRequirementStatus(status.code, change),
       t(message, { label }),
@@ -496,7 +508,7 @@ function RequirementStatusesSection() {
                 key={`${status.code}:${status.labels.fr}:${status.labels.en}`}
                 status={status}
                 onSave={(labels) => update(status, { labels })}
-                onToggle={() => update(status, { active: !status.active })}
+                onToggle={() => void update(status, { active: !status.active })}
                 onDelete={() => remove(status)}
               />
             ),
@@ -545,7 +557,7 @@ function AddedStatusForm({
   onDelete,
 }: {
   status: AdminRequirementStatusDto;
-  onSave: (labels: RequirementStatusLabels) => void;
+  onSave: (labels: RequirementStatusLabels) => Promise<boolean>;
   onToggle: () => void;
   onDelete: () => void;
 }) {
@@ -554,15 +566,16 @@ function AddedStatusForm({
   // Même schéma de validation que l'API (@app/shared).
   const parsed = requirementStatusLabelsSchema.safeParse(labels);
   const unchanged = parsed.success && parsed.data.fr === status.labels.fr && parsed.data.en === status.labels.en;
+  // Le bouton est inactif sur des libellés invalides ; l'alerte, elle, peut enregistrer.
+  const [invalid, setInvalid] = useState(false);
+  const submit = useUnsavedForm(labels, async () => {
+    setInvalid(!parsed.success);
+    if (!parsed.success) return false;
+    return unchanged || onSave(parsed.data);
+  });
   return (
     <li>
-      <form
-        className="team-controls"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (parsed.success) onSave(parsed.data);
-        }}
-      >
+      <form className="team-controls" onSubmit={submit}>
         <StatusLabelInputs labels={labels} onChange={setLabels} of={status.labels[locale]} />
         <small className="badge">
           {t(status.active ? 'admin.requirementStatus.active' : 'admin.requirementStatus.inactive')}
@@ -580,6 +593,7 @@ function AddedStatusForm({
             {t('admin.requirementStatus.delete')}
           </button>
         )}
+        {invalid && <ErrorMessage error={{ key: 'admin.requirementStatus.invalid' }} />}
       </form>
     </li>
   );
@@ -591,17 +605,16 @@ function AddStatusForm({ onAdd }: { onAdd: (labels: RequirementStatusLabels) => 
   const { t } = useI18n();
   const [labels, setLabels] = useState(noLabels);
   const [invalid, setInvalid] = useState(false);
+  const submit = useUnsavedForm(labels, async () => {
+    // Même schéma de validation que l'API (@app/shared).
+    const parsed = requirementStatusLabelsSchema.safeParse(labels);
+    setInvalid(!parsed.success);
+    if (!parsed.success || !(await onAdd(parsed.data))) return false;
+    setLabels(noLabels);
+    return noLabels;
+  });
   return (
-    <form
-      className="stacked invite"
-      onSubmit={(e) => {
-        e.preventDefault();
-        // Même schéma de validation que l'API (@app/shared).
-        const parsed = requirementStatusLabelsSchema.safeParse(labels);
-        setInvalid(!parsed.success);
-        if (parsed.success) void onAdd(parsed.data).then((added) => added && setLabels(noLabels));
-      }}
-    >
+    <form className="stacked invite" onSubmit={submit}>
       <h4>{t('admin.requirementStatus.addTitle')}</h4>
       <StatusLabelInputs labels={labels} onChange={setLabels} />
       <button type="submit">{t('admin.requirementStatus.add')}</button>

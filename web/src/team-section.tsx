@@ -17,11 +17,12 @@ import {
   teamControls,
 } from '@app/shared';
 import { UserPlus } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { useState } from 'react';
 import { api } from './api';
 import { ErrorMessage, teamRefusalError, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { usePanels } from './panels';
+import { useUnsavedForm } from './unsaved-changes';
 
 /** Date et heure d'une désignation, dans la langue de l'interface. */
 export const formatDateTime = (locale: Locale, date: string) =>
@@ -191,35 +192,42 @@ function RoleOptions() {
   ));
 }
 
+const INITIAL_INVITE_ROLE: InitiativeRole = 'contributor';
+
 /** Invitation par courriel d'un utilisateur connecté au moins une fois (propriétaire). */
 function InviteForm({ initiativeId, onInvited }: { initiativeId: string; onInvited: () => void }) {
   const { t } = useI18n();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<InitiativeRole>('contributor');
+  const [role, setRole] = useState<InitiativeRole>(INITIAL_INVITE_ROLE);
   const [isTeamBa, setIsTeamBa] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
+  const teamBa = canCarryTeamBa(role) && isTeamBa;
+  const submit = useUnsavedForm({ email, role, isTeamBa: teamBa }, invite);
 
-  async function invite(event: FormEvent) {
-    event.preventDefault();
+  async function invite() {
     // Même schéma de validation que l'API (@app/shared).
-    const parsed = addMemberSchema.safeParse({ email: email.trim(), role, isTeamBa: canCarryTeamBa(role) && isTeamBa });
+    const parsed = addMemberSchema.safeParse({ email: email.trim(), role, isTeamBa: teamBa });
     if (!parsed.success) {
       setError({ key: 'team.inviteInvalid' });
-      return;
+      return false;
     }
     try {
       await api.addMember(initiativeId, parsed.data);
       setError(null);
       setEmail('');
+      setRole(INITIAL_INVITE_ROLE);
       setIsTeamBa(false);
       onInvited();
+      // Le formulaire revient à ses valeurs de départ (décision 12, point 12).
+      return { email: '', role: INITIAL_INVITE_ROLE, isTeamBa: false };
     } catch (e) {
       setError(toUiError(e));
+      return false;
     }
   }
 
   return (
-    <form className="stacked invite" onSubmit={(e) => void invite(e)}>
+    <form className="stacked invite" onSubmit={submit}>
       <h4>{t('team.invite')}</h4>
       <label>
         {t('team.inviteEmail')}
@@ -235,7 +243,7 @@ function InviteForm({ initiativeId, onInvited }: { initiativeId: string; onInvit
       <label className="inline">
         <input
           type="checkbox"
-          checked={canCarryTeamBa(role) && isTeamBa}
+          checked={teamBa}
           disabled={!canCarryTeamBa(role)}
           onChange={(e) => setIsTeamBa(e.target.checked)}
         />

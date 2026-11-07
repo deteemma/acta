@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import {
   type ActionDto,
+  type ActionVersionDto,
   createActionSchema,
   type CreateActionInput,
   updateActionSchema,
@@ -49,6 +50,17 @@ export class ActionsController {
     @Param('actionId', ParseUUIDPipe) actionId: string,
   ): Promise<ActionDto> {
     return this.actions.get(user.id, initiativeId, actionId);
+  }
+
+  /** Historique : tout membre le consulte, y compris sur une initiative archivée. */
+  @Get('initiatives/:initiativeId/actions/:actionId/history')
+  @RequireInitiativeRole('view')
+  history(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('actionId', ParseUUIDPipe) actionId: string,
+  ): Promise<ActionVersionDto[]> {
+    return this.actions.history(user.id, initiativeId, actionId);
   }
 
   @Patch('initiatives/:initiativeId/actions/:actionId')

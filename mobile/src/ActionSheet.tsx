@@ -37,7 +37,7 @@ export function ActionSheet({
       kicker={
         action && (
           <>
-            {t('action.kicker')} <Text style={ui.code}>{action.initiative.code}</Text>
+            {t('action.kicker')} <Text style={ui.code}>{action.reference}</Text>
           </>
         )
       }

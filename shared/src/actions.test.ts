@@ -2,10 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ACTION_DESCRIPTION_MAX_LENGTH,
+  actionHistory,
   type ActionDto,
+  type ActionSnapshot,
   canBeAssignee,
   canCreateActionIn,
   createActionSchema,
+  isOpenAction,
   selectMyActions,
   techniqueChoices,
   toggleActionStatus,
@@ -19,6 +22,7 @@ const person = (userId: string) => ({ userId, email: `${userId}@exemple.test`, d
 function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
   return {
     initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor' },
+    reference: 'CRM-AC-001',
     title: fields.id,
     description: null,
     taskId: '4.1',
@@ -41,14 +45,15 @@ function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
 
 const ids = (actions: ActionDto[]) => actions.map((a) => a.id);
 
-test('« Mes actions » par défaut : À faire et En cours seulement', () => {
+test('« Mes actions » par défaut : les statuts non fermés (À faire, En cours, En attente)', () => {
   const actions = [
     action({ id: 'a', status: 'todo' }),
     action({ id: 'b', status: 'in_progress' }),
     action({ id: 'c', status: 'done' }),
     action({ id: 'd', status: 'cancelled' }),
+    action({ id: 'e', status: 'on_hold' }),
   ];
-  assert.deepEqual(ids(selectMyActions(actions)), ['a', 'b']);
+  assert.deepEqual(ids(selectMyActions(actions)), ['a', 'b', 'e']);
 });
 
 const archivedInitiative = { id: 'old', code: 'OLD', name: 'Ancienne', archived: true, myRole: 'contributor' as const };
@@ -154,10 +159,23 @@ test('parties prenantes liées : une liste d’identifiants, chacun une seule fo
   assert.deepEqual(createActionSchema.parse({ title: 'Atelier', taskId: '4.2', stakeholderIds: [id] }).stakeholderIds, [id]);
 });
 
+test('En attente n’est pas fermé ; Terminée et Annulée le sont', () => {
+  assert.equal(isOpenAction({ status: 'todo' }), true);
+  assert.equal(isOpenAction({ status: 'in_progress' }), true);
+  assert.equal(isOpenAction({ status: 'on_hold' }), true);
+  assert.equal(isOpenAction({ status: 'done' }), false);
+  assert.equal(isOpenAction({ status: 'cancelled' }), false);
+});
+
+test('une action peut passer En attente', () => {
+  assert.deepEqual(updateActionSchema.parse({ status: 'on_hold' }), { status: 'on_hold' });
+});
+
 test('filtre de « Mes actions » : cocher ou décocher un statut garde l’ordre des statuts', () => {
   assert.deepEqual(toggleActionStatus(['todo', 'in_progress'], 'in_progress'), ['todo']);
   assert.deepEqual(toggleActionStatus(['cancelled'], 'todo'), ['todo', 'cancelled']);
   assert.deepEqual(toggleActionStatus(['todo', 'cancelled'], 'done'), ['todo', 'done', 'cancelled']);
+  assert.deepEqual(toggleActionStatus(['todo', 'done'], 'on_hold'), ['todo', 'on_hold', 'done']);
 });
 
 test('création rapide : initiatives où l’on peut créer une action (propriétaire ou contributeur, non archivée)', () => {
@@ -165,4 +183,65 @@ test('création rapide : initiatives où l’on peut créer une action (proprié
   assert.equal(canCreateActionIn({ myRole: 'contributor', archivedAt: null }), true);
   assert.equal(canCreateActionIn({ myRole: 'reader', archivedAt: null }), false);
   assert.equal(canCreateActionIn({ myRole: 'owner', archivedAt: '2026-10-01T08:00:00.000Z' }), false);
+});
+
+const snapshot = (fields: Partial<ActionSnapshot> = {}): ActionSnapshot => ({
+  title: 'Préparer',
+  description: null,
+  status: 'todo',
+  taskId: '4.1',
+  techniqueId: null,
+  dueDate: null,
+  assignee: person('alice'),
+  stakeholders: [],
+  ...fields,
+});
+const version = (changedAt: string, before: ActionSnapshot, after: ActionSnapshot) => ({
+  changedAt,
+  changedBy: person('bruno'),
+  before,
+  after,
+});
+
+test('historique : sans version, il est vide (action reprise de la phase 1, aucune entrée reconstituée)', () => {
+  assert.deepEqual(actionHistory([]), []);
+});
+
+test('historique : qui, quand et chaque champ modifié, la modification la plus récente en tête', () => {
+  const entries = actionHistory([
+    version('2026-11-01T08:00:00.000Z', snapshot(), snapshot({ status: 'on_hold', dueDate: '2026-12-01' })),
+    version('2026-11-02T08:00:00.000Z', snapshot({ title: 'Préparer' }), snapshot({ title: 'Préparer les entretiens' })),
+  ]);
+  assert.deepEqual(entries, [
+    {
+      changedAt: '2026-11-02T08:00:00.000Z',
+      changedBy: person('bruno'),
+      changes: [{ field: 'title', from: 'Préparer', to: 'Préparer les entretiens' }],
+    },
+    {
+      changedAt: '2026-11-01T08:00:00.000Z',
+      changedBy: person('bruno'),
+      changes: [
+        { field: 'status', from: 'todo', to: 'on_hold' },
+        { field: 'dueDate', from: null, to: '2026-12-01' },
+      ],
+    },
+  ]);
+});
+
+test('historique : le responsable et les parties prenantes changent si les personnes changent, pas leur nom', () => {
+  const sponsor = { id: 's1', name: 'Sponsor' };
+  const entries = actionHistory([
+    version(
+      '2026-11-01T08:00:00.000Z',
+      snapshot({ assignee: person('alice'), stakeholders: [sponsor] }),
+      snapshot({ assignee: { ...person('alice'), displayName: 'Alice D.' }, stakeholders: [{ id: 's1', name: 'Direction' }], taskId: '4.2' }),
+    ),
+    version('2026-11-02T08:00:00.000Z', snapshot({ assignee: person('alice'), stakeholders: [sponsor] }), snapshot({ assignee: person('bruno'), stakeholders: [] })),
+  ]);
+  assert.deepEqual(entries.map((e) => e.changes.map((c) => c.field)), [['assignee', 'stakeholders'], ['taskId']]);
+});
+
+test('historique : une version sans champ modifié n’apparaît pas', () => {
+  assert.deepEqual(actionHistory([version('2026-11-01T08:00:00.000Z', snapshot(), snapshot())]), []);
 });

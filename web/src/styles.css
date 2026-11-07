@@ -319,6 +319,9 @@ ul.dense-list > li {
 .nav-item small {
   display: block;
 }
+.nav-item.nav-sub {
+  padding-inline-start: var(--space-6);
+}
 .sidebar details.archived {
   padding-inline-start: var(--space-2);
 }
@@ -789,6 +792,32 @@ details.babok-item .links {
   .panel {
     animation: none;
   }
+}
+/* Alerte de modifications non enregistrées (phase 2, ticket 15) */
+.unsaved-alert {
+  padding: 0;
+  width: min(30rem, calc(100% - var(--space-8)));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-panel);
+}
+.unsaved-alert::backdrop {
+  background: var(--backdrop);
+}
+.unsaved-alert-body {
+  padding: var(--space-6);
+}
+.unsaved-alert-body h2 {
+  margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
+}
+.unsaved-alert-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 /* Équipe de l'initiative (ticket 04) */
 .team-members li {
@@ -1630,4 +1659,210 @@ button.link.pill:hover {
 }
 .alert-detail {
   grid-column: 2 / span 2;
+}
+
+/* Écran Tickets (ticket 17) */
+.tickets .panel-kicker {
+  margin-bottom: var(--space-1);
+}
+.ticket-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ticket-filters input {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.ticket-filters select {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.tickets-count {
+  margin: var(--space-2) 0;
+  color: var(--muted);
+}
+.tickets-no-match {
+  color: var(--muted);
+}
+.ticket-type {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--muted);
+  font-weight: 500;
+}
+.ticket-muted {
+  color: var(--muted);
+}
+.ticket-warning {
+  color: var(--tone-attention-fg);
+  font-weight: 600;
+}
+.ticket-warning .lucide {
+  width: 0.9em;
+  height: 0.9em;
+  margin-inline-end: var(--space-1);
+  vertical-align: -0.1em;
+}
+/*
+ * Panneau ouvert : le titre reste sur une ligne (entier dans son info-bulle et dans
+ * la fiche) et garde sa place ; les colonnes secondaires s'effacent une à une selon
+ * la largeur disponible, celle que laissent la barre latérale et le panneau.
+ */
+.ticket-table-area {
+  container-type: inline-size;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.ticket-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+.ticket-table th,
+.ticket-table td {
+  box-sizing: border-box;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ticket-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.ticket-table th {
+  padding: 0;
+}
+.ticket-table th button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ticket-table th .lucide {
+  flex: none;
+  width: 0.9em;
+  height: 0.9em;
+}
+.ticket-table tbody tr:hover {
+  background: var(--bg);
+}
+.ticket-table tr.selected,
+.ticket-table tr.selected:hover,
+.ticket-compact li.selected {
+  background: var(--accent-soft);
+}
+.ticket-table small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ticket-title {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  font-weight: 500;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ticket-table .col-reference {
+  width: 8.5rem;
+}
+.ticket-table .col-type {
+  width: 5.5rem;
+}
+.ticket-table .col-status {
+  width: 8rem;
+}
+.ticket-table .col-assignee {
+  width: 9rem;
+}
+.ticket-table .col-dueDate {
+  width: 9rem;
+}
+.ticket-table .col-epic {
+  width: 8rem;
+}
+@container (max-width: 60rem) {
+  .ticket-table .col-epic {
+    display: none;
+  }
+}
+@container (max-width: 54rem) {
+  .ticket-table .col-type {
+    display: none;
+  }
+}
+@container (max-width: 48.5rem) {
+  .ticket-table .col-assignee {
+    display: none;
+  }
+}
+@container (max-width: 39.5rem) {
+  .ticket-table .col-dueDate {
+    display: none;
+  }
+}
+/* Panneau très élargi à la main : le titre garde encore sa place. */
+@container (max-width: 28rem) {
+  .ticket-table .col-status {
+    display: none;
+  }
+}
+@container (max-width: 20rem) {
+  .ticket-table .col-reference {
+    display: none;
+  }
+}
+.ticket-compact {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ticket-compact li {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+.ticket-compact-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.ticket-compact-title .code {
+  flex: none;
+}
+.ticket-compact-title .ticket-title {
+  min-width: 0;
+}
+.ticket-compact-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-1);
+}
+/* Petit écran : liste compacte sur deux lignes ; la fiche prend toute la largeur (.panel-side). */
+@media (max-width: 40rem) {
+  .ticket-table-area {
+    display: none;
+  }
+  .ticket-compact {
+    display: block;
+  }
 }

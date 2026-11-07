@@ -52,18 +52,18 @@ console.log('\nAlertes — barrière 2 : base de données (RLS, compte applicati
 await check('l’auteur de l’attribution est celui qui écrit, jamais celui que le client indique', async () => {
   const r = await asUserInDb(
     bruno.sub,
-    `UPDATE action SET assignee_id = $2, assigned_by = $2 WHERE id = $1 RETURNING assigned_by`,
+    `UPDATE ticket SET assignee_id = $2, assigned_by = $2 WHERE id = $1 RETURNING assigned_by`,
     [actionId, bruno.sub],
   );
   assert.equal(r.rows[0].assigned_by, bruno.sub);
-  const keep = await asUserInDb(alice.sub, `UPDATE action SET assigned_by = $2 WHERE id = $1 RETURNING assigned_by`, [actionId, alice.sub]);
+  const keep = await asUserInDb(alice.sub, `UPDATE ticket SET assigned_by = $2 WHERE id = $1 RETURNING assigned_by`, [actionId, alice.sub]);
   assert.equal(keep.rows[0].assigned_by, bruno.sub);
 });
 await check('chloé (lectrice) lit l’auteur de l’attribution ; admin, non membre, ne lit pas l’action', async () => {
-  const reader = await asUserInDb(chloe.sub, 'SELECT assigned_by FROM action WHERE id = $1', [actionId]);
+  const reader = await asUserInDb(chloe.sub, 'SELECT assigned_by FROM ticket WHERE id = $1', [actionId]);
   assert.equal(reader.rows[0].assigned_by, bruno.sub);
   assert.equal((await asUserInDb(chloe.sub, 'SELECT 1 FROM app_user WHERE id = $1', [bruno.sub])).rowCount, 1);
-  assert.equal((await asUserInDb(admin.sub, 'SELECT 1 FROM action WHERE id = $1', [actionId])).rowCount, 0);
+  assert.equal((await asUserInDb(admin.sub, 'SELECT 1 FROM ticket WHERE id = $1', [actionId])).rowCount, 0);
 });
 await check('bruno ne peut pas marquer les alertes d’alice comme vues', async () => {
   const r = await asUserInDb(bruno.sub, `UPDATE app_user SET alerts_seen_at = now(), alerts_seen_keys = '{}' WHERE id = $1`, [alice.sub]);
@@ -74,6 +74,6 @@ console.log('\nAlertes — initiative archivée');
 await check('alice archive l’initiative : réattribution refusée (403 par l’API, aucune ligne en base)', async () => {
   assert.equal((await call(alice, 'PUT', `/initiatives/${alInitiativeId}/archive`)).status, 200);
   assert.equal((await call(bruno, 'PATCH', `${actions()}/${actionId}`, { assigneeId: alice.sub })).status, 403);
-  const r = await asUserInDb(bruno.sub, 'UPDATE action SET assignee_id = $2 WHERE id = $1', [actionId, alice.sub]);
+  const r = await asUserInDb(bruno.sub, 'UPDATE ticket SET assignee_id = $2 WHERE id = $1', [actionId, alice.sub]);
   assert.equal(r.rowCount, 0);
 });

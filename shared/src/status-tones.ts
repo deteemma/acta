@@ -11,6 +11,7 @@ export type StatusTone = (typeof STATUS_TONES)[number];
 const ACTION_TONES: Record<ActionStatus, StatusTone> = {
   todo: 'neutral',
   in_progress: 'progress',
+  on_hold: 'attention',
   done: 'positive',
   cancelled: 'muted',
 };

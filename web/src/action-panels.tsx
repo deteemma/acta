@@ -5,7 +5,10 @@ import {
   ACTION_DESCRIPTION_MAX_LENGTH,
   ACTION_STATUSES,
   ACTION_TITLE_MAX_LENGTH,
+  type ActionChange,
   type ActionDto,
+  actionHistory,
+  type ActionVersionDto,
   type ActionStatus,
   actionStatusTone,
   type BabokDto,
@@ -14,11 +17,13 @@ import {
   can,
   canBeAssignee,
   canCreateActionIn,
+  chosenValue,
   createActionSchema,
   englishTermTooltip,
   findBabokElement,
   type InitiativeDto,
   type InitiativeMemberDto,
+  type MessageKey,
   type NeedDto,
   type RequirementDto,
   type StakeholderDto,
@@ -34,17 +39,18 @@ import {
   tasksOfKnowledgeArea,
   updateActionSchema,
 } from '@app/shared';
-import { type FormEvent, useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { NeedLink } from './need-panels';
 import { RequirementLink } from './requirement-panels';
-import { Panel, usePanels } from './panels';
+import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
 import { formatDateTime } from './team-section';
+import { useUnsavedForm } from './unsaved-changes';
 
 const canEditActions = (action: Pick<ActionDto, 'initiative'>) =>
   can(action.initiative.myRole, 'editActions', { archived: action.initiative.archived });
@@ -128,7 +134,7 @@ export function ActionList({
               className="link action-title"
               onClick={() => open({ kind: 'action', initiativeId: a.initiative.id, actionId: a.id })}
             >
-              {a.title}
+              <span className="code">{a.reference}</span> {a.title}
             </button>
             <span className="action-task">{task && <BabokPreview element={task} />}</span>
             {/* Liste d'une initiative : le responsable, signalé s'il ne peut plus l'être. */}
@@ -218,17 +224,25 @@ export function ActionPanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const closeSilently = useCloseSilently();
   const [action, setAction] = useState<ActionDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
   const [needs, setNeeds] = useState<NeedDto[] | null>(null);
   const [requirements, setRequirements] = useState<RequirementDto[] | null>(null);
+  const [versions, setVersions] = useState<ActionVersionDto[]>([]);
+  // Augmente à chaque enregistrement : l'historique se recharge.
+  const [saveCount, setSaveCount] = useState(0);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
     api.getAction(initiativeId, actionId).then(setAction, (e: unknown) => setError(toUiError(e)));
     api.listMembers(initiativeId).then(setMembers, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, actionId]);
+
+  useEffect(() => {
+    api.actionHistory(initiativeId, actionId).then(setVersions, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, actionId, saveCount]);
 
   useEffect(() => {
     api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
@@ -243,7 +257,17 @@ export function ActionPanel({
   }, [initiativeId, requirementsVersion]);
 
   return (
-    <Panel title={action ? `${action.initiative.code} · ${action.title}` : t('common.loading')} onClose={onClose}>
+    <Panel
+      title={action ? action.title : t('common.loading')}
+      kicker={
+        action && (
+          <>
+            {t('action.kicker')} <span className="code">{action.reference}</span>
+          </>
+        )
+      }
+      onClose={onClose}
+    >
       <ErrorMessage error={error} />
       {action && (
         <>
@@ -258,6 +282,7 @@ export function ActionPanel({
               requirements={requirements}
               onSaved={(saved) => {
                 setAction(saved);
+                setSaveCount((count) => count + 1);
                 onChanged();
               }}
             />
@@ -265,12 +290,13 @@ export function ActionPanel({
             <ActionDetails babok={babok} action={action} />
           )}
           <AuditTrail action={action} />
+          <ActionHistory babok={babok} versions={versions} />
           {canEditActions(action) && (
             <DeleteAction
               action={action}
               onDeleted={() => {
                 onChanged();
-                onClose();
+                closeSilently();
               }}
             />
           )}
@@ -389,6 +415,10 @@ function ActionForm({
   const [requirementIds, setRequirementIds] = useState<readonly string[]>(action.requirements.map((r) => r.id));
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
+  const submit = useUnsavedForm(
+    { title, status, taskId, techniqueId, assigneeId, dueDate, description, stakeholderIds, needIds, requirementIds },
+    save,
+  );
 
   const toggleStakeholder = (id: string) =>
     setStakeholderIds((current) => (current.includes(id) ? current.filter((s) => s !== id) : [...current, id]));
@@ -405,8 +435,7 @@ function ActionForm({
   const assignees = members.filter((m) => canBeAssignee(m.role));
   const keepsIneligible = !assignees.some((m) => m.userId === action.assignee.userId);
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save(): Promise<boolean> {
     setSaved(false);
     // Même schéma de validation que l'API (@app/shared).
     const parsed = updateActionSchema.safeParse({
@@ -423,19 +452,21 @@ function ActionForm({
     });
     if (!parsed.success) {
       setError({ key: 'action.invalid' });
-      return;
+      return false;
     }
     try {
       onSaved(await api.updateAction(action.initiative.id, action.id, parsed.data));
       setError(null);
       setSaved(true);
+      return true;
     } catch (e) {
       setError(e instanceof ApiError && e.status === 400 && !e.refusal ? { key: 'action.invalid' } : toUiError(e));
+      return false;
     }
   }
 
   return (
-    <form className="stacked" onSubmit={(e) => void save(e)} onChange={() => setSaved(false)}>
+    <form className="stacked" onSubmit={submit} onChange={() => setSaved(false)}>
       <label>
         {t('action.title')}
         <input value={title} maxLength={ACTION_TITLE_MAX_LENGTH} onChange={(e) => setTitle(e.target.value)} />
@@ -547,6 +578,112 @@ function AuditTrail({ action }: { action: ActionDto }) {
   );
 }
 
+/** Historique : qui, quand, et pour chaque champ modifié l'ancienne et la nouvelle valeur. */
+function ActionHistory({ babok, versions }: { babok: BabokDto; versions: ActionVersionDto[] }) {
+  const { t, locale } = useI18n();
+  const entries = actionHistory(versions);
+  return (
+    <section className="requirement-history">
+      <h3 className="group-title">{t('action.history')}</h3>
+      {entries.length === 0 && <p><small>{t('action.historyEmpty')}</small></p>}
+      <ol className="timeline">
+        {entries.map((entry) => (
+          <li key={entry.changedAt}>
+            <span className="timeline-when">
+              {t('action.historyUpdated', { date: formatDateTime(locale, entry.changedAt), name: memberName(entry.changedBy) })}
+            </span>
+            <table className="change-table">
+              <thead>
+                <tr>
+                  <td />
+                  <th scope="col">{t('action.historyBefore')}</th>
+                  <th scope="col">{t('action.historyAfter')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entry.changes.map((change) => (
+                  <ActionChangeLine key={change.field} babok={babok} change={change} />
+                ))}
+              </tbody>
+            </table>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** Libellé du champ modifié, dans la langue de l'interface. */
+const ACTION_FIELD_LABELS = {
+  title: 'action.title',
+  description: 'action.description',
+  status: 'action.status',
+  taskId: 'action.task',
+  techniqueId: 'action.technique',
+  dueDate: 'action.dueDate',
+  assignee: 'action.assignee',
+  stakeholders: 'action.stakeholders',
+} as const satisfies Record<ActionChange['field'], MessageKey>;
+
+function ActionChangeLine({ babok, change }: { babok: BabokDto; change: ActionChange }) {
+  const { t, locale } = useI18n();
+  const empty = <em>{t('action.historyNoValue')}</em>;
+  const label = t(ACTION_FIELD_LABELS[change.field]);
+  // La description, souvent longue, s'affiche en entier à la demande.
+  if (change.field === 'description') {
+    return (
+      <tr>
+        <th scope="row">{label}</th>
+        <td colSpan={2}>
+          <details>
+            <summary>{t('action.historyShowDescription')}</summary>
+            <div className="change-statement">
+              <div className="change-before">{change.from ? <RichText source={change.from} /> : empty}</div>
+              <div>{change.to ? <RichText source={change.to} /> : empty}</div>
+            </div>
+          </details>
+        </td>
+      </tr>
+    );
+  }
+  const babokName = (id: string | null) => {
+    if (!id) return empty;
+    const element = findBabokElement(babok, id);
+    return element ? `${element.section} ${element.name[locale]}` : id;
+  };
+  const value = (): [ReactNode, ReactNode] => {
+    switch (change.field) {
+      case 'title':
+        return [change.from, change.to];
+      case 'status':
+        return [t(`actionStatus.${change.from}`), t(`actionStatus.${change.to}`)];
+      case 'taskId':
+      case 'techniqueId':
+        return [babokName(change.from), babokName(change.to)];
+      case 'dueDate':
+        return [
+          change.from ? formatDate(locale, change.from) : empty,
+          change.to ? formatDate(locale, change.to) : empty,
+        ];
+      case 'assignee':
+        return [memberName(change.from), memberName(change.to)];
+      case 'stakeholders':
+        return [
+          change.from.length ? change.from.map((s) => s.name).join(', ') : empty,
+          change.to.length ? change.to.map((s) => s.name).join(', ') : empty,
+        ];
+    }
+  };
+  const [from, to] = value();
+  return (
+    <tr>
+      <th scope="row">{label}</th>
+      <td className="change-before">{from}</td>
+      <td>{to}</td>
+    </tr>
+  );
+}
+
 /** Suppression après confirmation ; une action liée à un autre objet s'annule plutôt (refus `linked`). */
 function DeleteAction({ action, onDeleted }: { action: ActionDto; onDeleted: () => void }) {
   const { t } = useI18n();
@@ -567,7 +704,7 @@ function DeleteAction({ action, onDeleted }: { action: ActionDto; onDeleted: () 
     <section className="owner-actions">
       {confirming ? (
         <div role="alertdialog" aria-labelledby="action-delete-confirm" className="confirm">
-          <p id="action-delete-confirm">{t('action.deleteConfirm', { title: action.title })}</p>
+          <p id="action-delete-confirm">{t('action.deleteConfirm', { reference: action.reference, title: action.title })}</p>
           <button type="button" autoFocus onClick={() => setConfirming(false)}>
             {t('common.cancel')}
           </button>{' '}
@@ -653,7 +790,7 @@ export function CreateActionPanel({
   onClose: () => void;
 }) {
   const { t, locale } = useI18n();
-  const { replace } = usePanels();
+  const { replaceSaved } = usePanels();
   const editable = initiatives.filter(canCreateActionIn);
   const proposed = editable.find((i) => i.id === initiativeId);
   // Sans droit d'écriture sur l'initiative de l'objet, on ne part pas de cet objet.
@@ -701,9 +838,18 @@ export function CreateActionPanel({
   const task = taskId ? findBabokElement(babok, taskId) : undefined;
   const techniques = rankTechniques(babok, taskId, initiativeActions ?? [], applicationCounts);
   const technique = techniqueId ? findBabokElement(babok, techniqueId) : undefined;
+  // La tâche présélectionnée fait partie des valeurs de départ, même si elle arrive après l'ouverture.
+  const submit = useUnsavedForm(
+    {
+      initiative: chosenInitiative,
+      title,
+      task: chosenValue(taskId, suggestions[0]?.taskId),
+      technique: techniqueId,
+    },
+    create,
+  );
 
-  async function create(event: FormEvent) {
-    event.preventDefault();
+  async function create(): Promise<boolean> {
     // Même schéma de validation que l'API (@app/shared).
     const parsed = createActionSchema.safeParse({
       title,
@@ -713,14 +859,16 @@ export function CreateActionPanel({
     });
     if (!parsed.success || !chosenInitiative) {
       setError({ key: 'action.invalid' });
-      return;
+      return false;
     }
     try {
       const action = await api.createAction(chosenInitiative, parsed.data);
       onCreated();
-      replace({ kind: 'action', initiativeId: action.initiative.id, actionId: action.id });
+      replaceSaved({ kind: 'action', initiativeId: action.initiative.id, actionId: action.id });
+      return true;
     } catch (e) {
       setError(toUiError(e));
+      return false;
     }
   }
 
@@ -736,7 +884,7 @@ export function CreateActionPanel({
       {editable.length === 0 ? (
         <p className="notice">{t('actions.noEditableInitiative')}</p>
       ) : (
-        <form className="stacked" onSubmit={(e) => void create(e)}>
+        <form className="stacked" onSubmit={submit}>
           <label>
             {t('action.initiative')}
             <select value={chosenInitiative} disabled={!!originObject} onChange={(e) => setChosenInitiative(e.target.value)}>

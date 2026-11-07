@@ -1,5 +1,5 @@
 // Connexion OIDC (code + PKCE) au realm Keycloak de l'application (ADR-0005).
-import type { PublicConfigDto } from '@app/shared';
+import { parseScreenPath, type PublicConfigDto, screenPath } from '@app/shared';
 import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts';
 
 let manager: UserManager | null = null;
@@ -24,7 +24,9 @@ export async function currentUser(): Promise<User | null> {
   const params = new URLSearchParams(window.location.search);
   if (params.has('code') && params.has('state')) {
     const user = await manager.signinRedirectCallback();
-    window.history.replaceState({}, '', '/');
+    // Revient à l'écran demandé avant la connexion (lien reçu, session expirée).
+    const { returnTo } = (user.state ?? {}) as { returnTo?: string };
+    window.history.replaceState({}, '', screenPath(parseScreenPath(returnTo ?? '/')));
     return user;
   }
   const user = await manager.getUser();
@@ -33,7 +35,7 @@ export async function currentUser(): Promise<User | null> {
 
 export async function login(): Promise<void> {
   if (!manager) throw new Error('initAuth() non appelé');
-  await manager.signinRedirect();
+  await manager.signinRedirect({ state: { returnTo: window.location.pathname } });
 }
 
 // Déconnexion volontaire : au retour, l'écran d'accueil d'ACTA s'affiche au

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRequirementSchema, createsParentCycle, requirementHistory } from './requirements.js';
+import { createRequirementSchema, createsParentCycle, requirementHistory, subtypeForType } from './requirements.js';
 
 const needId = '4d3c2b1a-0000-4000-8000-000000000001';
 const valid = {
@@ -121,4 +121,9 @@ test('historique : un lien n’est modifié que si l’ensemble change, pas son 
   ]);
   // Rien de visible n'a changé : pas d'entrée.
   assert.equal(requirementHistory([created, same]).length, 1);
+});
+
+test("le sous-type n'est retenu que pour une exigence de solution", () => {
+  assert.equal(subtypeForType('solution', 'functional'), 'functional');
+  assert.equal(subtypeForType('business', 'functional'), null);
 });

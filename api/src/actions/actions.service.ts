@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import {
   type ActionDto,
   type ActionRefusal,
+  type ActionVersionDto,
   canBeAssignee,
   type CreateActionInput,
   type NeedRefDto,
@@ -49,6 +50,26 @@ export class ActionsService {
     return this.database.asUser(userId, (tx) => this.loadAction(tx, userId, initiativeId, actionId));
   }
 
+  /** Modifications enregistrées par la base, la plus ancienne d'abord (actionHistory les compare). */
+  history(userId: string, initiativeId: string, actionId: string): Promise<ActionVersionDto[]> {
+    return this.database.asUser(userId, async (tx) => {
+      await this.loadAction(tx, userId, initiativeId, actionId);
+      const rows = await tx
+        .selectFrom('ticket_version as v')
+        .leftJoin('app_user as u', 'u.id', 'v.changed_by')
+        .select(['v.changed_at', 'v.changed_by', 'u.email', 'u.display_name', 'v.snapshot_before', 'v.snapshot_after'])
+        .where('v.ticket_id', '=', actionId)
+        .orderBy('v.id')
+        .execute();
+      return rows.map((r) => ({
+        changedAt: r.changed_at.toISOString(),
+        changedBy: { userId: r.changed_by, email: r.email, displayName: r.display_name },
+        before: r.snapshot_before,
+        after: r.snapshot_after,
+      }));
+    });
+  }
+
   /** Sans responsable fourni (création rapide), la personne qui crée l'action. */
   create(userId: string, initiativeId: string, input: CreateActionInput): Promise<ActionDto> {
     const id = randomUUID();
@@ -64,10 +85,11 @@ export class ActionsService {
       if (input.requirementIds) await this.checkRequirements(tx, initiativeId, input.requirementIds);
       await write(() =>
         tx
-          .insertInto('action')
+          .insertInto('ticket')
           .values({
             id,
             initiative_id: initiativeId,
+            type: 'action',
             title: input.title,
             description: input.description ?? null,
             task_id: input.taskId,
@@ -106,24 +128,24 @@ export class ActionsService {
       }
       if (stakeholdersChange) {
         await this.checkStakeholders(tx, initiativeId, stakeholderIds);
-        await tx.deleteFrom('action_stakeholder').where('action_id', '=', actionId).execute();
+        await tx.deleteFrom('action_stakeholder').where('ticket_id', '=', actionId).execute();
         await this.linkStakeholders(tx, initiativeId, actionId, stakeholderIds);
       }
       if (needsChange) {
         await this.checkNeeds(tx, initiativeId, needIds);
-        await tx.deleteFrom('action_need').where('action_id', '=', actionId).execute();
+        await tx.deleteFrom('ticket_need').where('ticket_id', '=', actionId).execute();
         await this.linkNeeds(tx, initiativeId, actionId, needIds);
       }
       if (requirementsChange) {
         await this.checkRequirements(tx, initiativeId, requirementIds);
-        await tx.deleteFrom('action_requirement').where('action_id', '=', actionId).execute();
+        await tx.deleteFrom('ticket_requirement').where('ticket_id', '=', actionId).execute();
         await this.linkRequirements(tx, initiativeId, actionId, requirementIds);
       }
       // Changer les liens modifie l'action : sans autre colonne changée, on
       // réécrit le statut pour que le déclencheur en enregistre auteur et date.
       await write(() =>
         tx
-          .updateTable('action')
+          .updateTable('ticket')
           .set(
             fieldsChange
               ? {
@@ -139,6 +161,7 @@ export class ActionsService {
           )
           .where('id', '=', actionId)
           .where('initiative_id', '=', initiativeId)
+          .where('type', '=', 'action')
           .execute(),
       );
       await this.suggestedActions.forgetVanishedDismissals(tx, initiativeId);
@@ -163,7 +186,7 @@ export class ActionsService {
     try {
       await tx
         .insertInto('action_stakeholder')
-        .values(stakeholderIds.map((id) => ({ initiative_id: initiativeId, action_id: actionId, stakeholder_id: id })))
+        .values(stakeholderIds.map((id) => ({ initiative_id: initiativeId, ticket_id: actionId, stakeholder_id: id })))
         .execute();
     } catch (error) {
       // Seconde barrière : partie prenante d'une autre initiative.
@@ -190,12 +213,12 @@ export class ActionsService {
     if (needIds.length === 0) return;
     try {
       await tx
-        .insertInto('action_need')
-        .values(needIds.map((id) => ({ initiative_id: initiativeId, action_id: actionId, need_id: id })))
+        .insertInto('ticket_need')
+        .values(needIds.map((id) => ({ initiative_id: initiativeId, ticket_id: actionId, need_id: id })))
         .execute();
     } catch (error) {
       // Seconde barrière : besoin d'une autre initiative.
-      if (isConstraintViolation(error, 'action_need_need_fkey')) throw needRefusal('unknownNeed');
+      if (isConstraintViolation(error, 'ticket_need_need_fkey')) throw needRefusal('unknownNeed');
       throw error;
     }
   }
@@ -216,12 +239,12 @@ export class ActionsService {
     if (requirementIds.length === 0) return;
     try {
       await tx
-        .insertInto('action_requirement')
-        .values(requirementIds.map((id) => ({ initiative_id: initiativeId, action_id: actionId, requirement_id: id })))
+        .insertInto('ticket_requirement')
+        .values(requirementIds.map((id) => ({ initiative_id: initiativeId, ticket_id: actionId, requirement_id: id })))
         .execute();
     } catch (error) {
       // Seconde barrière : exigence d'une autre initiative.
-      if (isConstraintViolation(error, 'action_requirement_requirement_fkey')) {
+      if (isConstraintViolation(error, 'ticket_requirement_requirement_fkey')) {
         throw requirementRefusal('unknownRequirement');
       }
       throw error;
@@ -236,34 +259,34 @@ export class ActionsService {
     if (rows.length === 0) return [];
     const ids = rows.map((r) => r.id);
     const requirementLinks = await tx
-      .selectFrom('action_requirement as l')
+      .selectFrom('ticket_requirement as l')
       .innerJoin('requirement as r', 'r.id', 'l.requirement_id')
-      .select(['l.action_id', 'r.id', 'r.reference', 'r.title'])
-      .where('l.action_id', 'in', ids)
+      .select(['l.ticket_id', 'r.id', 'r.reference', 'r.title'])
+      .where('l.ticket_id', 'in', ids)
       .execute();
     const requirementsByAction = new Map<string, RequirementRefDto[]>();
-    for (const { action_id, ...requirement } of requirementLinks) {
-      requirementsByAction.set(action_id, [...(requirementsByAction.get(action_id) ?? []), requirement]);
+    for (const { ticket_id, ...requirement } of requirementLinks) {
+      requirementsByAction.set(ticket_id, [...(requirementsByAction.get(ticket_id) ?? []), requirement]);
     }
     const needLinks = await tx
-      .selectFrom('action_need as l')
+      .selectFrom('ticket_need as l')
       .innerJoin('need as n', 'n.id', 'l.need_id')
-      .select(['l.action_id', 'n.id', 'n.reference', 'n.title'])
-      .where('l.action_id', 'in', ids)
+      .select(['l.ticket_id', 'n.id', 'n.reference', 'n.title'])
+      .where('l.ticket_id', 'in', ids)
       .execute();
     const needsByAction = new Map<string, NeedRefDto[]>();
-    for (const { action_id, ...need } of needLinks) {
-      needsByAction.set(action_id, [...(needsByAction.get(action_id) ?? []), need]);
+    for (const { ticket_id, ...need } of needLinks) {
+      needsByAction.set(ticket_id, [...(needsByAction.get(ticket_id) ?? []), need]);
     }
     const links = await tx
       .selectFrom('action_stakeholder as l')
       .innerJoin('stakeholder as s', 's.id', 'l.stakeholder_id')
-      .select(['l.action_id', 's.id', 's.name'])
-      .where('l.action_id', 'in', ids)
+      .select(['l.ticket_id', 's.id', 's.name'])
+      .where('l.ticket_id', 'in', ids)
       .execute();
     const byAction = new Map<string, StakeholderRefDto[]>();
-    for (const { action_id, id, name } of links) {
-      byAction.set(action_id, [...(byAction.get(action_id) ?? []), { id, name }]);
+    for (const { ticket_id, id, name } of links) {
+      byAction.set(ticket_id, [...(byAction.get(ticket_id) ?? []), { id, name }]);
     }
     return rows.map((r) =>
       toDto(
@@ -280,7 +303,12 @@ export class ActionsService {
     return this.database.asUser(userId, async (tx) => {
       await this.loadAction(tx, userId, initiativeId, actionId);
       try {
-        await tx.deleteFrom('action').where('id', '=', actionId).where('initiative_id', '=', initiativeId).execute();
+        await tx
+          .deleteFrom('ticket')
+          .where('id', '=', actionId)
+          .where('initiative_id', '=', initiativeId)
+          .where('type', '=', 'action')
+          .execute();
       } catch (error) {
         if (isForeignKeyViolation(error)) throw actionRefusal('linked');
         throw error;
@@ -310,9 +338,10 @@ export class ActionsService {
     return dto!;
   }
 
+  /** Les Actions, seules concernées par « Mes actions », le tableau de bord, les alertes et les suggestions. */
   private selectActions(tx: Tx, userId: string) {
     return tx
-      .selectFrom('action as a')
+      .selectFrom('ticket as a')
       .innerJoin('initiative as i', 'i.id', 'a.initiative_id')
       .innerJoin('initiative_member as mine', (join) =>
         join.onRef('mine.initiative_id', '=', 'a.initiative_id').on('mine.user_id', '=', userId),
@@ -331,6 +360,7 @@ export class ActionsService {
         'i.name as initiative_name',
         'i.archived_at as initiative_archived_at',
         'mine.role as my_role',
+        'a.reference',
         'a.title',
         'a.description',
         'a.task_id',
@@ -354,7 +384,8 @@ export class ActionsService {
         'a.updated_by',
         'uu.email as updated_by_email',
         'uu.display_name as updated_by_display_name',
-      ]);
+      ])
+      .where('a.type', '=', 'action');
   }
 }
 
@@ -378,6 +409,7 @@ function toDto(
       archived: r.initiative_archived_at != null,
       myRole: r.my_role,
     },
+    reference: r.reference,
     title: r.title,
     description: r.description,
     taskId: r.task_id,
@@ -407,9 +439,9 @@ async function write(run: () => Promise<unknown>): Promise<void> {
   try {
     await run();
   } catch (error) {
-    if (isConstraintViolation(error, 'action_assignee_eligible')) throw actionRefusal('assigneeNotEligible');
+    if (isConstraintViolation(error, 'ticket_assignee_eligible')) throw actionRefusal('assigneeNotEligible');
     // Tâche ou technique absente du référentiel.
-    if (isConstraintViolation(error, 'action_task_id_fkey') || isConstraintViolation(error, 'action_technique_id_fkey')) {
+    if (isConstraintViolation(error, 'ticket_task_id_fkey') || isConstraintViolation(error, 'ticket_technique_id_fkey')) {
       throw actionRefusal('unknownBabokElement');
     }
     throw error;

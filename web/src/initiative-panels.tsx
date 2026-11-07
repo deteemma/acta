@@ -19,18 +19,20 @@ import {
   type StakeholderDto,
   updateInitiativeSchema,
 } from '@app/shared';
-import { Archive, ArchiveRestore, LayoutDashboard, Plus, Trash2, Users } from 'lucide-react';
-import { type FormEvent, useEffect, useState } from 'react';
+import { Archive, ArchiveRestore, LayoutDashboard, Plus, Ticket, Trash2, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { ActionList } from './action-panels';
 import { api, ApiError } from './api';
 import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { canEditNeeds, NeedList } from './need-panels';
-import { Panel, usePanels } from './panels';
+import { Panel, useCloseSilently, usePanels, useSettleUnsaved } from './panels';
 import { canEditRequirements, ExportRequirementsButton, RequirementList } from './requirement-panels';
 import { TextWithReferences } from './rich-text';
+import { useScreens } from './screens';
 import { TeamSection } from './team-section';
+import { useUnsavedForm } from './unsaved-changes';
 
 /** Date AAAA-MM-JJ ou horodatage, affiché dans la langue de l'interface. */
 export function formatDate(locale: Locale, date: string): string {
@@ -66,6 +68,8 @@ export function InitiativePanel({
 }) {
   const { t, locale } = useI18n();
   const { open } = usePanels();
+  const { goTo } = useScreens();
+  const closeSilently = useCloseSilently();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
@@ -165,6 +169,16 @@ export function InitiativePanel({
           <ActionList actions={sortByDueDate(actions)} babok={babok} />
           {actions.length === 0 && <p>{t('actions.sectionEmpty')}</p>}
           <div className="section-header">
+            {/* Tous types confondus : l'Action est le seul type jusqu'au ticket 18. */}
+            <h4>
+              {t('tickets.title')} <span className="count">{actions.length}</span>
+            </h4>
+            <button type="button" onClick={() => goTo({ kind: 'tickets', initiativeId })}>
+              <Ticket />
+              {t('tickets.open')}
+            </button>
+          </div>
+          <div className="section-header">
             <h4>
               <span title={englishTermTooltip(locale, 'stakeholders.section')}>{t('stakeholders.section')}</span>{' '}
               <span className="count">{stakeholders.length}</span>
@@ -226,7 +240,7 @@ export function InitiativePanel({
             onLeft={() => {
               // L'initiative quitte la liste, comme une suppression.
               onDeleted(initiative.id);
-              onClose();
+              closeSilently();
             }}
           />
           {can(initiative.myRole, 'archive', state) && (
@@ -235,7 +249,7 @@ export function InitiativePanel({
               onChanged={changed}
               onDeleted={() => {
                 onDeleted(initiative.id);
-                onClose();
+                closeSilently();
               }}
             />
           )}
@@ -286,9 +300,9 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
   const [plannedEndDate, setPlannedEndDate] = useState(initiative.plannedEndDate ?? '');
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
+  const submit = useUnsavedForm({ code, name, description, approach, startDate, plannedEndDate }, save);
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save(): Promise<boolean> {
     setSaved(false);
     // Même schéma de validation que l'API (@app/shared).
     const parsed = updateInitiativeSchema.safeParse({
@@ -302,21 +316,23 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
     if (!parsed.success) {
       const codeIssue = parsed.error.issues.some((issue) => issue.path[0] === 'code');
       setError({ key: codeIssue ? 'initiatives.invalid' : 'initiative.invalid' });
-      return;
+      return false;
     }
     try {
       onSaved(await api.updateInitiative(initiative.id, parsed.data));
       setError(null);
       setSaved(true);
+      return true;
     } catch (e) {
       setError(e instanceof ApiError && e.status === 400 ? { key: 'initiative.invalid' } : toUiError(e));
+      return false;
     }
   }
 
   const edited = () => setSaved(false);
 
   return (
-    <form className="stacked" onSubmit={(e) => void save(e)} onChange={edited}>
+    <form className="stacked" onSubmit={submit} onChange={edited}>
       <div className="code-name">
         <label>
           {t('initiative.code')}
@@ -389,6 +405,7 @@ function OwnerActions({
   onDeleted: () => void;
 }) {
   const { t } = useI18n();
+  const settleUnsaved = useSettleUnsaved();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
 
@@ -402,13 +419,15 @@ function OwnerActions({
   }
 
   const toggleArchive = () =>
-    run(async () =>
+    run(async () => {
+      // La fiche va passer en lecture seule : sa saisie ne doit pas se perdre (décision 12, point 9).
+      if (!initiative.archivedAt && !(await settleUnsaved())) return;
       onChanged(
         await (initiative.archivedAt
           ? api.unarchiveInitiative(initiative.id)
           : api.archiveInitiative(initiative.id)),
-      ),
-    );
+      );
+    });
 
   return (
     <section className="owner-actions">
@@ -452,7 +471,7 @@ function OwnerActions({
 export function MemberPanel({ member, onClose }: { member: InitiativeMemberDto; onClose: () => void }) {
   const { t } = useI18n();
   return (
-    <Panel title={memberName(member)} onClose={onClose}>
+    <Panel title={memberName(member)} kicker={t('member.kicker')} onClose={onClose}>
       <dl>
         <dt>{t('member.email')}</dt>
         <dd>{member.email ?? '—'}</dd>
@@ -474,31 +493,37 @@ export function CreateInitiativePanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { replace } = usePanels();
+  const closeSilently = useCloseSilently();
+  const { showInitiative } = useScreens();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<UiError | null>(null);
+  const submit = useUnsavedForm({ code, name }, create);
 
-  async function create(event: FormEvent) {
-    event.preventDefault();
+  async function create(): Promise<boolean> {
     // Même schéma de validation que l'API (@app/shared).
     const parsed = createInitiativeSchema.safeParse({ code, name });
     if (!parsed.success) {
       setError({ key: 'initiatives.invalid' });
-      return;
+      return false;
     }
     try {
       const initiative = await api.createInitiative(parsed.data);
       onCreated(initiative);
-      replace({ kind: 'initiative', initiativeId: initiative.id });
+      // Saisie enregistrée : pas d'alerte. Enregistrée depuis l'alerte, la sortie demandée
+      // se poursuit et l'écran ne suit pas la nouvelle initiative.
+      closeSilently();
+      showInitiative(initiative.id);
+      return true;
     } catch (e) {
       setError(toUiError(e));
+      return false;
     }
   }
 
   return (
     <Panel title={t('initiatives.new')} onClose={onClose}>
-      <form className="stacked" onSubmit={(e) => void create(e)}>
+      <form className="stacked" onSubmit={submit}>
         <label>
           {t('initiative.code')}
           <input

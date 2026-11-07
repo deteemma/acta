@@ -195,7 +195,7 @@ await check('lien vers une partie prenante d’une autre initiative refusé (cl�
 });
 await check('partie prenante et action liées : DELETE refusé (clé étrangère)', async () => {
   await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM stakeholder WHERE id = $1`, [sponsorId]), /foreign key/);
-  await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM action WHERE id = $1`, [shActionId]), /foreign key/);
+  await assert.rejects(asUserInDb(bruno.sub, `DELETE FROM ticket WHERE id = $1`, [shActionId]), /foreign key/);
 });
 await check('chloé quitte l’initiative : sa fiche reste reliée à son compte, signalée', async () => {
   assert.equal((await call(bruno, 'DELETE', `/initiatives/${otherShInitiativeId}/members/${chloe.sub}`)).status, 204);

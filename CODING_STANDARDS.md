@@ -16,6 +16,12 @@ et `pnpm test` n'est pas repris ici.
 - **Socle** : le module ne le connaît que par les variables de `.env`
   (ADR-0007). Aucun nom d'hôte, de realm ni de base du socle écrit en dur.
 
+- **Formulaire de saisie** (web et téléphone) : déclaré par `useUnsavedForm`
+  (`web/src/unsaved-changes.tsx`, `mobile/src/unsaved-changes.tsx`), avec tous ses
+  champs, pour que le quitter déclenche l'alerte de modification non enregistrée.
+  Une sortie passe par `usePanels()` : `close`, `open`, `replace`, ou `leaveAll`
+  pour un changement d'écran.
+
 ## Permissions (ADR-0006, double barrière)
 
 - Chaque route d'une ressource d'initiative porte son guard

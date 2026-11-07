@@ -21,9 +21,14 @@ export function ReferencesProvider({ version, children }: { version: number; chi
 
 /** Fiche d'un objet référencé. */
 export function referenceTarget(item: ReferenceDto): PanelContent {
-  return item.category === 'need'
-    ? { kind: 'need', initiativeId: item.initiativeId, needId: item.id }
-    : { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.id };
+  switch (item.category) {
+    case 'need':
+      return { kind: 'need', initiativeId: item.initiativeId, needId: item.id };
+    case 'requirement':
+      return { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.id };
+    case 'action':
+      return { kind: 'action', initiativeId: item.initiativeId, actionId: item.id };
+  }
 }
 
 /** Référence citée : lien vers sa fiche et aperçu au survol ou au focus ; texte seul si elle est inconnue. */

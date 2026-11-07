@@ -65,7 +65,7 @@ await check('bruno crée l’action depuis R1 : origine enregistrée, R1 dispara
 
 console.log('\nActions suggérées — barrière 2 : base de données (RLS, compte applicatif)');
 await check('l’origine d’une action ne change plus', async () => {
-  const r = await asUserInDb(bruno.sub, `UPDATE action SET suggestion_key = 'R2' WHERE id = $1 RETURNING suggestion_key`, [actionId]);
+  const r = await asUserInDb(bruno.sub, `UPDATE ticket SET suggestion_key = 'R2' WHERE id = $1 RETURNING suggestion_key`, [actionId]);
   assert.equal(r.rows[0].suggestion_key, 'R1');
 });
 await check('chloé (lectrice) lit les écarts mais n’en écrit ni n’en retire', async () => {

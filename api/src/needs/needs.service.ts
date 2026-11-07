@@ -30,8 +30,8 @@ export class NeedsService {
   }
 
   /**
-   * Palette et aperçu des références citées dans un texte : besoins et exigences
-   * de toutes les initiatives dont je suis membre (RLS).
+   * Palette et aperçu des références citées dans un texte : besoins, exigences et
+   * tickets de toutes les initiatives dont je suis membre (RLS).
    */
   listReferences(userId: string): Promise<ReferenceDto[]> {
     return this.database.asUser(userId, async (tx) => {
@@ -44,6 +44,11 @@ export class NeedsService {
         .selectFrom('requirement as r')
         .innerJoin('initiative as i', 'i.id', 'r.initiative_id')
         .select(['r.id', 'r.initiative_id', 'i.archived_at', 'r.reference', 'r.title', 'r.type', 'r.subtype', 'r.status'])
+        .execute();
+      const tickets = await tx
+        .selectFrom('ticket as t')
+        .innerJoin('initiative as i', 'i.id', 't.initiative_id')
+        .select(['t.id', 't.initiative_id', 'i.archived_at', 't.reference', 't.title'])
         .execute();
       return sortByReference([
         ...needs.map((r) => ({
@@ -63,6 +68,15 @@ export class NeedsService {
           reference: r.reference,
           title: r.title,
           requirement: { type: r.type, subtype: r.subtype, status: r.status },
+        })),
+        ...tickets.map((r) => ({
+          category: 'action' as const,
+          id: r.id,
+          initiativeId: r.initiative_id,
+          initiativeArchived: r.archived_at != null,
+          reference: r.reference,
+          title: r.title,
+          requirement: null,
         })),
       ]);
     });
