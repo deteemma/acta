@@ -13,7 +13,7 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 - **Entité partagée** : Initiative (`initiative`)
 - **Hors ligne sur mobile** : OUI — périmètre à définir
 - **Données présentes sur le téléphone** : _à définir_
-- **Phasage** : 1) BABOK v3 ; 2) tickets et pages (sur le modèle de Jira et Confluence, sans intégration ; connexion envisagée plus tard) ; 3) scénarios Gherkin. Extension Agile : module activable, après la phase 1.
+- **Phasage** : 1) BABOK v3 ; 2) tickets et pages (sur le modèle de Jira et Confluence, sans intégration ; connexion envisagée plus tard) ; 3) scénarios Gherkin. Extension Agile : module activable, après la phase 3.
 
 ## Glossaire
 
