@@ -302,6 +302,7 @@ export function StakeholderPanel({
   return (
     <Panel
       title={stakeholder ? stakeholder.name : stakeholderId ? t('common.loading') : t('stakeholders.new')}
+      kicker={stakeholder && <Term term="stakeholder.kicker" />}
       onClose={onClose}
     >
       <ErrorMessage error={error} />

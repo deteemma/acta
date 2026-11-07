@@ -257,7 +257,17 @@ export function ActionPanel({
   }, [initiativeId, requirementsVersion]);
 
   return (
-    <Panel title={action ? `${action.reference} · ${action.title}` : t('common.loading')} onClose={onClose}>
+    <Panel
+      title={action ? action.title : t('common.loading')}
+      kicker={
+        action && (
+          <>
+            {t('action.kicker')} <span className="code">{action.reference}</span>
+          </>
+        )
+      }
+      onClose={onClose}
+    >
       <ErrorMessage error={error} />
       {action && (
         <>

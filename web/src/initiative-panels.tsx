@@ -471,7 +471,7 @@ function OwnerActions({
 export function MemberPanel({ member, onClose }: { member: InitiativeMemberDto; onClose: () => void }) {
   const { t } = useI18n();
   return (
-    <Panel title={memberName(member)} onClose={onClose}>
+    <Panel title={memberName(member)} kicker={t('member.kicker')} onClose={onClose}>
       <dl>
         <dt>{t('member.email')}</dt>
         <dd>{member.email ?? '—'}</dd>
