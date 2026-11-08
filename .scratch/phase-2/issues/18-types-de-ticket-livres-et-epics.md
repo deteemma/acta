@@ -4,7 +4,7 @@
 
 **Blocked by:** 17 — Navigation et écran Tickets
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 08.11.2026)
 
 Règles : décisions [01](01-modele-commun-du-ticket.md), [03](03-types-de-ticket-et-statuts-parametrables.md) et [11](11-ecrans-des-tickets.md) (points 4 à 7).
 
@@ -19,7 +19,7 @@ Règles : décisions [01](01-modele-commun-du-ticket.md), [03](03-types-de-ticke
 
 ## Réalisation
 
-**À trancher par la responsable fonctionnelle : choix que les décisions 01, 03 et 11 ne fixent pas.** Ils sont réalisés ainsi en attendant, et faciles à changer :
+**Choix que les décisions 01, 03 et 11 ne fixent pas, validés avec le ticket le 08.11.2026 :**
 1. Regroupement et filtres : un Epic écarté par les filtres reste en en-tête tant qu'un de ses tickets est montré ; sinon il disparaît, donc avec le filtre par défaut (« ouverts ») un Epic fermé et vide n'apparaît pas. Un Epic ouvert et vide reste visible, pour pouvoir y ajouter un ticket.
 2. La progression d'un en-tête compte tous les tickets de l'Epic, sans tenir compte des filtres.
 3. Les Epics sont rangés par référence, quel que soit le tri choisi ; le tri s'applique aux tickets de chaque groupe.
@@ -27,7 +27,7 @@ Règles : décisions [01](01-modele-commun-du-ticket.md), [03](03-types-de-ticke
 5. Type présélectionné : Action dans « Nouveau ticket », Question dans la création rapide.
 6. Un ticket peut rejoindre un Epic fermé : aucune règle ne l'interdit.
 
-**Vérifié dans l'application** (Chrome, compte de test, 07.11.2026) : regroupement avec le tableau, avec et sans fiche ouverte, à 1700, 1100, 850 et 420 px de large. La vérification a révélé un défaut, corrigé : l'en-tête de groupe s'étendait sur les colonnes effacées et écrasait le titre ; il s'étend maintenant sur les colonnes visibles. Reste à faire vérifier par la responsable fonctionnelle, comme le demande le ticket.
+**Vérifié dans l'application** (Chrome, compte de test, 07.11.2026) : regroupement avec le tableau, avec et sans fiche ouverte, à 1700, 1100, 850 et 420 px de large. La vérification a révélé un défaut, corrigé : l'en-tête de groupe s'étendait sur les colonnes effacées et écrasait le titre ; il s'étend maintenant sur les colonnes visibles. Vérifié ensuite par la responsable fonctionnelle, qui a validé le ticket le 08.11.2026.
 
 **Limites connues.**
 - Fiche d'une Action : besoins et exigences liés restent dans le formulaire, avant la description, et non après les auteurs et dates comme le veut le point 5. Le ticket 19 (Liens) les déplace.
