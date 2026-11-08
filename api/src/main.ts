@@ -9,7 +9,9 @@ import { SpaFallbackFilter } from './spa-fallback.filter.js';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ trustProxy: true }),
+    // Une page de 200 000 caractères (PAGE_TEXT_MAX_LENGTH), avec sa mise en forme
+    // en JSON, dépasse le 1 Mo par défaut de Fastify.
+    new FastifyAdapter({ trustProxy: true, bodyLimit: 8 * 1024 * 1024 }),
   );
   const config = app.get(AppConfig);
 

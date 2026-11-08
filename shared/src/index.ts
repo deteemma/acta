@@ -6,6 +6,7 @@ export * from './dashboard.js';
 export * from './design-tokens.js';
 export * from './i18n.js';
 export * from './needs.js';
+export * from './pages.js';
 export * from './references.js';
 export * from './requirement-statuses.js';
 export * from './requirements-export.js';

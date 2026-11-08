@@ -22,6 +22,7 @@ const SECTIONS = [
   '12-statuts-d-exigence',
   '13-ticket-et-historique',
   '14-types-de-ticket-et-epics',
+  '15-pages',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);
@@ -37,8 +38,13 @@ const { alInitiativeId } = run['11-alertes'];
 const { stInitiativeId } = run['12-statuts-d-exigence'];
 const { tkInitiativeId } = run['13-ticket-et-historique'];
 const { ttInitiativeId, ttOtherInitiativeId } = run['14-types-de-ticket-et-epics'];
+const { pgInitiativeId, pgOtherInitiativeId } = run['15-pages'];
 
 console.log('\nNettoyage');
+await check('alice supprime les initiatives des pages, avec toute leur arborescence : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${pgOtherInitiativeId}`)).status, 204);
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${pgInitiativeId}`)).status, 204);
+});
 await check('alice supprime les initiatives des types de ticket, avec leurs Epics et leurs tickets : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${ttOtherInitiativeId}`)).status, 204);
   assert.equal((await call(alice, 'DELETE', `/initiatives/${ttInitiativeId}`)).status, 204);

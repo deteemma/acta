@@ -59,3 +59,7 @@ test('les références sont rangées par code, acronyme puis numéro', () => {
     ['ADM-BE-002', 'CRM-BE-999', 'CRM-BE-1000', 'CRM-EX-001'],
   );
 });
+
+test('la page a sa catégorie de référence, PA par défaut', () => {
+  assert.equal(DEFAULT_ACRONYMS.page, 'PA');
+});

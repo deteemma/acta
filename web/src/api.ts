@@ -2,6 +2,11 @@ import type {
   AccountDto,
   ActionDto,
   CreateTicketInput,
+  CreatePageInput,
+  MovePageInput,
+  PageDto,
+  PageRow,
+  UpdatePageInput,
   TicketDto,
   TicketRow,
   TicketVersionDto,
@@ -101,6 +106,16 @@ export const api = {
   listOwnerDesignations: (id: string) => request<OwnerDesignationDto[]>(`/initiatives/${id}/owner-designations`),
   // Actions (ticket 07).
   listMyActions: () => request<ActionDto[]>('/actions/mine'),
+  // Pages (ticket 22).
+  listPages: (id: string) => request<PageRow[]>(`/initiatives/${id}/pages`),
+  getPage: (id: string, pageId: string) => request<PageDto>(`/initiatives/${id}/pages/${pageId}`),
+  createPage: (id: string, input: CreatePageInput) =>
+    request<PageDto>(`/initiatives/${id}/pages`, { method: 'POST', body: JSON.stringify(input) }),
+  updatePage: (id: string, pageId: string, input: UpdatePageInput) =>
+    request<PageDto>(`/initiatives/${id}/pages/${pageId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  movePage: (id: string, pageId: string, input: MovePageInput) =>
+    request<PageRow[]>(`/initiatives/${id}/pages/${pageId}/placement`, { method: 'PUT', body: JSON.stringify(input) }),
+  deletePage: (id: string, pageId: string) => request<void>(`/initiatives/${id}/pages/${pageId}`, { method: 'DELETE' }),
   listTickets: (id: string) => request<TicketRow[]>(`/initiatives/${id}/tickets`),
   getTicket: (id: string, ticketId: string) => request<TicketDto>(`/initiatives/${id}/tickets/${ticketId}`),
   ticketHistory: (id: string, ticketId: string) =>

@@ -86,3 +86,11 @@ test('propriétaire et contributeurs écartent une suggestion ; lecteurs non ; a
   assert.equal(can('reader', 'dismissSuggestedActions'), false);
   assert.equal(can('contributor', 'dismissSuggestedActions', { archived: true }), false);
 });
+
+test('pages : propriétaire et contributeur écrivent ; lecteur et initiative archivée : lecture seule', () => {
+  assert.equal(can('owner', 'editPages'), true);
+  assert.equal(can('contributor', 'editPages'), true);
+  assert.equal(can('reader', 'editPages'), false);
+  assert.equal(can('owner', 'editPages', { archived: true }), false);
+  assert.equal(can('reader', 'view', { archived: true }), true);
+});

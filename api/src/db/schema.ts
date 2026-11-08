@@ -5,6 +5,7 @@ import type {
   InitiativeRole,
   Locale,
   NeedNature,
+  PageDoc,
   ReferenceCategory,
   RequirementSnapshot,
   RequirementStatus,
@@ -96,6 +97,22 @@ export interface TicketTable {
   impact: Optional<RiskLevel>;
   /** Suggestion d'où l'action est créée (migration 0015) ; fixée à la création. */
   suggestion_key: Optional<string>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  updated_by: ColumnType<string, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+/** Page (migration 0020) : référence, auteurs et dates écrits par un déclencheur. */
+export interface PageTable {
+  id: string;
+  initiative_id: string;
+  reference: ColumnType<string, never, never>;
+  title: string;
+  /** JSON de Tiptap (ADR-0019), validé par pageContentSchema. */
+  content: ColumnType<PageDoc | null, string | null, string | null>;
+  parent_id: Optional<string>;
+  position: number;
   created_by: ColumnType<string, never, never>;
   created_at: ColumnType<Date, never, never>;
   updated_by: ColumnType<string, never, never>;
@@ -288,6 +305,7 @@ export interface Database {
   need: NeedTable;
   need_stakeholder: NeedStakeholderTable;
   owner_designation: OwnerDesignationTable;
+  page: PageTable;
   reference_acronym: ReferenceAcronymTable;
   reference_category: ReferenceCategoryTable;
   requirement: RequirementTable;

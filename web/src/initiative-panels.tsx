@@ -19,7 +19,7 @@ import {
   type StakeholderDto,
   updateInitiativeSchema,
 } from '@app/shared';
-import { Archive, ArchiveRestore, LayoutDashboard, Plus, Ticket, Trash2, Users } from 'lucide-react';
+import { Archive, ArchiveRestore, FileText, LayoutDashboard, Plus, Ticket, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionList } from './action-panels';
 import { api, ApiError } from './api';
@@ -48,6 +48,7 @@ export function InitiativePanel({
   stakeholdersVersion,
   needsVersion,
   requirementsVersion,
+  pagesVersion,
   onChanged,
   onDeleted,
   onClose,
@@ -62,6 +63,8 @@ export function InitiativePanel({
   needsVersion: number;
   /** Change à chaque écriture sur une exigence. */
   requirementsVersion: number;
+  /** Change à chaque écriture sur une page. */
+  pagesVersion: number;
   onChanged: (initiative: InitiativeDto) => void;
   onDeleted: (initiativeId: string) => void;
   onClose: () => void;
@@ -74,6 +77,7 @@ export function InitiativePanel({
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
   const [ticketCount, setTicketCount] = useState(0);
+  const [pageCount, setPageCount] = useState(0);
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[]>([]);
   const [needs, setNeeds] = useState<NeedDto[]>([]);
@@ -101,6 +105,10 @@ export function InitiativePanel({
     api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
     api.listTickets(initiativeId).then((rows) => setTicketCount(rows.length), (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, actionsVersion]);
+
+  useEffect(() => {
+    api.listPages(initiativeId).then((rows) => setPageCount(rows.length), (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, pagesVersion]);
 
   useEffect(() => {
     api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
@@ -175,9 +183,18 @@ export function InitiativePanel({
             <h4>
               {t('tickets.title')} <span className="count">{ticketCount}</span>
             </h4>
-            <button type="button" onClick={() => goTo({ kind: 'tickets', initiativeId })}>
+            <button type="button" onClick={() => void goTo({ kind: 'tickets', initiativeId })}>
               <Ticket />
               {t('tickets.open')}
+            </button>
+          </div>
+          <div className="section-header">
+            <h4>
+              {t('pages.title')} <span className="count">{pageCount}</span>
+            </h4>
+            <button type="button" onClick={() => void goTo({ kind: 'pages', initiativeId, pageId: null })}>
+              <FileText />
+              {t('pages.open')}
             </button>
           </div>
           <div className="section-header">

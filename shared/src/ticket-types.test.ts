@@ -48,7 +48,7 @@ test('six types livrés, chacun avec son acronyme de référence (décision 01, 
     TICKET_TYPES.map((type) => DEFAULT_ACRONYMS[type]),
     ['AC', 'QU', 'DE', 'RI', 'DC', 'EP'],
   );
-  assert.deepEqual([...REFERENCE_CATEGORIES], ['need', 'requirement', ...TICKET_TYPES]);
+  assert.deepEqual([...REFERENCE_CATEGORIES], ['need', 'requirement', ...TICKET_TYPES, 'page']);
 });
 
 // Listes de la décision 03, point 2, écrites ici à la main.

@@ -1,6 +1,6 @@
-import { type AnalysisObjectRef, type BabokDto, findBabokElement, type InitiativeDto, type MeDto } from '@app/shared';
+import { type AnalysisObjectRef, type BabokDto, findBabokElement, type InitiativeDto, type MeDto, screenInitiativeId } from '@app/shared';
 import type { User } from 'oidc-client-ts';
-import { Archive, BookOpen, ListChecks, LogOut, PanelLeft, Plus, Search, Settings2, Ticket } from 'lucide-react';
+import { Archive, BookOpen, FileText, ListChecks, LogOut, PanelLeft, Plus, Search, Settings2, Ticket } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
@@ -17,7 +17,8 @@ import { MyActions } from './my-actions';
 import { NeedPanel } from './need-panels';
 import { StakeholderPanel, StakeholdersPanel } from './stakeholder-panels';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
-import { FabContext, PanelHost, type PanelContent, PanelsProvider, usePanels } from './panels';
+import { PagesScreen } from './pages-screen';
+import { FabContext, PanelHost, type PanelContent, PanelsProvider, ScreenForms, usePanels } from './panels';
 import { ReferencesProvider } from './references';
 import { RequirementPanel } from './requirement-panels';
 import { ResizeHandle, SIDEBAR } from './resize';
@@ -102,7 +103,7 @@ function SignedIn({ user }: { user: User }) {
 /** Coque de navigation : « Mes actions », initiatives, palette (Ctrl+K), bouton « + Action » et panneaux. */
 function Shell({ user }: { user: User }) {
   const { t } = useI18n();
-  const { stack, open, leaveAll } = usePanels();
+  const { stack, open, leaveScreen } = usePanels();
   const { screen, goTo, initiativeGone } = useScreens();
   const [initiatives, setInitiatives] = useState<InitiativeDto[]>([]);
   const [me, setMe] = useState<MeDto | null>(null);
@@ -120,6 +121,9 @@ function Shell({ user }: { user: User }) {
   // De même pour les exigences.
   const [requirementsVersion, setRequirementsVersion] = useState(0);
   const requirementsChanged = () => setRequirementsVersion((v) => v + 1);
+  // De même pour les pages (ticket 22).
+  const [pagesVersion, setPagesVersion] = useState(0);
+  const pagesChanged = () => setPagesVersion((v) => v + 1);
   // De même pour la fiche d'une initiative (approche, date de fin prévue : ticket 14).
   const [initiativeVersion, setInitiativeVersion] = useState(0);
   usePaletteShortcut();
@@ -139,19 +143,19 @@ function Shell({ user }: { user: User }) {
 
   const active = initiatives.filter((i) => !i.archivedAt);
   const archived = initiatives.filter((i) => i.archivedAt);
-  const ticketsInitiativeId = screen.kind === 'tickets' ? screen.initiativeId : null;
+  const screenInitiative = screenInitiativeId(screen);
   // Une seule initiative dépliée à la fois : celle de la fiche ouverte, sinon celle
-  // de l'écran Tickets ; elle le reste une fois la fiche refermée (décision 13).
+  // de l'écran Tickets ou Pages ; elle le reste une fois la fiche refermée (décision 13).
   const shownInitiativeId =
-    stack.map((e) => e.content).findLast((content) => content.kind === 'initiative')?.initiativeId ?? ticketsInitiativeId;
+    stack.map((e) => e.content).findLast((content) => content.kind === 'initiative')?.initiativeId ?? screenInitiative;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   if (shownInitiativeId && shownInitiativeId !== expandedId) setExpandedId(shownInitiativeId);
   // Panneau le plus haut qui montre une initiative ou l'un de ses objets : la
   // création rapide propose cette initiative, et part de cet objet (ticket 13) ;
-  // sans panneau, celle de l'écran Tickets.
+  // sans panneau, celle de l'écran Tickets ou Pages.
   const fabOrigin =
     stack.map((e) => actionOrigin(e.content)).findLast((origin) => origin !== undefined) ??
-    (ticketsInitiativeId ? { initiativeId: ticketsInitiativeId } : undefined);
+    (screenInitiative ? { initiativeId: screenInitiative } : undefined);
   const fab = (
     <button
       type="button"
@@ -167,8 +171,8 @@ function Shell({ user }: { user: User }) {
   );
 
   return (
-    // Les références citées dans un texte suivent les besoins, exigences et tickets créés, modifiés ou supprimés.
-    <ReferencesProvider version={needsVersion + requirementsVersion + actionsVersion}>
+    // Les références citées dans un texte suivent les besoins, exigences, tickets et pages créés, modifiés ou supprimés.
+    <ReferencesProvider version={needsVersion + requirementsVersion + actionsVersion + pagesVersion}>
       <FabContext.Provider value={fab}>
         <div className="shell">
           {/* Barre latérale (refonte du design, ticket 03) : repliable, le choix est retenu sur ce navigateur. */}
@@ -180,7 +184,7 @@ function Shell({ user }: { user: User }) {
                 type="button"
                 className="nav-item"
                 aria-current={screen.kind === 'myActions' ? 'page' : undefined}
-                onClick={() => goTo({ kind: 'myActions' })}
+                onClick={() => void goTo({ kind: 'myActions' })}
               >
                 <ListChecks />
                 {t('actions.title')}
@@ -247,7 +251,7 @@ function Shell({ user }: { user: User }) {
                 <AlertsButton alerts={alerts} />
                 <small>{user.profile.name ?? user.profile.preferred_username}</small>
                 <LanguageSelector />
-                <button type="button" className="ghost" onClick={() => void leaveAll().then((left) => (left ? logout() : undefined))}>
+                <button type="button" className="ghost" onClick={() => void leaveScreen().then((left) => (left ? logout() : undefined))}>
                   <LogOut />
                   {t('auth.logout')}
                 </button>
@@ -255,7 +259,19 @@ function Shell({ user }: { user: User }) {
             </header>
             <main className="page">
               <ErrorMessage error={error} />
-              {screen.kind === 'tickets' ? (
+              {screen.kind === 'pages' ? (
+                // La page en écriture est gardée par l'alerte comme un panneau.
+                <ScreenForms>
+                  <PagesScreen
+                    key={screen.initiativeId}
+                    initiativeId={screen.initiativeId}
+                    pageId={screen.pageId}
+                    initiative={initiatives.find((i) => i.id === screen.initiativeId)}
+                    version={pagesVersion}
+                    onChanged={pagesChanged}
+                  />
+                </ScreenForms>
+              ) : screen.kind === 'tickets' ? (
                 <TicketsScreen
                   key={screen.initiativeId}
                   initiativeId={screen.initiativeId}
@@ -292,6 +308,7 @@ function Shell({ user }: { user: User }) {
                     stakeholdersVersion={stakeholdersVersion}
                     needsVersion={needsVersion}
                     requirementsVersion={requirementsVersion}
+                    pagesVersion={pagesVersion}
                     onChanged={(changed) => {
                       setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)));
                       setInitiativeVersion((v) => v + 1);
@@ -478,15 +495,26 @@ function InitiativeList({ initiatives, expandedId }: { initiatives: InitiativeDt
             </span>
           </button>
           {i.id === expandedId && (
-            <button
-              type="button"
-              className="nav-item nav-sub"
-              aria-current={screen.kind === 'tickets' && screen.initiativeId === i.id ? 'page' : undefined}
-              onClick={() => goTo({ kind: 'tickets', initiativeId: i.id })}
-            >
-              <Ticket />
-              {t('tickets.title')}
-            </button>
+            <>
+              <button
+                type="button"
+                className="nav-item nav-sub"
+                aria-current={screen.kind === 'tickets' && screen.initiativeId === i.id ? 'page' : undefined}
+                onClick={() => void goTo({ kind: 'tickets', initiativeId: i.id })}
+              >
+                <Ticket />
+                {t('tickets.title')}
+              </button>
+              <button
+                type="button"
+                className="nav-item nav-sub"
+                aria-current={screen.kind === 'pages' && screen.initiativeId === i.id ? 'page' : undefined}
+                onClick={() => void goTo({ kind: 'pages', initiativeId: i.id, pageId: null })}
+              >
+                <FileText />
+                {t('pages.title')}
+              </button>
+            </>
           )}
         </li>
       ))}

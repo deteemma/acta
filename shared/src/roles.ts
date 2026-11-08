@@ -40,6 +40,8 @@ export const INITIATIVE_PERMISSIONS = {
   editRequirements: 'contributor',
   /** Écarter une suggestion de l'encart « Actions suggérées », pour toute l'équipe (ticket 14). */
   dismissSuggestedActions: 'contributor',
+  /** Créer, modifier, déplacer, réordonner et supprimer une page (phase 2, ticket 22). */
+  editPages: 'contributor',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;
