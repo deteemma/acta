@@ -3,6 +3,7 @@ import type { ColumnType, Generated } from 'kysely';
 import type {
   AnalysisApproach,
   InitiativeRole,
+  LinkKind,
   Locale,
   NeedNature,
   PageDoc,
@@ -230,6 +231,14 @@ export interface TicketNeedTable {
   need_id: string;
 }
 
+/** Lien entre deux tickets (migration 0022) : la source « bloque » ou « duplique » la cible. */
+export interface TicketLinkTable {
+  initiative_id: string;
+  source_id: string;
+  target_id: string;
+  kind: LinkKind;
+}
+
 /** Exigence (migration 0013) : référence, auteurs et dates écrits par un déclencheur. */
 export interface RequirementTable {
   id: string;
@@ -338,6 +347,7 @@ export interface Database {
   suggestion_dismissal: SuggestionDismissalTable;
   question_stakeholder: QuestionStakeholderTable;
   ticket: TicketTable;
+  ticket_link: TicketLinkTable;
   ticket_need: TicketNeedTable;
   ticket_requirement: TicketRequirementTable;
   ticket_version: TicketVersionTable;

@@ -20,8 +20,6 @@ import {
   findBabokElement,
   type InitiativeDto,
   type InitiativeMemberDto,
-  type NeedDto,
-  type RequirementDto,
   type StakeholderDto,
   type ActionOrigin,
   analysisObjectLinks,
@@ -43,11 +41,10 @@ import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
-import { NeedLink } from './need-panels';
-import { RequirementLink } from './requirement-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
+import { TicketLinks } from './link-panels';
 import { EpicLink, EpicSelect, TicketAudit, TicketHistory } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -203,21 +200,18 @@ export function ActionPanel({
   babok,
   initiativeId,
   actionId,
+  ticketsVersion,
   stakeholdersVersion,
-  needsVersion,
-  requirementsVersion,
   onChanged,
   onClose,
 }: {
   babok: BabokDto;
   initiativeId: string;
   actionId: string;
+  /** Change à chaque écriture sur un ticket ou un lien : les liens se rechargent. */
+  ticketsVersion: number;
   /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
   stakeholdersVersion: number;
-  /** De même pour les besoins. */
-  needsVersion: number;
-  /** De même pour les exigences. */
-  requirementsVersion: number;
   /** Une action a été modifiée ou supprimée : les listes se rechargent. */
   onChanged: () => void;
   onClose: () => void;
@@ -227,8 +221,6 @@ export function ActionPanel({
   const [action, setAction] = useState<ActionDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
-  const [needs, setNeeds] = useState<NeedDto[] | null>(null);
-  const [requirements, setRequirements] = useState<RequirementDto[] | null>(null);
   const [rows, setRows] = useState<TicketRow[] | null>(null);
   const [versions, setVersions] = useState<TicketVersionDto[]>([]);
   // Augmente à chaque enregistrement : l'historique se recharge.
@@ -252,14 +244,6 @@ export function ActionPanel({
     api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, stakeholdersVersion]);
 
-  useEffect(() => {
-    api.listNeeds(initiativeId).then(setNeeds, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, needsVersion]);
-
-  useEffect(() => {
-    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, requirementsVersion]);
-
   return (
     <Panel
       title={action ? action.title : t('common.loading')}
@@ -276,14 +260,12 @@ export function ActionPanel({
       {action && (
         <>
           {action.initiative.archived && <p className="notice">{t('initiative.archived')}</p>}
-          {canEditActions(action) && members && stakeholders && needs && requirements && rows ? (
+          {canEditActions(action) && members && stakeholders && rows ? (
             <ActionForm
               babok={babok}
               action={action}
               members={members}
               stakeholders={stakeholders}
-              needs={needs}
-              requirements={requirements}
               rows={rows}
               onSaved={(saved) => {
                 setAction(saved);
@@ -295,6 +277,13 @@ export function ActionPanel({
             <ActionDetails babok={babok} action={action} />
           )}
           <TicketAudit ticket={action} />
+          <TicketLinks
+            initiativeId={initiativeId}
+            ticketId={action.id}
+            canEdit={can(action.initiative.myRole, 'editLinks', { archived: action.initiative.archived })}
+            version={ticketsVersion}
+            onChanged={onChanged}
+          />
           <TicketHistory type="action" babok={babok} versions={versions} />
           {canEditActions(action) && (
             <DeleteAction
@@ -355,34 +344,6 @@ function ActionDetails({ babok, action }: { babok: BabokDto; action: ActionDto }
           </ul>
         )}
       </dd>
-      <dt>{t('action.needs')}</dt>
-      <dd>
-        {action.needs.length === 0 ? (
-          <small>{t('action.noNeeds')}</small>
-        ) : (
-          <ul className="links">
-            {action.needs.map((n) => (
-              <li key={n.id}>
-                <NeedLink initiativeId={action.initiative.id} need={n} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </dd>
-      <dt>{t('action.requirements')}</dt>
-      <dd>
-        {action.requirements.length === 0 ? (
-          <small>{t('action.noRequirements')}</small>
-        ) : (
-          <ul className="links">
-            {action.requirements.map((r) => (
-              <li key={r.id}>
-                <RequirementLink initiativeId={action.initiative.id} requirement={r} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </dd>
       <dt>{t('action.description')}</dt>
       <dd>{action.description ? <RichText source={action.description} /> : notSet}</dd>
     </dl>
@@ -394,8 +355,6 @@ function ActionForm({
   action,
   members,
   stakeholders,
-  needs,
-  requirements,
   rows,
   onSaved,
 }: {
@@ -404,10 +363,6 @@ function ActionForm({
   members: InitiativeMemberDto[];
   /** Parties prenantes de l'initiative, que l'on peut lier à l'action. */
   stakeholders: StakeholderDto[];
-  /** Besoins de l'initiative, par référence. */
-  needs: NeedDto[];
-  /** Exigences de l'initiative, par référence. */
-  requirements: RequirementDto[];
   /** Tickets de l'initiative, d'où viennent les Epics proposés. */
   rows: TicketRow[];
   onSaved: (action: ActionDto) => void;
@@ -422,23 +377,15 @@ function ActionForm({
   const [epicId, setEpicId] = useState(action.epic?.id ?? '');
   const [description, setDescription] = useState(action.description ?? '');
   const [stakeholderIds, setStakeholderIds] = useState<readonly string[]>(action.stakeholders.map((s) => s.id));
-  const [needIds, setNeedIds] = useState<readonly string[]>(action.needs.map((n) => n.id));
-  const [requirementIds, setRequirementIds] = useState<readonly string[]>(action.requirements.map((r) => r.id));
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
   const submit = useUnsavedForm(
-    { title, status, taskId, techniqueId, assigneeId, dueDate, epicId, description, stakeholderIds, needIds, requirementIds },
+    { title, status, taskId, techniqueId, assigneeId, dueDate, epicId, description, stakeholderIds },
     save,
   );
 
   const toggleStakeholder = (id: string) =>
     setStakeholderIds((current) => (current.includes(id) ? current.filter((s) => s !== id) : [...current, id]));
-
-  const toggleNeed = (id: string) =>
-    setNeedIds((current) => (current.includes(id) ? current.filter((n) => n !== id) : [...current, id]));
-
-  const toggleRequirement = (id: string) =>
-    setRequirementIds((current) => (current.includes(id) ? current.filter((r) => r !== id) : [...current, id]));
 
   const task = findBabokElement(babok, taskId);
   const technique = techniqueId ? findBabokElement(babok, techniqueId) : undefined;
@@ -459,8 +406,6 @@ function ActionForm({
       epicId: epicId || null,
       description,
       stakeholderIds,
-      needIds,
-      requirementIds,
     });
     if (!parsed.success) {
       setError({ key: 'action.invalid' });
@@ -534,30 +479,6 @@ function ActionForm({
           <label key={s.id} className="inline">
             <input type="checkbox" checked={stakeholderIds.includes(s.id)} onChange={() => toggleStakeholder(s.id)} />
             {s.name}
-          </label>
-        ))}
-      </fieldset>
-      <fieldset>
-        <legend>{t('action.needs')}</legend>
-        {needs.length === 0 && <small>{t('needs.sectionEmpty')}</small>}
-        {needs.map((n) => (
-          <label key={n.id} className="inline">
-            <input type="checkbox" checked={needIds.includes(n.id)} onChange={() => toggleNeed(n.id)} />
-            <strong>{n.reference}</strong> {n.title}
-          </label>
-        ))}
-      </fieldset>
-      <fieldset>
-        <legend>{t('action.requirements')}</legend>
-        {requirements.length === 0 && <small>{t('requirements.sectionEmpty')}</small>}
-        {requirements.map((r) => (
-          <label key={r.id} className="inline">
-            <input
-              type="checkbox"
-              checked={requirementIds.includes(r.id)}
-              onChange={() => toggleRequirement(r.id)}
-            />
-            <strong>{r.reference}</strong> {r.title}
           </label>
         ))}
       </fieldset>

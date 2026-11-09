@@ -42,6 +42,8 @@ export const INITIATIVE_PERMISSIONS = {
   dismissSuggestedActions: 'contributor',
   /** Créer, modifier, déplacer, réordonner et supprimer une page (phase 2, ticket 22). */
   editPages: 'contributor',
+  /** Créer et retirer un lien entre tickets, ou d'un ticket vers un besoin ou une exigence (phase 2, ticket 19). */
+  editLinks: 'contributor',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;

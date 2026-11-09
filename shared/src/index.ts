@@ -5,6 +5,7 @@ export * from './babok.js';
 export * from './dashboard.js';
 export * from './design-tokens.js';
 export * from './i18n.js';
+export * from './links.js';
 export * from './needs.js';
 export * from './pages.js';
 export * from './page-revisions.js';

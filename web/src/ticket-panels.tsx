@@ -39,6 +39,7 @@ import { formatDate } from './initiative-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
+import { TicketLinks } from './link-panels';
 import { EpicLink, EpicSelect, TicketAudit, TicketHistory, TicketStatusLabel, ticketTarget } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -121,6 +122,13 @@ export function TicketPanel({
           )}
           <TicketAudit ticket={ticket} />
           {!ticketHasField(ticket.type, 'epic') && rows && <EpicTickets epicId={ticket.id} initiativeId={initiativeId} rows={rows} />}
+          <TicketLinks
+            initiativeId={initiativeId}
+            ticketId={ticket.id}
+            canEdit={can(ticket.initiative.myRole, 'editLinks', { archived: ticket.initiative.archived })}
+            version={ticketsVersion}
+            onChanged={onChanged}
+          />
           <TicketHistory type={ticket.type} babok={null} versions={versions} />
           {canEditTicket(ticket) && (
             <DeleteTicket

@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ActionsController } from './actions/actions.controller.js';
 import { ActionsService } from './actions/actions.service.js';
+import { LinksController } from './links/links.controller.js';
+import { LinksService } from './links/links.service.js';
 import { TicketsController } from './tickets/tickets.controller.js';
 import { TicketsService } from './tickets/tickets.service.js';
 import { AdminController } from './admin/admin.controller.js';
@@ -40,6 +42,7 @@ import { UsersService } from './users/users.service.js';
 @Module({
   controllers: [
     ActionsController,
+    LinksController,
     TicketsController,
     AdminController,
     AdminRequirementStatusesController,
@@ -66,6 +69,7 @@ import { UsersService } from './users/users.service.js';
     AdminService,
     BabokService,
     ActionsService,
+    LinksService,
     TicketsService,
     StakeholdersService,
     NeedsService,

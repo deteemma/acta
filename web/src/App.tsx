@@ -109,7 +109,7 @@ function Shell({ user }: { user: User }) {
   const [me, setMe] = useState<MeDto | null>(null);
   const [babok, setBabok] = useState<BabokDto | null>(null);
   const [error, setError] = useState<UiError | null>(null);
-  // Incrémenté à chaque écriture sur un ticket, de tout type : les listes se rechargent.
+  // Incrémenté à chaque écriture sur un ticket, de tout type, ou sur un lien : les listes se rechargent.
   const [actionsVersion, setActionsVersion] = useState(0);
   const actionsChanged = () => setActionsVersion((v) => v + 1);
   // De même pour les parties prenantes.
@@ -365,9 +365,8 @@ function Shell({ user }: { user: User }) {
                       babok={babok}
                       initiativeId={content.initiativeId}
                       actionId={content.actionId}
+                      ticketsVersion={actionsVersion}
                       stakeholdersVersion={stakeholdersVersion}
-                      needsVersion={needsVersion}
-                      requirementsVersion={requirementsVersion}
                       onChanged={actionsChanged}
                       onClose={close}
                     />
@@ -420,26 +419,26 @@ function Shell({ user }: { user: User }) {
               case 'need':
                 return (
                   <NeedPanel
-                    babok={babok}
                     initiativeId={content.initiativeId}
                     needId={content.needId}
                     actionsVersion={actionsVersion}
                     stakeholdersVersion={stakeholdersVersion}
                     requirementsVersion={requirementsVersion}
                     onChanged={needsChanged}
+                    onLinksChanged={actionsChanged}
                     onClose={close}
                   />
                 );
               case 'requirement':
                 return (
                   <RequirementPanel
-                    babok={babok}
                     initiativeId={content.initiativeId}
                     requirementId={content.requirementId}
                     actionsVersion={actionsVersion}
                     stakeholdersVersion={stakeholdersVersion}
                     needsVersion={needsVersion}
                     onChanged={requirementsChanged}
+                    onLinksChanged={actionsChanged}
                     onClose={close}
                   />
                 );

@@ -133,8 +133,11 @@ export class ActionsService {
         await tx.deleteFrom('ticket_requirement').where('ticket_id', '=', actionId).execute();
         await this.linkRequirements(tx, initiativeId, actionId, requirementIds);
       }
-      // Changer les liens modifie l'action : sans autre colonne changée, on
-      // réécrit le statut pour que le déclencheur en enregistre auteur et date.
+      // Les liens avec les besoins et les exigences ne modifient pas l'action
+      // (décision 04, point 8) : sans autre changement, la ligne n'est pas touchée.
+      if (!fieldsChange && !stakeholdersChange) return this.loadAction(tx, userId, initiativeId, actionId);
+      // Changer les parties prenantes modifie l'action : sans autre colonne changée,
+      // on réécrit le statut pour que le déclencheur en enregistre auteur et date.
       await write(() =>
         tx
           .updateTable('ticket')

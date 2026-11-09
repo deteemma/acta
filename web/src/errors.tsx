@@ -2,6 +2,7 @@ import {
   type AdminRefusal,
   isActionRefusal,
   isAdminRefusal,
+  isLinkRefusal,
   isNeedRefusal,
   isPageRefusal,
   isPageRevisionRefusal,
@@ -25,6 +26,7 @@ export function toUiError(error: unknown): UiError {
     if (isTeamRefusal(error.refusal)) return teamRefusalError(error.refusal);
     if (isAdminRefusal(error.refusal)) return adminRefusalError(error.refusal);
     if (isActionRefusal(error.refusal)) return { key: `action.refusal.${error.refusal}` };
+    if (isLinkRefusal(error.refusal)) return { key: `link.refusal.${error.refusal}` };
     if (isTicketRefusal(error.refusal)) return { key: `ticket.refusal.${error.refusal}` };
     if (isStakeholderRefusal(error.refusal)) return { key: `stakeholder.refusal.${error.refusal}` };
     if (isNeedRefusal(error.refusal)) return { key: `need.refusal.${error.refusal}` };

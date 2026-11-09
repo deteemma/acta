@@ -120,7 +120,8 @@ await check('une action est liée à des besoins, à la création comme à la mo
   rbActionId = r.body.id;
   const p = await call(alice, 'PATCH', `${rbActions()}/${rbActionId}`, { needIds: [secondNeedId, needId] });
   assert.deepEqual(p.body.needs.map((n) => n.id), [needId, secondNeedId]);
-  assert.equal(p.body.updatedBy.userId, alice.sub);
+  // Un lien ne modifie pas l'action (décision 04, point 8).
+  assert.equal(p.body.updatedBy.userId, bruno.sub);
 });
 await check('besoin d’une autre initiative : 400 ; chloé (lectrice) ne lie pas : 403', async () => {
   const r = await call(bruno, 'PATCH', `${rbActions()}/${rbActionId}`, { needIds: [otherNeedId] });

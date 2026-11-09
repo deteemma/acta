@@ -3,8 +3,6 @@
 // (requirements.ts, requirement-statuses.ts, references.ts, roles.ts).
 import {
   memberName,
-  type ActionDto,
-  type BabokDto,
   can,
   createRequirementSchema,
   createsParentCycle,
@@ -29,13 +27,13 @@ import {
   type RequirementType,
   type RequirementVersionDto,
   selectableStatuses,
-  sortByDueDate,
   type StakeholderDto,
   subtypeForType,
 } from '@app/shared';
 import { Download } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
-import { ActionList, NewActionButton } from './action-panels';
+import { NewActionButton } from './action-panels';
+import { LinkedTickets } from './link-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
@@ -143,19 +141,18 @@ export function ExportRequirementsButton({
 
 /** Fiche d'une exigence ; sans `requirementId`, création. */
 export function RequirementPanel({
-  babok,
   initiativeId,
   requirementId,
   actionsVersion,
   stakeholdersVersion,
   needsVersion,
   onChanged,
+  onLinksChanged,
   onClose,
 }: {
-  babok: BabokDto | null;
   initiativeId: string;
   requirementId?: string;
-  /** Change à chaque écriture sur une action : les actions liées se rechargent. */
+  /** Change à chaque écriture sur un ticket ou un lien : les tickets liés se rechargent. */
   actionsVersion: number;
   /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
   stakeholdersVersion: number;
@@ -163,6 +160,8 @@ export function RequirementPanel({
   needsVersion: number;
   /** Une exigence a été créée, modifiée ou supprimée : les listes se rechargent. */
   onChanged: () => void;
+  /** Un lien avec un ticket a été créé ou retiré. */
+  onLinksChanged: () => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
@@ -174,7 +173,6 @@ export function RequirementPanel({
   const [needs, setNeeds] = useState<NeedDto[] | null>(null);
   // Toutes les exigences de l'initiative : choix de la parente, exigences enfants.
   const [requirements, setRequirements] = useState<RequirementDto[] | null>(null);
-  const [actions, setActions] = useState<ActionDto[]>([]);
   const [versions, setVersions] = useState<RequirementVersionDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
@@ -200,15 +198,9 @@ export function RequirementPanel({
 
   useEffect(() => {
     if (!requirementId) return;
-    api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, requirementId, actionsVersion]);
-
-  useEffect(() => {
-    if (!requirementId) return;
     api.requirementHistory(initiativeId, requirementId).then(setVersions, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, requirementId, requirement?.updatedAt]);
 
-  const linkedActions = sortByDueDate(actions.filter((a) => a.requirements.some((r) => r.id === requirementId)));
   const children = (requirements ?? []).filter((r) => r.parent?.id === requirementId);
   const ready = initiative && stakeholders && needs && requirements && (!requirementId || requirement);
 
@@ -264,14 +256,14 @@ export function RequirementPanel({
               </h4>
               <RequirementList requirements={children} />
               {children.length === 0 && <p>{t('requirement.noChildren')}</p>}
-              <div className="section-header">
-                <h4>
-                  {t('requirement.actions')} <span className="count">{linkedActions.length}</span>
-                </h4>
-                <NewActionButton initiative={initiative} from={{ kind: 'requirement', id: requirement.id }} />
-              </div>
-              <ActionList actions={linkedActions} babok={babok} />
-              {linkedActions.length === 0 && <p>{t('requirement.noActions')}</p>}
+              <LinkedTickets
+                initiativeId={initiativeId}
+                end={{ kind: 'requirement', id: requirement.id }}
+                canEdit={can(initiative.myRole, 'editLinks', { archived: initiative.archivedAt != null })}
+                version={actionsVersion}
+                onChanged={onLinksChanged}
+                actions={<NewActionButton initiative={initiative} from={{ kind: 'requirement', id: requirement.id }} />}
+              />
               <History versions={versions} />
               {canEditRequirements(initiative) && (
                 <DeleteRequirement

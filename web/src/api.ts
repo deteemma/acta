@@ -1,6 +1,10 @@
 import type {
   AccountDto,
   ActionDto,
+  CreateNeedLinkInput,
+  CreateRequirementLinkInput,
+  CreateTicketLinkInput,
+  InitiativeLinksDto,
   CreateTicketInput,
   CreatePageInput,
   DeclarePageVersionInput,
@@ -108,6 +112,20 @@ export const api = {
   removeMember: (id: string, userId: string) =>
     request<void>(`/initiatives/${id}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
   listOwnerDesignations: (id: string) => request<OwnerDesignationDto[]>(`/initiatives/${id}/owner-designations`),
+  // Liens (ticket 19) : ceux de toute l'initiative, que chaque fiche croise avec ses objets.
+  listLinks: (id: string) => request<InitiativeLinksDto>(`/initiatives/${id}/links`),
+  createTicketLink: (id: string, input: CreateTicketLinkInput) =>
+    request<InitiativeLinksDto>(`/initiatives/${id}/links/tickets`, { method: 'POST', body: JSON.stringify(input) }),
+  removeTicketLink: (id: string, ticketId: string, otherTicketId: string) =>
+    request<void>(`/initiatives/${id}/links/tickets/${ticketId}/${otherTicketId}`, { method: 'DELETE' }),
+  createNeedLink: (id: string, input: CreateNeedLinkInput) =>
+    request<InitiativeLinksDto>(`/initiatives/${id}/links/needs`, { method: 'POST', body: JSON.stringify(input) }),
+  removeNeedLink: (id: string, ticketId: string, needId: string) =>
+    request<void>(`/initiatives/${id}/links/needs/${ticketId}/${needId}`, { method: 'DELETE' }),
+  createRequirementLink: (id: string, input: CreateRequirementLinkInput) =>
+    request<InitiativeLinksDto>(`/initiatives/${id}/links/requirements`, { method: 'POST', body: JSON.stringify(input) }),
+  removeRequirementLink: (id: string, ticketId: string, requirementId: string) =>
+    request<void>(`/initiatives/${id}/links/requirements/${ticketId}/${requirementId}`, { method: 'DELETE' }),
   // Actions (ticket 07).
   listMyActions: () => request<ActionDto[]>('/actions/mine'),
   // Pages (ticket 22).
