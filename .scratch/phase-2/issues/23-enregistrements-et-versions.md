@@ -4,7 +4,7 @@
 
 **Blocked by:** 22 — Pages : arborescence et écriture
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 09.11.2026)
 
 Règles : décisions [07](07-modele-de-la-page.md) (points 4 et 5) et [08](08-editeur-de-page.md) (points 6 et 8).
 
@@ -47,7 +47,7 @@ Règles : décisions [07](07-modele-de-la-page.md) (points 4 et 5) et [08](08-ed
   - le contenu d'un enregistrement figé ;
   - les enregistrements emportés avec la page.
 - JSON de Tiptap : `web/src/page-content-tiptap-3.32.0.json` est figé ; c'est ce qu'écrit Tiptap 3.32.0 pour chaque élément de mise en forme admis. Le test `web/src/page-content-compat.test.ts` vérifie que l'éditeur actuel le relit sans rien perdre. Lancé par `pnpm --filter web test`, en CI et avant chaque commit. S'il échoue après une montée de version, les enregistrements doivent être migrés (ADR-0019) ; il ne faut pas régénérer le fichier. Les images y seront ajoutées avec le ticket 26.
-- **Pas encore vu à l'écran** : l'extension Chrome n'était pas disponible pendant cette session. Le parcours ci-dessous reste à essayer.
+- Ticket validé par la responsable fonctionnelle le 09.11.2026, avec les choix 1 à 10 tels que réalisés. L'essai à l'écran est le sien : l'extension Chrome n'était pas disponible pendant la session de réalisation.
 
 **Technique.**
 - La migration `0021` crée la table `page_revision`. Une version est un enregistrement qui porte un numéro, d'où une seule table (le glossaire nomme la notion `page_version`). Un déclencheur sur `page` écrit l'enregistrement ; un autre, sur `page_revision`, n'y laisse changer que le numéro de version, la note et la suppression.
