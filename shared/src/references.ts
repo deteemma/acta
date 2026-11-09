@@ -7,12 +7,22 @@ import type { RequirementSubtype, RequirementType } from './requirements.js';
 import { matchesEveryWord } from './search.js';
 
 /** Catégories d'objets qui portent une référence ; chacune a son acronyme. */
-export const REFERENCE_CATEGORIES = ['need', 'requirement', 'action'] as const;
+export const REFERENCE_CATEGORIES = ['need', 'requirement', 'action', 'question', 'decision', 'risk', 'change_request', 'epic', 'page'] as const;
 export type ReferenceCategory = (typeof REFERENCE_CATEGORIES)[number];
 export const referenceCategorySchema = z.enum(REFERENCE_CATEGORIES);
 
 /** Acronymes d'origine, paramétrables ensuite par l'administration. */
-export const DEFAULT_ACRONYMS: Record<ReferenceCategory, string> = { need: 'BE', requirement: 'EX', action: 'AC' };
+export const DEFAULT_ACRONYMS: Record<ReferenceCategory, string> = {
+  need: 'BE',
+  requirement: 'EX',
+  action: 'AC',
+  question: 'QU',
+  decision: 'DE',
+  risk: 'RI',
+  change_request: 'DC',
+  epic: 'EP',
+  page: 'PA',
+};
 
 /** Acronyme : 2 à 4 lettres majuscules. */
 export const ACRONYM_PATTERN = /^[A-Z]{2,4}$/;

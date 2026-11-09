@@ -49,7 +49,7 @@ export function myAlerts(
 ): Alert[] {
   const mine = actions.filter((a) => a.assignee.userId === me.id && isOpenAction(a) && !a.initiative.archived);
   const overdue = mine
-    .filter((a) => isOverdueTicket(a, today))
+    .filter((a) => isOverdueTicket({ ...a, type: 'action' }, today))
     .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!))
     .map((action) => ({ kind: 'overdue' as const, action }));
   const assigned = mine

@@ -17,4 +17,5 @@ step "build de shared" pnpm --filter @app/shared build
 step "lint et RLS" pnpm lint
 step "types" pnpm typecheck
 step "tests de shared" pnpm --filter @app/shared test
+step "tests du web" pnpm --filter web test
 rm -f "$log"

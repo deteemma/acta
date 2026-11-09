@@ -40,6 +40,22 @@ export const INITIATIVE_PERMISSIONS = {
   editRequirements: 'contributor',
   /** Écarter une suggestion de l'encart « Actions suggérées », pour toute l'équipe (ticket 14). */
   dismissSuggestedActions: 'contributor',
+  /** Créer, modifier, déplacer, réordonner et supprimer une page (phase 2, ticket 22). */
+  editPages: 'contributor',
+  /** Créer et retirer un lien entre tickets, ou d'un ticket vers un besoin ou une exigence (phase 2, ticket 19). */
+  editLinks: 'contributor',
+  /**
+   * Commenter, et modifier ou supprimer ses propres commentaires (phase 2, ticket 20) ;
+   * le détail est vérifié par canEditComment et canDeleteComment (comments.ts).
+   */
+  comment: 'contributor',
+  /** Supprimer le commentaire d'un autre membre (phase 2, ticket 20). */
+  deleteAnyComment: 'owner',
+  /**
+   * Ajouter, renommer et supprimer une pièce jointe, sur n'importe quel fichier du
+   * ticket (phase 2, ticket 21) ; tout membre l'ouvre et la télécharge (`view`).
+   */
+  editAttachments: 'contributor',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;

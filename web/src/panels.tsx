@@ -45,6 +45,10 @@ export type PanelContent =
    */
   | { kind: 'createAction'; initiativeId?: string; from?: AnalysisObjectRef }
   | { kind: 'action'; initiativeId: string; actionId: string }
+  /** Ticket d'un autre type que l'Action (ticket 18). */
+  | { kind: 'ticket'; initiativeId: string; ticketId: string }
+  /** « Nouveau ticket » ; avec `epicId`, ouvert depuis le « + Ticket » de cet Epic. */
+  | { kind: 'createTicket'; initiativeId: string; epicId?: string }
   | { kind: 'stakeholders'; initiativeId: string }
   /** Sans `stakeholderId`, création d'une partie prenante. */
   | { kind: 'stakeholder'; initiativeId: string; stakeholderId?: string }
@@ -70,9 +74,21 @@ interface Panels {
   replaceSaved: (content: PanelContent) => void;
   /** Ferme un panneau et ceux ouverts par-dessus ; gardé par l'alerte. */
   close: (id: number) => void;
-  /** Ferme tous les panneaux, avec l'alerte ; vrai si la sortie peut se poursuivre (déconnexion, changement d'écran). */
+  /** Ferme tous les panneaux, avec l'alerte ; vrai si la sortie peut se poursuivre. */
   leaveAll: () => Promise<boolean>;
+  /**
+   * Quitte l'écran en cours (changement d'écran, déconnexion) : ferme tous les
+   * panneaux, puis passe la saisie de l'écran lui-même (page en écriture) à l'alerte.
+   */
+  leaveScreen: () => Promise<boolean>;
+  /** Passe la seule saisie de l'écran à l'alerte, sans rien fermer ; vrai si elle est réglée. */
+  settleScreen: () => Promise<boolean>;
 }
+
+/** Formulaires de l'écran principal (page en écriture, ticket 22) : inscrits comme un panneau sous tous les autres. */
+const SCREEN_ID = 0;
+/** Titre de l'écran, repris en tête de l'alerte. */
+export const SCREEN_TITLE_ID = 'screen-title';
 
 const PanelsContext = createContext<Panels | null>(null);
 
@@ -89,13 +105,14 @@ export const useSettleUnsaved = () => useContext(SettleUnsavedContext);
 
 let nextId = 1;
 
-const panelTitleElement = (id: number) => document.getElementById(panelTitleId(id));
+const panelTitleElement = (id: number) => document.getElementById(id === SCREEN_ID ? SCREEN_TITLE_ID : panelTitleId(id));
 const panelTitleId = (id: number) => `panel-title-${id}`;
 
 /** Amène sous les yeux l'erreur du panneau, une fois affichée. */
 function scrollToError(id: number) {
   requestAnimationFrame(() => {
-    const errors = panelTitleElement(id)?.closest('dialog')?.querySelectorAll('.error') ?? [];
+    const scope = id === SCREEN_ID ? document.querySelector('main.page') : panelTitleElement(id)?.closest('dialog');
+    const errors = scope?.querySelectorAll('.error') ?? [];
     [...errors].find((error) => error.checkVisibility())?.scrollIntoView({ block: 'center' });
   });
 }
@@ -148,7 +165,7 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
    * l'alerte ; `onSettled` reçoit chacun une fois réglé. Vrai si la sortie se poursuit.
    */
   const leave = useCallback(
-    async (entries: Entry[], onSettled: (id: number) => void): Promise<boolean> => {
+    async (entries: Pick<Entry, 'id'>[], onSettled: (id: number) => void): Promise<boolean> => {
       leaving.current = true;
       const result = await leavePanels(
         entries.toReversed().map((entry) => ({ id: entry.id, forms: formsOf(entry.id) })),
@@ -184,7 +201,7 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
    * ignorée. Vrai si elle a eu lieu.
    */
   const guarded = useCallback(
-    async (entries: Entry[], proceed: () => void): Promise<boolean> => {
+    async (entries: Pick<Entry, 'id'>[], proceed: () => void): Promise<boolean> => {
       if (leaving.current) return false;
       const dirty = entries.some((e) => hasDirtyForm(formsOf(e.id)));
       if (dirty && !(await leave(entries, closeWithoutAlert))) return false;
@@ -251,6 +268,11 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
   );
 
   const leaveAll = useCallback(() => guarded(stackRef.current, () => update(() => [])), [guarded, update]);
+  const leaveScreen = useCallback(
+    () => guarded([{ id: SCREEN_ID }, ...stackRef.current], () => update(() => [])),
+    [guarded, update],
+  );
+  const settleScreen = useCallback(() => guarded([{ id: SCREEN_ID }], () => undefined), [guarded]);
 
   // Fermeture ou rechargement de l'onglet : seulement le message du navigateur.
   useEffect(() => {
@@ -263,8 +285,8 @@ export function PanelsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Panels>(
-    () => ({ stack, open, replace, replaceSaved, close, leaveAll }),
-    [stack, open, replace, replaceSaved, close, leaveAll],
+    () => ({ stack, open, replace, replaceSaved, close, leaveAll, leaveScreen, settleScreen }),
+    [stack, open, replace, replaceSaved, close, leaveAll, leaveScreen, settleScreen],
   );
   const registry = useMemo(
     () => ({ registerForm, closeWithoutAlert, settleUnsaved }),
@@ -292,6 +314,13 @@ export function usePanels(): Panels {
   const panels = useContext(PanelsContext);
   if (!panels) throw new Error('usePanels() hors de PanelsProvider');
   return panels;
+}
+
+/** Contenu de l'écran principal : ses formulaires sont gardés par leaveScreen et settleScreen. */
+export function ScreenForms({ children }: { children: ReactNode }) {
+  const registry = useContext(PanelRegistryContext)!;
+  const register = useCallback((form: GuardedForm) => registry.registerForm(SCREEN_ID, form), [registry]);
+  return <FormRegistryContext.Provider value={register}>{children}</FormRegistryContext.Provider>;
 }
 
 /** Affiche la pile de panneaux ; `render` donne le contenu de chacun. */

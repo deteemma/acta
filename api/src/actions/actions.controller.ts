@@ -1,9 +1,9 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import {
   type ActionDto,
-  type ActionVersionDto,
   createActionSchema,
   type CreateActionInput,
+  type TicketVersionDto,
   updateActionSchema,
   type UpdateActionInput,
 } from '@app/shared';
@@ -59,7 +59,7 @@ export class ActionsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
     @Param('actionId', ParseUUIDPipe) actionId: string,
-  ): Promise<ActionVersionDto[]> {
+  ): Promise<TicketVersionDto[]> {
     return this.actions.history(user.id, initiativeId, actionId);
   }
 

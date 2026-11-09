@@ -2,6 +2,14 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ActionsController } from './actions/actions.controller.js';
 import { ActionsService } from './actions/actions.service.js';
+import { AttachmentsController } from './attachments/attachments.controller.js';
+import { AttachmentsService } from './attachments/attachments.service.js';
+import { CommentsController } from './comments/comments.controller.js';
+import { CommentsService } from './comments/comments.service.js';
+import { LinksController } from './links/links.controller.js';
+import { LinksService } from './links/links.service.js';
+import { TicketsController } from './tickets/tickets.controller.js';
+import { TicketsService } from './tickets/tickets.service.js';
 import { AdminController } from './admin/admin.controller.js';
 import { AdminService } from './admin/admin.service.js';
 import { ReferenceCategoriesController } from './admin/reference-categories.controller.js';
@@ -19,6 +27,8 @@ import { InitiativeRoleGuard } from './initiatives/initiative-role.guard.js';
 import { InitiativesService } from './initiatives/initiatives.service.js';
 import { NeedsController } from './needs/needs.controller.js';
 import { NeedsService } from './needs/needs.service.js';
+import { PagesController } from './pages/pages.controller.js';
+import { PagesService } from './pages/pages.service.js';
 import {
   AdminRequirementStatusesController,
   RequirementStatusesController,
@@ -36,6 +46,10 @@ import { UsersService } from './users/users.service.js';
 @Module({
   controllers: [
     ActionsController,
+    LinksController,
+    CommentsController,
+    AttachmentsController,
+    TicketsController,
     AdminController,
     AdminRequirementStatusesController,
     BabokController,
@@ -43,6 +57,7 @@ import { UsersService } from './users/users.service.js';
     InitiativesController,
     MeController,
     NeedsController,
+    PagesController,
     ReferenceCategoriesController,
     RequirementStatusesController,
     RequirementsController,
@@ -60,8 +75,13 @@ import { UsersService } from './users/users.service.js';
     AdminService,
     BabokService,
     ActionsService,
+    LinksService,
+    CommentsService,
+    AttachmentsService,
+    TicketsService,
     StakeholdersService,
     NeedsService,
+    PagesService,
     ReferenceCategoriesService,
     RequirementStatusesService,
     RequirementsService,

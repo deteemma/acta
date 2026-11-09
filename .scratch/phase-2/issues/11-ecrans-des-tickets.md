@@ -10,7 +10,7 @@ Blocked by: 01, 03, 04
 
 ## Réponse
 
-Tranché avec la responsable fonctionnelle le 06.11.2026 : variante B du prototype, avec le regroupement par Epic de la variante C en option d'affichage. Prototype conservé sur la branche jetable `prototype/ecrans-des-tickets` (à ne jamais fusionner) : `pnpm dev:web`, puis `/prototype-tickets.html?variant=B`.
+Tranché avec la responsable fonctionnelle le 06.11.2026 : variante B du prototype, avec le regroupement par Epic de la variante C en option d'affichage. Prototype supprimé le 07.11.2026 à la demande de la responsable fonctionnelle.
 
 1. **Navigation** : dans la barre latérale, entrées « Tickets » et « Pages » sous l'initiative, avec un affichage en pleine page. ACTA n'avait jusqu'ici en pleine page que « Mes actions ». Cela vaut aussi pour le choix de pleine page du ticket « Éditeur de page ».
 2. **Liste** : tableau en pleine page, trié par échéance par défaut et triable sur chaque colonne. Colonnes : référence, type, titre, statut, responsable, échéance, Epic. Le responsable qui n'est plus membre et l'échéance dépassée sont signalés.

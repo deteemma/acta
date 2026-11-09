@@ -5,10 +5,7 @@ import {
   ACTION_DESCRIPTION_MAX_LENGTH,
   ACTION_STATUSES,
   ACTION_TITLE_MAX_LENGTH,
-  type ActionChange,
   type ActionDto,
-  actionHistory,
-  type ActionVersionDto,
   type ActionStatus,
   actionStatusTone,
   type BabokDto,
@@ -23,9 +20,6 @@ import {
   findBabokElement,
   type InitiativeDto,
   type InitiativeMemberDto,
-  type MessageKey,
-  type NeedDto,
-  type RequirementDto,
   type StakeholderDto,
   type ActionOrigin,
   analysisObjectLinks,
@@ -37,19 +31,23 @@ import {
   type TechniqueUsage,
   techniqueChoices,
   tasksOfKnowledgeArea,
+  ticketEpicOptions,
+  type TicketRow,
+  type TicketVersionDto,
   updateActionSchema,
 } from '@app/shared';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
-import { NeedLink } from './need-panels';
-import { RequirementLink } from './requirement-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
-import { formatDateTime } from './team-section';
+import { TicketAttachments } from './attachments';
+import { TicketComments } from './comments';
+import { TicketLinks } from './link-panels';
+import { EpicLink, EpicSelect, TicketAudit, TicketHistory } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
 
 const canEditActions = (action: Pick<ActionDto, 'initiative'>) =>
@@ -158,7 +156,7 @@ export function ActionList({
 }
 
 /** Tâches du référentiel, groupées par domaine de connaissance. */
-function TaskOptions({ babok }: { babok: BabokDto }) {
+export function TaskOptions({ babok }: { babok: BabokDto }) {
   const { locale } = useI18n();
   return babok.knowledgeAreas.map((area) => (
     <optgroup key={area.id} label={`${area.section} ${area.name[locale]}`}>
@@ -172,7 +170,7 @@ function TaskOptions({ babok }: { babok: BabokDto }) {
 }
 
 /** Les 50 techniques, celles de la tâche en tête. */
-function TechniqueOptions({ babok, taskId }: { babok: BabokDto; taskId: string }) {
+export function TechniqueOptions({ babok, taskId }: { babok: BabokDto; taskId: string }) {
   const { t, locale } = useI18n();
   const { ofTask, others } = techniqueChoices(babok, taskId);
   const options = (list: typeof ofTask) =>
@@ -191,7 +189,7 @@ function TechniqueOptions({ babok, taskId }: { babok: BabokDto; taskId: string }
 }
 
 /** Libellé d'un terme du BABOK, l'anglais en info-bulle. */
-function TermLabel({ term }: { term: 'babok.task' | 'babok.technique' }) {
+export function TermLabel({ term }: { term: 'babok.task' | 'babok.technique' }) {
   const { t, locale } = useI18n();
   return (
     <span title={englishTermTooltip(locale, term)}>
@@ -204,21 +202,21 @@ export function ActionPanel({
   babok,
   initiativeId,
   actionId,
+  ticketsVersion,
   stakeholdersVersion,
-  needsVersion,
-  requirementsVersion,
+  myId,
   onChanged,
   onClose,
 }: {
   babok: BabokDto;
   initiativeId: string;
   actionId: string;
+  /** Change à chaque écriture sur un ticket ou un lien : les liens se rechargent. */
+  ticketsVersion: number;
   /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
   stakeholdersVersion: number;
-  /** De même pour les besoins. */
-  needsVersion: number;
-  /** De même pour les exigences. */
-  requirementsVersion: number;
+  /** Pour savoir quels commentaires sont les miens. */
+  myId: string | null;
   /** Une action a été modifiée ou supprimée : les listes se rechargent. */
   onChanged: () => void;
   onClose: () => void;
@@ -228,9 +226,8 @@ export function ActionPanel({
   const [action, setAction] = useState<ActionDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
-  const [needs, setNeeds] = useState<NeedDto[] | null>(null);
-  const [requirements, setRequirements] = useState<RequirementDto[] | null>(null);
-  const [versions, setVersions] = useState<ActionVersionDto[]>([]);
+  const [rows, setRows] = useState<TicketRow[] | null>(null);
+  const [versions, setVersions] = useState<TicketVersionDto[]>([]);
   // Augmente à chaque enregistrement : l'historique se recharge.
   const [saveCount, setSaveCount] = useState(0);
   const [error, setError] = useState<UiError | null>(null);
@@ -241,20 +238,16 @@ export function ActionPanel({
   }, [initiativeId, actionId]);
 
   useEffect(() => {
+    api.listTickets(initiativeId).then(setRows, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId]);
+
+  useEffect(() => {
     api.actionHistory(initiativeId, actionId).then(setVersions, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, actionId, saveCount]);
 
   useEffect(() => {
     api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, stakeholdersVersion]);
-
-  useEffect(() => {
-    api.listNeeds(initiativeId).then(setNeeds, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, needsVersion]);
-
-  useEffect(() => {
-    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, requirementsVersion]);
 
   return (
     <Panel
@@ -272,14 +265,13 @@ export function ActionPanel({
       {action && (
         <>
           {action.initiative.archived && <p className="notice">{t('initiative.archived')}</p>}
-          {canEditActions(action) && members && stakeholders && needs && requirements ? (
+          {canEditActions(action) && members && stakeholders && rows ? (
             <ActionForm
               babok={babok}
               action={action}
               members={members}
               stakeholders={stakeholders}
-              needs={needs}
-              requirements={requirements}
+              rows={rows}
               onSaved={(saved) => {
                 setAction(saved);
                 setSaveCount((count) => count + 1);
@@ -289,8 +281,17 @@ export function ActionPanel({
           ) : (
             <ActionDetails babok={babok} action={action} />
           )}
-          <AuditTrail action={action} />
-          <ActionHistory babok={babok} versions={versions} />
+          <TicketAudit ticket={action} />
+          <TicketLinks
+            initiativeId={initiativeId}
+            ticketId={action.id}
+            canEdit={can(action.initiative.myRole, 'editLinks', { archived: action.initiative.archived })}
+            version={ticketsVersion}
+            onChanged={onChanged}
+          />
+          <TicketComments initiativeId={initiativeId} ticketId={action.id} initiative={action.initiative} myId={myId} />
+          <TicketAttachments initiativeId={initiativeId} ticketId={action.id} initiative={action.initiative} />
+          <TicketHistory type="action" babok={babok} versions={versions} />
           {canEditActions(action) && (
             <DeleteAction
               action={action}
@@ -326,14 +327,16 @@ function ActionDetails({ babok, action }: { babok: BabokDto; action: ActionDto }
     <dl>
       <dt>{t('action.status')}</dt>
       <dd><StatusLabel status={action.status} /></dd>
-      <dt><TermLabel term="babok.task" /></dt>
-      <dd>{task ? <BabokPreview element={task} /> : action.taskId}</dd>
-      <dt><TermLabel term="babok.technique" /></dt>
-      <dd>{technique ? <BabokPreview element={technique} /> : notSet}</dd>
       <dt>{t('action.assignee')}</dt>
       <dd><AssigneeName assignee={action.assignee} /></dd>
       <dt>{t('action.dueDate')}</dt>
       <dd>{action.dueDate ? formatDate(locale, action.dueDate) : t('action.noDueDate')}</dd>
+      <dt>{t('ticket.epic')}</dt>
+      <dd><EpicLink initiativeId={action.initiative.id} epic={action.epic} /></dd>
+      <dt><TermLabel term="babok.task" /></dt>
+      <dd>{task ? <BabokPreview element={task} /> : action.taskId}</dd>
+      <dt><TermLabel term="babok.technique" /></dt>
+      <dd>{technique ? <BabokPreview element={technique} /> : notSet}</dd>
       <dt>{t('action.stakeholders')}</dt>
       <dd>
         {action.stakeholders.length === 0 ? (
@@ -343,34 +346,6 @@ function ActionDetails({ babok, action }: { babok: BabokDto; action: ActionDto }
             {action.stakeholders.map((s) => (
               <li key={s.id}>
                 <StakeholderLink initiativeId={action.initiative.id} stakeholder={s} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </dd>
-      <dt>{t('action.needs')}</dt>
-      <dd>
-        {action.needs.length === 0 ? (
-          <small>{t('action.noNeeds')}</small>
-        ) : (
-          <ul className="links">
-            {action.needs.map((n) => (
-              <li key={n.id}>
-                <NeedLink initiativeId={action.initiative.id} need={n} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </dd>
-      <dt>{t('action.requirements')}</dt>
-      <dd>
-        {action.requirements.length === 0 ? (
-          <small>{t('action.noRequirements')}</small>
-        ) : (
-          <ul className="links">
-            {action.requirements.map((r) => (
-              <li key={r.id}>
-                <RequirementLink initiativeId={action.initiative.id} requirement={r} />
               </li>
             ))}
           </ul>
@@ -387,8 +362,7 @@ function ActionForm({
   action,
   members,
   stakeholders,
-  needs,
-  requirements,
+  rows,
   onSaved,
 }: {
   babok: BabokDto;
@@ -396,10 +370,8 @@ function ActionForm({
   members: InitiativeMemberDto[];
   /** Parties prenantes de l'initiative, que l'on peut lier à l'action. */
   stakeholders: StakeholderDto[];
-  /** Besoins de l'initiative, par référence. */
-  needs: NeedDto[];
-  /** Exigences de l'initiative, par référence. */
-  requirements: RequirementDto[];
+  /** Tickets de l'initiative, d'où viennent les Epics proposés. */
+  rows: TicketRow[];
   onSaved: (action: ActionDto) => void;
 }) {
   const { t } = useI18n();
@@ -409,25 +381,18 @@ function ActionForm({
   const [techniqueId, setTechniqueId] = useState(action.techniqueId ?? '');
   const [assigneeId, setAssigneeId] = useState(action.assignee.userId);
   const [dueDate, setDueDate] = useState(action.dueDate ?? '');
+  const [epicId, setEpicId] = useState(action.epic?.id ?? '');
   const [description, setDescription] = useState(action.description ?? '');
   const [stakeholderIds, setStakeholderIds] = useState<readonly string[]>(action.stakeholders.map((s) => s.id));
-  const [needIds, setNeedIds] = useState<readonly string[]>(action.needs.map((n) => n.id));
-  const [requirementIds, setRequirementIds] = useState<readonly string[]>(action.requirements.map((r) => r.id));
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
   const submit = useUnsavedForm(
-    { title, status, taskId, techniqueId, assigneeId, dueDate, description, stakeholderIds, needIds, requirementIds },
+    { title, status, taskId, techniqueId, assigneeId, dueDate, epicId, description, stakeholderIds },
     save,
   );
 
   const toggleStakeholder = (id: string) =>
     setStakeholderIds((current) => (current.includes(id) ? current.filter((s) => s !== id) : [...current, id]));
-
-  const toggleNeed = (id: string) =>
-    setNeedIds((current) => (current.includes(id) ? current.filter((n) => n !== id) : [...current, id]));
-
-  const toggleRequirement = (id: string) =>
-    setRequirementIds((current) => (current.includes(id) ? current.filter((r) => r !== id) : [...current, id]));
 
   const task = findBabokElement(babok, taskId);
   const technique = techniqueId ? findBabokElement(babok, techniqueId) : undefined;
@@ -445,10 +410,9 @@ function ActionForm({
       techniqueId: techniqueId || null,
       ...(assigneeId !== action.assignee.userId ? { assigneeId } : {}),
       dueDate: dueDate || null,
+      epicId: epicId || null,
       description,
       stakeholderIds,
-      needIds,
-      requirementIds,
     });
     if (!parsed.success) {
       setError({ key: 'action.invalid' });
@@ -482,20 +446,6 @@ function ActionForm({
         </select>
       </label>
       <label>
-        <TermLabel term="babok.task" />
-        <select value={taskId} onChange={(e) => setTaskId(e.target.value)}>
-          <TaskOptions babok={babok} />
-        </select>
-      </label>
-      {task && <BabokPreview element={task} />}
-      <label>
-        <TermLabel term="babok.technique" />
-        <select value={techniqueId} onChange={(e) => setTechniqueId(e.target.value)}>
-          <TechniqueOptions babok={babok} taskId={taskId} />
-        </select>
-      </label>
-      {technique && <BabokPreview element={technique} />}
-      <label>
         {t('action.assignee')}
         <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
           {keepsIneligible && (
@@ -514,6 +464,21 @@ function ActionForm({
         {t('action.dueDate')}
         <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
       </label>
+      <EpicSelect epics={ticketEpicOptions(rows)} value={epicId} onChange={setEpicId} />
+      <label>
+        <TermLabel term="babok.task" />
+        <select value={taskId} onChange={(e) => setTaskId(e.target.value)}>
+          <TaskOptions babok={babok} />
+        </select>
+      </label>
+      {task && <BabokPreview element={task} />}
+      <label>
+        <TermLabel term="babok.technique" />
+        <select value={techniqueId} onChange={(e) => setTechniqueId(e.target.value)}>
+          <TechniqueOptions babok={babok} taskId={taskId} />
+        </select>
+      </label>
+      {technique && <BabokPreview element={technique} />}
       <fieldset>
         <legend>{t('action.stakeholders')}</legend>
         {stakeholders.length === 0 && <small>{t('stakeholders.sectionEmpty')}</small>}
@@ -521,30 +486,6 @@ function ActionForm({
           <label key={s.id} className="inline">
             <input type="checkbox" checked={stakeholderIds.includes(s.id)} onChange={() => toggleStakeholder(s.id)} />
             {s.name}
-          </label>
-        ))}
-      </fieldset>
-      <fieldset>
-        <legend>{t('action.needs')}</legend>
-        {needs.length === 0 && <small>{t('needs.sectionEmpty')}</small>}
-        {needs.map((n) => (
-          <label key={n.id} className="inline">
-            <input type="checkbox" checked={needIds.includes(n.id)} onChange={() => toggleNeed(n.id)} />
-            <strong>{n.reference}</strong> {n.title}
-          </label>
-        ))}
-      </fieldset>
-      <fieldset>
-        <legend>{t('action.requirements')}</legend>
-        {requirements.length === 0 && <small>{t('requirements.sectionEmpty')}</small>}
-        {requirements.map((r) => (
-          <label key={r.id} className="inline">
-            <input
-              type="checkbox"
-              checked={requirementIds.includes(r.id)}
-              onChange={() => toggleRequirement(r.id)}
-            />
-            <strong>{r.reference}</strong> {r.title}
           </label>
         ))}
       </fieldset>
@@ -561,126 +502,6 @@ function ActionForm({
       <ErrorMessage error={error} />
       <p role="status">{saved && t('action.saved')}</p>
     </form>
-  );
-}
-
-/** Date de création et de dernière modification, avec leur auteur. */
-function AuditTrail({ action }: { action: ActionDto }) {
-  const { t, locale } = useI18n();
-  return (
-    <p className="audit">
-      <small>
-        {t('action.created', { date: formatDateTime(locale, action.createdAt), name: memberName(action.createdBy) })}
-        <br />
-        {t('action.updated', { date: formatDateTime(locale, action.updatedAt), name: memberName(action.updatedBy) })}
-      </small>
-    </p>
-  );
-}
-
-/** Historique : qui, quand, et pour chaque champ modifié l'ancienne et la nouvelle valeur. */
-function ActionHistory({ babok, versions }: { babok: BabokDto; versions: ActionVersionDto[] }) {
-  const { t, locale } = useI18n();
-  const entries = actionHistory(versions);
-  return (
-    <section className="requirement-history">
-      <h3 className="group-title">{t('action.history')}</h3>
-      {entries.length === 0 && <p><small>{t('action.historyEmpty')}</small></p>}
-      <ol className="timeline">
-        {entries.map((entry) => (
-          <li key={entry.changedAt}>
-            <span className="timeline-when">
-              {t('action.historyUpdated', { date: formatDateTime(locale, entry.changedAt), name: memberName(entry.changedBy) })}
-            </span>
-            <table className="change-table">
-              <thead>
-                <tr>
-                  <td />
-                  <th scope="col">{t('action.historyBefore')}</th>
-                  <th scope="col">{t('action.historyAfter')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entry.changes.map((change) => (
-                  <ActionChangeLine key={change.field} babok={babok} change={change} />
-                ))}
-              </tbody>
-            </table>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-/** Libellé du champ modifié, dans la langue de l'interface. */
-const ACTION_FIELD_LABELS = {
-  title: 'action.title',
-  description: 'action.description',
-  status: 'action.status',
-  taskId: 'action.task',
-  techniqueId: 'action.technique',
-  dueDate: 'action.dueDate',
-  assignee: 'action.assignee',
-  stakeholders: 'action.stakeholders',
-} as const satisfies Record<ActionChange['field'], MessageKey>;
-
-function ActionChangeLine({ babok, change }: { babok: BabokDto; change: ActionChange }) {
-  const { t, locale } = useI18n();
-  const empty = <em>{t('action.historyNoValue')}</em>;
-  const label = t(ACTION_FIELD_LABELS[change.field]);
-  // La description, souvent longue, s'affiche en entier à la demande.
-  if (change.field === 'description') {
-    return (
-      <tr>
-        <th scope="row">{label}</th>
-        <td colSpan={2}>
-          <details>
-            <summary>{t('action.historyShowDescription')}</summary>
-            <div className="change-statement">
-              <div className="change-before">{change.from ? <RichText source={change.from} /> : empty}</div>
-              <div>{change.to ? <RichText source={change.to} /> : empty}</div>
-            </div>
-          </details>
-        </td>
-      </tr>
-    );
-  }
-  const babokName = (id: string | null) => {
-    if (!id) return empty;
-    const element = findBabokElement(babok, id);
-    return element ? `${element.section} ${element.name[locale]}` : id;
-  };
-  const value = (): [ReactNode, ReactNode] => {
-    switch (change.field) {
-      case 'title':
-        return [change.from, change.to];
-      case 'status':
-        return [t(`actionStatus.${change.from}`), t(`actionStatus.${change.to}`)];
-      case 'taskId':
-      case 'techniqueId':
-        return [babokName(change.from), babokName(change.to)];
-      case 'dueDate':
-        return [
-          change.from ? formatDate(locale, change.from) : empty,
-          change.to ? formatDate(locale, change.to) : empty,
-        ];
-      case 'assignee':
-        return [memberName(change.from), memberName(change.to)];
-      case 'stakeholders':
-        return [
-          change.from.length ? change.from.map((s) => s.name).join(', ') : empty,
-          change.to.length ? change.to.map((s) => s.name).join(', ') : empty,
-        ];
-    }
-  };
-  const [from, to] = value();
-  return (
-    <tr>
-      <th scope="row">{label}</th>
-      <td className="change-before">{from}</td>
-      <td>{to}</td>
-    </tr>
   );
 }
 

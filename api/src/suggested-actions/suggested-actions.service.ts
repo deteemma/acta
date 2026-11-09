@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  type ActionStatus,
   type BabokDto,
   currentSituations,
   requirementStatusSince,
@@ -137,8 +138,9 @@ async function loadContext(tx: Tx, initiativeId: string): Promise<SuggestionCont
       plannedEndDate: initiative.planned_end_date,
     },
     actions: actions.map((a) => ({
-      taskId: a.task_id,
-      status: a.status,
+      // Requête limitée aux Actions, qui ont toujours une tâche (contrainte ticket_action_fields).
+      taskId: a.task_id!,
+      status: a.status as ActionStatus,
       suggestionKey: a.suggestion_key,
       stakeholderIds: actionStakeholders.filter((l) => l.ticket_id === a.id).map((l) => l.stakeholder_id),
     })),

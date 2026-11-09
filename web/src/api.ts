@@ -1,7 +1,28 @@
 import type {
   AccountDto,
+  AttachmentDto,
+  AttachmentsDto,
   ActionDto,
-  ActionVersionDto,
+  CommentDto,
+  CommentInput,
+  CreateNeedLinkInput,
+  CreateRequirementLinkInput,
+  CreateTicketLinkInput,
+  InitiativeLinksDto,
+  CreateTicketInput,
+  CreatePageInput,
+  DeclarePageVersionInput,
+  MovePageInput,
+  PageDto,
+  PageRevisionDto,
+  PageRevisionRow,
+  PageRow,
+  UpdatePageInput,
+  UpdatePageVersionNoteInput,
+  TicketDto,
+  TicketRow,
+  TicketVersionDto,
+  UpdateTicketInput,
   AdminRequirementStatusDto,
   CreateActionInput,
   UpdateActionInput,
@@ -61,11 +82,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers,
     },
   });
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { refusal?: unknown } | null;
-    throw new ApiError(response.status, typeof body?.refusal === 'string' ? body.refusal : undefined);
-  }
+  if (!response.ok) throw await toApiError(response);
   return (response.status === 204 ? undefined : await response.json()) as T;
+}
+
+/** Contenu d'une pièce jointe : les octets seuls, que l'appelant type lui-même (attachments.tsx). */
+async function requestBlob(path: string): Promise<ArrayBuffer> {
+  const response = await fetch(`/api${path}`, { headers: { Authorization: `Bearer ${await accessToken()}` } });
+  if (!response.ok) throw await toApiError(response);
+  return response.arrayBuffer();
+}
+
+/** Réponse en erreur : son statut et, s'il y en a un, le motif de refus de l'API. */
+async function toApiError(response: Response): Promise<ApiError> {
+  const body = (await response.json().catch(() => null)) as { refusal?: unknown } | null;
+  return new ApiError(response.status, typeof body?.refusal === 'string' ? body.refusal : undefined);
 }
 
 export const api = {
@@ -95,12 +126,90 @@ export const api = {
   removeMember: (id: string, userId: string) =>
     request<void>(`/initiatives/${id}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
   listOwnerDesignations: (id: string) => request<OwnerDesignationDto[]>(`/initiatives/${id}/owner-designations`),
+  // Liens (ticket 19) : ceux de toute l'initiative, que chaque fiche croise avec ses objets.
+  listLinks: (id: string) => request<InitiativeLinksDto>(`/initiatives/${id}/links`),
+  listTicketComments: (id: string, ticketId: string) =>
+    request<CommentDto[]>(`/initiatives/${id}/tickets/${ticketId}/comments`),
+  createTicketComment: (id: string, ticketId: string, input: CommentInput) =>
+    request<CommentDto[]>(`/initiatives/${id}/tickets/${ticketId}/comments`, { method: 'POST', body: JSON.stringify(input) }),
+  updateComment: (id: string, commentId: string, input: CommentInput) =>
+    request<CommentDto>(`/initiatives/${id}/comments/${commentId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deleteComment: (id: string, commentId: string) =>
+    request<CommentDto>(`/initiatives/${id}/comments/${commentId}`, { method: 'DELETE' }),
+  // Pièces jointes (ticket 21) : contenu envoyé brut, nom dans l'adresse.
+  listTicketAttachments: (id: string, ticketId: string) =>
+    request<AttachmentsDto>(`/initiatives/${id}/tickets/${ticketId}/attachments`),
+  uploadTicketAttachment: (id: string, ticketId: string, file: File) =>
+    request<AttachmentsDto>(`/initiatives/${id}/tickets/${ticketId}/attachments?name=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      body: file,
+      headers: { 'Content-Type': 'application/octet-stream' },
+    }),
+  renameAttachment: (id: string, attachmentId: string, baseName: string) =>
+    request<AttachmentDto>(`/initiatives/${id}/attachments/${attachmentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ baseName }),
+    }),
+  deleteAttachment: (id: string, attachmentId: string) =>
+    request<AttachmentDto>(`/initiatives/${id}/attachments/${attachmentId}`, { method: 'DELETE' }),
+  attachmentContent: (id: string, attachmentId: string) => requestBlob(`/initiatives/${id}/attachments/${attachmentId}/content`),
+  createTicketLink: (id: string, input: CreateTicketLinkInput) =>
+    request<InitiativeLinksDto>(`/initiatives/${id}/links/tickets`, { method: 'POST', body: JSON.stringify(input) }),
+  removeTicketLink: (id: string, ticketId: string, otherTicketId: string) =>
+    request<void>(`/initiatives/${id}/links/tickets/${ticketId}/${otherTicketId}`, { method: 'DELETE' }),
+  createNeedLink: (id: string, input: CreateNeedLinkInput) =>
+    request<InitiativeLinksDto>(`/initiatives/${id}/links/needs`, { method: 'POST', body: JSON.stringify(input) }),
+  removeNeedLink: (id: string, ticketId: string, needId: string) =>
+    request<void>(`/initiatives/${id}/links/needs/${ticketId}/${needId}`, { method: 'DELETE' }),
+  createRequirementLink: (id: string, input: CreateRequirementLinkInput) =>
+    request<InitiativeLinksDto>(`/initiatives/${id}/links/requirements`, { method: 'POST', body: JSON.stringify(input) }),
+  removeRequirementLink: (id: string, ticketId: string, requirementId: string) =>
+    request<void>(`/initiatives/${id}/links/requirements/${ticketId}/${requirementId}`, { method: 'DELETE' }),
   // Actions (ticket 07).
   listMyActions: () => request<ActionDto[]>('/actions/mine'),
+  // Pages (ticket 22).
+  listPages: (id: string) => request<PageRow[]>(`/initiatives/${id}/pages`),
+  getPage: (id: string, pageId: string) => request<PageDto>(`/initiatives/${id}/pages/${pageId}`),
+  createPage: (id: string, input: CreatePageInput) =>
+    request<PageDto>(`/initiatives/${id}/pages`, { method: 'POST', body: JSON.stringify(input) }),
+  updatePage: (id: string, pageId: string, input: UpdatePageInput) =>
+    request<PageDto>(`/initiatives/${id}/pages/${pageId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  movePage: (id: string, pageId: string, input: MovePageInput) =>
+    request<PageRow[]>(`/initiatives/${id}/pages/${pageId}/placement`, { method: 'PUT', body: JSON.stringify(input) }),
+  deletePage: (id: string, pageId: string) => request<void>(`/initiatives/${id}/pages/${pageId}`, { method: 'DELETE' }),
+  // Enregistrements et versions de page (ticket 23).
+  listPageRevisions: (id: string, pageId: string) =>
+    request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions`),
+  getPageRevision: (id: string, pageId: string, revisionId: string) =>
+    request<PageRevisionDto>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}`),
+  declarePageVersion: (id: string, pageId: string, revisionId: string, input: DeclarePageVersionInput) =>
+    request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}/version`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  updatePageVersionNote: (id: string, pageId: string, revisionId: string, input: UpdatePageVersionNoteInput) =>
+    request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}/version`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  restorePageRevision: (id: string, pageId: string, revisionId: string) =>
+    request<PageDto>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}/restore`, { method: 'POST' }),
+  deletePageRevision: (id: string, pageId: string, revisionId: string) =>
+    request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}`, { method: 'DELETE' }),
+  listTickets: (id: string) => request<TicketRow[]>(`/initiatives/${id}/tickets`),
+  getTicket: (id: string, ticketId: string) => request<TicketDto>(`/initiatives/${id}/tickets/${ticketId}`),
+  ticketHistory: (id: string, ticketId: string) =>
+    request<TicketVersionDto[]>(`/initiatives/${id}/tickets/${ticketId}/history`),
+  createTicket: (id: string, input: CreateTicketInput) =>
+    request<TicketDto>(`/initiatives/${id}/tickets`, { method: 'POST', body: JSON.stringify(input) }),
+  updateTicket: (id: string, ticketId: string, input: UpdateTicketInput) =>
+    request<TicketDto>(`/initiatives/${id}/tickets/${ticketId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deleteTicket: (id: string, ticketId: string) =>
+    request<void>(`/initiatives/${id}/tickets/${ticketId}`, { method: 'DELETE' }),
   listActions: (id: string) => request<ActionDto[]>(`/initiatives/${id}/actions`),
   getAction: (id: string, actionId: string) => request<ActionDto>(`/initiatives/${id}/actions/${actionId}`),
   actionHistory: (id: string, actionId: string) =>
-    request<ActionVersionDto[]>(`/initiatives/${id}/actions/${actionId}/history`),
+    request<TicketVersionDto[]>(`/initiatives/${id}/actions/${actionId}/history`),
   createAction: (id: string, input: CreateActionInput) =>
     request<ActionDto>(`/initiatives/${id}/actions`, { method: 'POST', body: JSON.stringify(input) }),
   updateAction: (id: string, actionId: string, input: UpdateActionInput) =>

@@ -1662,6 +1662,69 @@ button.link.pill:hover {
 }
 
 /* Écran Tickets (ticket 17) */
+.tickets-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.ticket-quick-create {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.ticket-quick-create input {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.ticket-quick-create select {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.ticket-group-toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  white-space: nowrap;
+}
+/* En-tête de groupe du regroupement par Epic (ticket 18). */
+.ticket-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+.ticket-group .ticket-title {
+  flex: 1 1 8rem;
+  min-width: 0;
+  font-weight: 600;
+}
+.ticket-group-name {
+  flex: 1 1 8rem;
+  font-weight: 600;
+}
+.ticket-group-progress {
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* Pas au-dessus de la ligne ouverte, mise en évidence (.selected). */
+.ticket-table tbody tr.ticket-group-row:not(.selected),
+.ticket-compact li.ticket-group-row:not(.selected) {
+  background: var(--bg);
+}
+.ticket-table .ticket-group-row td {
+  border-top: 1px solid var(--border);
+}
+.epic-tickets ul li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
 .tickets .panel-kicker {
   margin-bottom: var(--space-1);
 }
@@ -1670,7 +1733,7 @@ button.link.pill:hover {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-.ticket-filters input {
+.ticket-filters input[type='search'] {
   flex: 1 1 14rem;
   min-width: 0;
 }
@@ -1784,7 +1847,10 @@ button.link.pill:hover {
   width: 8.5rem;
 }
 .ticket-table .col-type {
-  width: 5.5rem;
+  width: 6.5rem;
+}
+.ticket-table .col-type .ticket-type {
+  white-space: normal;
 }
 .ticket-table .col-status {
   width: 8rem;
@@ -1865,4 +1931,628 @@ button.link.pill:hover {
   .ticket-compact {
     display: block;
   }
+}
+
+/* ── Pages (ticket 22) : arborescence à gauche, document en pleine page ────── */
+.pages-layout {
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+  margin-top: var(--space-4);
+}
+.pages-tree {
+  position: sticky;
+  top: var(--space-2);
+  border-right: 1px solid var(--border);
+  padding-right: var(--space-3);
+}
+.page-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-tree-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2rem;
+  padding-block: var(--space-1);
+  padding-inline-end: var(--space-1);
+  border-radius: var(--radius-md);
+  border-top: 2px solid transparent;
+  cursor: pointer;
+}
+.page-tree-row:hover {
+  background: var(--accent-soft);
+}
+.page-tree-row.selected {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+.page-tree-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.page-tree-row.dragging {
+  opacity: 0.5;
+}
+/* Glissement : sur le haut de la ligne, avant elle ; sur le reste, sous-page. */
+.page-tree-row.drop-before {
+  border-top-color: var(--accent);
+}
+.page-tree-row.drop-inside {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+.page-tree-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.page-tree-add {
+  visibility: hidden;
+}
+.page-tree-row:hover .page-tree-add,
+.page-tree-row:focus-within .page-tree-add,
+.page-tree-row.selected .page-tree-add {
+  visibility: visible;
+}
+.page-tree-blocked {
+  font-size: var(--text-small);
+}
+.page-tree-blocked:empty {
+  display: none;
+}
+.page-tree-hint,
+.pages-tree-empty,
+.pages-choose,
+.page-empty {
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.pages-document {
+  min-width: 0;
+  max-width: 52rem;
+}
+.page-view-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.page-view-title {
+  margin: 0;
+}
+.page-view-actions,
+.page-move {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.page-owner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+/* Contenu, en lecture comme en écriture. */
+.page-content {
+  line-height: 1.6;
+}
+/* Titres 1 à 3 : h1 à h3 dans l'éditeur, h2 à h4 en lecture (sous le titre de la page), même aspect. */
+.page-content h1,
+.page-content h2,
+.page-content h3,
+.page-content h4 {
+  margin: var(--space-6) 0 var(--space-2);
+  line-height: 1.3;
+}
+.ProseMirror.page-content h1,
+.page-content:not(.ProseMirror) > h2 {
+  font-size: 1.5em;
+}
+.ProseMirror.page-content h2,
+.page-content:not(.ProseMirror) > h3 {
+  font-size: 1.25em;
+}
+.ProseMirror.page-content h3,
+.page-content:not(.ProseMirror) > h4 {
+  font-size: 1.1em;
+}
+.page-content p {
+  margin: 0 0 var(--space-3);
+}
+.page-content ul,
+.page-content ol {
+  margin: 0 0 var(--space-3);
+  padding-inline-start: var(--space-6);
+}
+.page-content li > p {
+  margin: 0;
+}
+.page-content a {
+  color: var(--accent-strong);
+}
+.page-table,
+.page-content .tableWrapper {
+  overflow-x: auto;
+  margin-bottom: var(--space-3);
+}
+.page-content table {
+  border-collapse: collapse;
+  min-width: 50%;
+}
+.page-content th,
+.page-content td {
+  border: 1px solid var(--border);
+  padding: var(--space-1) var(--space-2);
+  vertical-align: top;
+  text-align: start;
+}
+.page-content th {
+  background: var(--tone-neutral-bg);
+}
+.page-content th > p,
+.page-content td > p {
+  margin: 0;
+}
+/* Écriture : la zone de saisie et la cellule sélectionnée. */
+.page-editor .ProseMirror {
+  min-height: 16rem;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.page-editor .ProseMirror:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.page-editor .ProseMirror .selectedCell {
+  background: var(--accent-soft);
+}
+.reference-in-editor {
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+.page-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+/* Barre d'enregistrement en haut, toujours visible pendant l'écriture. */
+.page-save-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.page-save-bar-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.page-counter {
+  color: var(--muted);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}
+.page-counter.over {
+  color: var(--danger);
+  font-weight: 600;
+}
+.page-title-field input {
+  width: 100%;
+  font-size: var(--text-section-title);
+  font-weight: 600;
+}
+.page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.page-toolbar-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding-inline-end: var(--space-2);
+  border-inline-end: 1px solid var(--border);
+}
+.page-toolbar-group:last-of-type {
+  border-inline-end: none;
+}
+.page-toolbar button.active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+.page-toolbar-table {
+  flex-basis: 100%;
+  border-inline-end: none;
+}
+.page-link-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  flex-basis: 100%;
+}
+.page-link-form input {
+  flex: 1;
+  min-width: 12rem;
+}
+.reference-suggestions {
+  position: fixed;
+  z-index: 10;
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  max-width: min(28rem, calc(100vw - 2 * var(--space-4)));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+.reference-suggestions li {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reference-suggestions li[aria-selected='true'] {
+  background: var(--accent-soft);
+}
+.reference-suggestions .reference-suggestions-empty {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* Petit écran : l'arborescence au-dessus du document (décision 13, point 7). */
+@media (max-width: 40rem) {
+  .pages-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+  .pages-tree {
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 0 0 var(--space-3);
+  }
+  .page-tree-add {
+    visibility: visible;
+  }
+}
+
+/* ── Enregistrements et versions (ticket 23) : historique en volet à droite ── */
+.page-with-history {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 20rem);
+  gap: var(--space-6);
+  align-items: start;
+}
+.page-with-history-center {
+  min-width: 0;
+}
+.page-history {
+  position: sticky;
+  top: var(--space-2);
+  border-left: 1px solid var(--border);
+  padding-left: var(--space-3);
+  max-height: calc(100vh - var(--space-4));
+  overflow-y: auto;
+}
+.page-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.page-history-header h2 {
+  margin: 0;
+  font-size: var(--text-body);
+}
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.page-history-list {
+  list-style: none;
+  margin: var(--space-3) 0;
+  padding: 0;
+}
+.page-history-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+.page-history-row > input {
+  margin-top: var(--space-1);
+}
+/* Versions mises en évidence (décision 07, point 4). */
+.page-history-row.version {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+}
+.page-history-row.open {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.page-history-row.deleted {
+  flex-direction: column;
+  color: var(--muted);
+}
+.page-history-open {
+  all: unset;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  font-size: var(--text-small);
+}
+.page-history-open:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.page-history-tags {
+  display: flex;
+  gap: var(--space-1);
+}
+.page-history-tags:empty {
+  display: none;
+}
+.page-history-note {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.page-history-compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.page-history-compare small,
+.page-version-note-field small {
+  color: var(--muted);
+}
+.badge.accent {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.page-save-version,
+.page-version-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin: var(--space-2) 0;
+}
+.page-version-note-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: min(100%, 18rem);
+}
+.page-revision-banner .badge {
+  margin-right: var(--space-1);
+}
+/* Comparaison dans un seul texte (décision 08, point 8). */
+.page-diff {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.page-diff ins {
+  background: var(--tone-positive-bg);
+  color: var(--tone-positive-fg);
+  text-decoration: none;
+}
+.page-diff del {
+  background: var(--tone-negative-bg);
+  color: var(--tone-negative-fg);
+}
+
+/* Petit écran : l'historique sous la page. */
+@media (max-width: 64rem) {
+  .page-with-history {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .page-history {
+    position: static;
+    max-height: none;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding: var(--space-3) 0 0;
+  }
+}
+
+/* Liens (ticket 19) : nature vue de ce ticket, puis l'objet lié ; « Retirer » en fin de ligne. */
+.links-section ul li,
+.links li:has(> .link-remove) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.link-side {
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.link-remove {
+  margin-left: auto;
+  font-size: var(--text-small);
+}
+.add-link {
+  margin-top: var(--space-2);
+}
+
+/* Commentaires (ticket 20) : fil simple, du plus ancien au plus récent. */
+.comment-thread {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+.comment {
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) 0;
+}
+.comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--muted);
+}
+.comment-meta > small {
+  margin-right: auto;
+}
+.comment-meta button {
+  font-size: var(--text-small);
+}
+.comment-deleted {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Pièces jointes (ticket 21) : liste des fichiers d'un ticket, visionneuse. */
+.attachment-list {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+}
+.attachment {
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) 0;
+}
+.attachment-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.attachment-line > button.link {
+  margin-right: auto;
+  overflow-wrap: anywhere;
+  text-align: left;
+  text-decoration: underline;
+}
+.attachment-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+.attachment-actions button {
+  font-size: var(--text-small);
+}
+.attachment-meta {
+  margin: 0;
+  color: var(--muted);
+}
+.attachment-deleted {
+  color: var(--muted);
+  font-style: italic;
+}
+.attachment-usage {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+}
+/* Le champ de fichier natif reste accessible au clavier, sous l'apparence d'un bouton. */
+.file-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+.file-button:hover {
+  background: var(--bg);
+}
+.file-button:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.rename-attachment-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.rename-attachment-field input {
+  flex: 1;
+  min-width: 0;
+}
+.attachment-viewer {
+  padding: var(--space-4);
+  width: min(60rem, calc(100% - var(--space-8)));
+  height: calc(100% - var(--space-8));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-panel);
+}
+.attachment-viewer[open] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.attachment-viewer::backdrop {
+  background: var(--backdrop);
+}
+.attachment-viewer-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.attachment-viewer-header h2 {
+  margin: 0 auto 0 0;
+  overflow-wrap: anywhere;
+}
+.attachment-viewer-pdf {
+  flex: 1;
+  width: 100%;
+  border: none;
+}
+.attachment-viewer-image {
+  flex: 1;
+  min-height: 0;
+  max-width: 100%;
+  object-fit: contain;
 }

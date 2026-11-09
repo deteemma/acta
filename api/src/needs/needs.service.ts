@@ -30,8 +30,8 @@ export class NeedsService {
   }
 
   /**
-   * Palette et aperçu des références citées dans un texte : besoins, exigences et
-   * tickets de toutes les initiatives dont je suis membre (RLS).
+   * Palette et aperçu des références citées dans un texte : besoins, exigences,
+   * tickets et pages de toutes les initiatives dont je suis membre (RLS).
    */
   listReferences(userId: string): Promise<ReferenceDto[]> {
     return this.database.asUser(userId, async (tx) => {
@@ -48,7 +48,12 @@ export class NeedsService {
       const tickets = await tx
         .selectFrom('ticket as t')
         .innerJoin('initiative as i', 'i.id', 't.initiative_id')
-        .select(['t.id', 't.initiative_id', 'i.archived_at', 't.reference', 't.title'])
+        .select(['t.id', 't.type', 't.initiative_id', 'i.archived_at', 't.reference', 't.title'])
+        .execute();
+      const pages = await tx
+        .selectFrom('page as p')
+        .innerJoin('initiative as i', 'i.id', 'p.initiative_id')
+        .select(['p.id', 'p.initiative_id', 'i.archived_at', 'p.reference', 'p.title'])
         .execute();
       return sortByReference([
         ...needs.map((r) => ({
@@ -70,7 +75,16 @@ export class NeedsService {
           requirement: { type: r.type, subtype: r.subtype, status: r.status },
         })),
         ...tickets.map((r) => ({
-          category: 'action' as const,
+          category: r.type,
+          id: r.id,
+          initiativeId: r.initiative_id,
+          initiativeArchived: r.archived_at != null,
+          reference: r.reference,
+          title: r.title,
+          requirement: null,
+        })),
+        ...pages.map((r) => ({
+          category: 'page' as const,
           id: r.id,
           initiativeId: r.initiative_id,
           initiativeArchived: r.archived_at != null,

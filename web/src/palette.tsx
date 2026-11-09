@@ -14,7 +14,7 @@ import { api } from './api';
 import { BabokName } from './babok-panels';
 import { useI18n } from './i18n';
 import { Panel, usePanels } from './panels';
-import { referenceTarget } from './references';
+import { useOpenReference } from './references';
 import { useScreens } from './screens';
 
 type Result =
@@ -54,6 +54,7 @@ export function Palette({
   const { t } = useI18n();
   const { replace } = usePanels();
   const { showInitiative } = useScreens();
+  const openReference = useOpenReference();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   // Rechargées à chaque ouverture ; sans réponse, la palette garde les autres résultats.
@@ -75,7 +76,7 @@ export function Palette({
       case 'initiative':
         return showInitiative(result.item.id);
       case 'reference':
-        return replace(referenceTarget(result.item));
+        return openReference(result.item, { replace: true });
       case 'babok':
         return replace({ kind: 'babokElement', elementId: result.item.id });
     }

@@ -86,3 +86,36 @@ test('propriétaire et contributeurs écartent une suggestion ; lecteurs non ; a
   assert.equal(can('reader', 'dismissSuggestedActions'), false);
   assert.equal(can('contributor', 'dismissSuggestedActions', { archived: true }), false);
 });
+
+test('liens : propriétaire et contributeur les créent et les retirent ; lecteur et initiative archivée : lecture seule', () => {
+  assert.equal(can('owner', 'editLinks'), true);
+  assert.equal(can('contributor', 'editLinks'), true);
+  assert.equal(can('reader', 'editLinks'), false);
+  assert.equal(can('contributor', 'editLinks', { archived: true }), false);
+});
+
+test('pièces jointes : propriétaire et contributeur ajoutent, renomment et suppriment tout fichier ; lecteur et archivée : ouvrir et télécharger', () => {
+  assert.equal(can('owner', 'editAttachments'), true);
+  assert.equal(can('contributor', 'editAttachments'), true);
+  assert.equal(can('reader', 'editAttachments'), false);
+  assert.equal(can('owner', 'editAttachments', { archived: true }), false);
+  assert.equal(can('reader', 'view', { archived: true }), true);
+});
+
+test('commentaires : propriétaire et contributeur commentent, seul un propriétaire supprime ceux des autres ; archivée : lecture seule', () => {
+  assert.equal(can('owner', 'comment'), true);
+  assert.equal(can('contributor', 'comment'), true);
+  assert.equal(can('reader', 'comment'), false);
+  assert.equal(can('owner', 'deleteAnyComment'), true);
+  assert.equal(can('contributor', 'deleteAnyComment'), false);
+  assert.equal(can('owner', 'comment', { archived: true }), false);
+  assert.equal(can('owner', 'deleteAnyComment', { archived: true }), false);
+});
+
+test('pages : propriétaire et contributeur écrivent ; lecteur et initiative archivée : lecture seule', () => {
+  assert.equal(can('owner', 'editPages'), true);
+  assert.equal(can('contributor', 'editPages'), true);
+  assert.equal(can('reader', 'editPages'), false);
+  assert.equal(can('owner', 'editPages', { archived: true }), false);
+  assert.equal(can('reader', 'view', { archived: true }), true);
+});

@@ -2,8 +2,6 @@
 // panneau latéral. Règles dans @app/shared (needs.ts, references.ts, roles.ts).
 import {
   memberName,
-  type ActionDto,
-  type BabokDto,
   can,
   createNeedSchema,
   type InitiativeDto,
@@ -15,10 +13,10 @@ import {
   type NeedRefDto,
   type RequirementDto,
   type StakeholderDto,
-  sortByDueDate,
 } from '@app/shared';
 import { useEffect, useState } from 'react';
-import { ActionList, NewActionButton } from './action-panels';
+import { NewActionButton } from './action-panels';
+import { LinkedTickets } from './link-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
@@ -61,19 +59,18 @@ export function NeedList({ needs }: { needs: NeedDto[] }) {
 
 /** Fiche d'un besoin ; sans `needId`, création. */
 export function NeedPanel({
-  babok,
   initiativeId,
   needId,
   actionsVersion,
   stakeholdersVersion,
   requirementsVersion,
   onChanged,
+  onLinksChanged,
   onClose,
 }: {
-  babok: BabokDto | null;
   initiativeId: string;
   needId?: string;
-  /** Change à chaque écriture sur une action : les actions liées se rechargent. */
+  /** Change à chaque écriture sur un ticket ou un lien : les tickets liés se rechargent. */
   actionsVersion: number;
   /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
   stakeholdersVersion: number;
@@ -81,6 +78,8 @@ export function NeedPanel({
   requirementsVersion: number;
   /** Un besoin a été créé, modifié ou supprimé : les listes se rechargent. */
   onChanged: () => void;
+  /** Un lien avec un ticket a été créé ou retiré. */
+  onLinksChanged: () => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
@@ -89,7 +88,6 @@ export function NeedPanel({
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [need, setNeed] = useState<NeedDto | null>(null);
   const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
-  const [actions, setActions] = useState<ActionDto[]>([]);
   const [requirements, setRequirements] = useState<RequirementDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
@@ -104,15 +102,9 @@ export function NeedPanel({
 
   useEffect(() => {
     if (!needId) return;
-    api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, needId, actionsVersion]);
-
-  useEffect(() => {
-    if (!needId) return;
     api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, needId, requirementsVersion]);
 
-  const linkedActions = sortByDueDate(actions.filter((a) => a.needs.some((n) => n.id === needId)));
   const linkedRequirements = requirements.filter((r) => r.needs.some((n) => n.id === needId));
   const ready = initiative && stakeholders && (!needId || need);
 
@@ -152,14 +144,14 @@ export function NeedPanel({
           {need && (
             <>
               <h3 className="group-title">{t('initiative.groupAnalysis')}</h3>
-              <div className="section-header">
-                <h4>
-                  {t('need.actions')} <span className="count">{linkedActions.length}</span>
-                </h4>
-                <NewActionButton initiative={initiative} from={{ kind: 'need', id: need.id }} />
-              </div>
-              <ActionList actions={linkedActions} babok={babok} />
-              {linkedActions.length === 0 && <p>{t('need.noActions')}</p>}
+              <LinkedTickets
+                initiativeId={initiativeId}
+                end={{ kind: 'need', id: need.id }}
+                canEdit={can(initiative.myRole, 'editLinks', { archived: initiative.archivedAt != null })}
+                version={actionsVersion}
+                onChanged={onLinksChanged}
+                actions={<NewActionButton initiative={initiative} from={{ kind: 'need', id: need.id }} />}
+              />
               <h4 className="section-title">
                 {t('need.requirements')} <span className="count">{linkedRequirements.length}</span>
               </h4>

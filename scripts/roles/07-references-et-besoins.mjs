@@ -30,7 +30,7 @@ await check('alice crée l’initiative et invite bruno (contributeur) et chloé
 await check('admin consulte les acronymes ; bruno, chloé (non administrateurs) : 403', async () => {
   const r = await call(admin, 'GET', categories);
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body.map((c) => c.category), ['need', 'requirement', 'action']);
+  assert.deepEqual(r.body.map((c) => c.category), ['need', 'requirement', 'action', 'question', 'decision', 'risk', 'change_request', 'epic', 'page']);
   needAcronym = r.body[0].acronym;
   assert.equal((await call(bruno, 'GET', categories)).status, 403);
   assert.equal((await call(chloe, 'PATCH', `${categories}/need`, { acronym: 'BS' })).status, 403);
@@ -120,7 +120,8 @@ await check('une action est liée à des besoins, à la création comme à la mo
   rbActionId = r.body.id;
   const p = await call(alice, 'PATCH', `${rbActions()}/${rbActionId}`, { needIds: [secondNeedId, needId] });
   assert.deepEqual(p.body.needs.map((n) => n.id), [needId, secondNeedId]);
-  assert.equal(p.body.updatedBy.userId, alice.sub);
+  // Un lien ne modifie pas l'action (décision 04, point 8).
+  assert.equal(p.body.updatedBy.userId, bruno.sub);
 });
 await check('besoin d’une autre initiative : 400 ; chloé (lectrice) ne lie pas : 403', async () => {
   const r = await call(bruno, 'PATCH', `${rbActions()}/${rbActionId}`, { needIds: [otherNeedId] });

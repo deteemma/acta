@@ -1,12 +1,12 @@
 // Types Kysely des tables (voir api/migrations). À tenir à jour avec les migrations.
 import type { ColumnType, Generated } from 'kysely';
 import type {
-  ActionSnapshot,
-  ActionStatus,
   AnalysisApproach,
   InitiativeRole,
+  LinkKind,
   Locale,
   NeedNature,
+  PageDoc,
   ReferenceCategory,
   RequirementSnapshot,
   RequirementStatus,
@@ -15,6 +15,10 @@ import type {
   StakeholderKind,
   StakeholderLevel,
   StakeholderRole,
+  RiskLevel,
+  TicketSnapshot,
+  TicketStatus,
+  TicketType,
 } from '@app/shared';
 
 type Timestamp = ColumnType<Date, Date | string | undefined, Date | string>;
@@ -69,29 +73,109 @@ export interface OwnerDesignationTable {
   designated_at: Timestamp;
 }
 
-/** Ticket (migrations 0010, 0018) : référence, auteurs et dates écrits par un déclencheur. Seul type pour l'instant : l'Action. */
+/** Ticket (migrations 0010, 0018, 0019) : référence, statut initial, auteurs et dates écrits par un déclencheur. */
 export interface TicketTable {
   id: string;
   initiative_id: string;
-  type: 'action';
+  type: ColumnType<TicketType, TicketType, never>;
   reference: ColumnType<string, never, never>;
   title: string;
   description: Optional<string>;
-  task_id: string;
+  /** Action seulement ; obligatoire pour elle (contrainte ticket_action_fields). */
+  task_id: Optional<string>;
   technique_id: Optional<string>;
-  assignee_id: string;
+  /** Obligatoire pour l'Action, facultatif pour les autres types. */
+  assignee_id: Optional<string>;
   /** Dernière attribution (migration 0016) : écrite par un déclencheur. */
   assigned_by: ColumnType<string, never, never>;
   assigned_at: ColumnType<Date, never, never>;
   /** Colonne « date » : lue en texte AAAA-MM-JJ (voir ActionsService). */
   due_date: Optional<string>;
-  status: Generated<ActionStatus>;
+  status: Generated<TicketStatus>;
+  epic_id: Optional<string>;
+  /** Risque seulement. */
+  probability: Optional<RiskLevel>;
+  impact: Optional<RiskLevel>;
   /** Suggestion d'où l'action est créée (migration 0015) ; fixée à la création. */
   suggestion_key: Optional<string>;
   created_by: ColumnType<string, never, never>;
   created_at: ColumnType<Date, never, never>;
   updated_by: ColumnType<string, never, never>;
   updated_at: ColumnType<Date, never, never>;
+}
+
+/** Page (migration 0020) : référence, auteurs et dates écrits par un déclencheur. */
+export interface PageTable {
+  id: string;
+  initiative_id: string;
+  reference: ColumnType<string, never, never>;
+  title: string;
+  /** JSON de Tiptap (ADR-0019), validé par pageContentSchema. */
+  content: ColumnType<PageDoc | null, string | null, string | null>;
+  parent_id: Optional<string>;
+  position: number;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  updated_by: ColumnType<string, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+/**
+ * Enregistrement de page (migration 0021) : écrit par la base à chaque changement
+ * du titre ou du contenu ; seuls la version, sa note et la suppression changent.
+ */
+export interface PageRevisionTable {
+  id: ColumnType<string, never, never>;
+  sequence: ColumnType<string, never, never>;
+  initiative_id: ColumnType<string, never, never>;
+  page_id: ColumnType<string, never, never>;
+  title: ColumnType<string | null, never, never>;
+  content: ColumnType<PageDoc | null, never, never>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  version_number: ColumnType<number | null, never, number>;
+  version_note: ColumnType<string | null, never, string | null>;
+  deleted_by: ColumnType<string | null, never, never>;
+  /** Écrire une date supprime l'enregistrement : la base pose l'auteur, la date et retire le contenu. */
+  deleted_at: ColumnType<Date | null, never, Date>;
+}
+
+/** Commentaire d'un ticket ou d'une page (migration 0023) : auteur et dates écrits par la base. */
+export interface CommentTable {
+  id: ColumnType<string, string, never>;
+  initiative_id: ColumnType<string, string, never>;
+  ticket_id: ColumnType<string | null, string | null, never>;
+  page_id: ColumnType<string | null, string | null, never>;
+  /** Mettre le texte à null supprime le commentaire : la base pose l'auteur et la date de la suppression. */
+  body: ColumnType<string | null, string, string | null>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  edited_at: ColumnType<Date | null, never, never>;
+  deleted_by: ColumnType<string | null, never, never>;
+  deleted_at: ColumnType<Date | null, never, never>;
+}
+
+/** Paramètres de l'application, une seule ligne (migration 0024) ; réglés au ticket 31. */
+export interface AppSettingsTable {
+  id: ColumnType<boolean, never, never>;
+  attachment_quota_mb: ColumnType<number, never, never>;
+}
+
+/** Pièce jointe d'un ticket ou d'une page (migration 0024) : auteur, dates et taille écrits par la base. */
+export interface AttachmentTable {
+  id: ColumnType<string, string, never>;
+  initiative_id: ColumnType<string, string, never>;
+  ticket_id: ColumnType<string | null, string | null, never>;
+  page_id: ColumnType<string | null, string | null, never>;
+  /** Renommer garde l'extension (vérifié par la base). */
+  name: ColumnType<string, string, string>;
+  size_bytes: ColumnType<number, never, never>;
+  /** Mettre le contenu à null supprime le fichier : la base pose l'auteur et la date de la suppression. */
+  content: ColumnType<Buffer | null, Buffer, null>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  deleted_by: ColumnType<string | null, never, never>;
+  deleted_at: ColumnType<Date | null, never, never>;
 }
 
 /** Suggestion écartée par l'équipe (migration 0015). */
@@ -125,6 +209,14 @@ export interface StakeholderTable {
 export interface ActionStakeholderTable {
   initiative_id: string;
   ticket_id: string;
+  stakeholder_id: string;
+}
+
+/** Partie prenante interrogée par une question (migration 0019) : créé ou retiré, jamais modifié. */
+export interface QuestionStakeholderTable {
+  initiative_id: string;
+  ticket_id: string;
+  ticket_type: Generated<'question'>;
   stakeholder_id: string;
 }
 
@@ -175,6 +267,14 @@ export interface TicketNeedTable {
   initiative_id: string;
   ticket_id: string;
   need_id: string;
+}
+
+/** Lien entre deux tickets (migration 0022) : la source « bloque » ou « duplique » la cible. */
+export interface TicketLinkTable {
+  initiative_id: string;
+  source_id: string;
+  target_id: string;
+  kind: LinkKind;
 }
 
 /** Exigence (migration 0013) : référence, auteurs et dates écrits par un déclencheur. */
@@ -232,8 +332,8 @@ export interface TicketVersionTable {
   ticket_id: ColumnType<string, never, never>;
   changed_by: ColumnType<string, never, never>;
   changed_at: ColumnType<Date, never, never>;
-  snapshot_before: ColumnType<ActionSnapshot, never, never>;
-  snapshot_after: ColumnType<ActionSnapshot, never, never>;
+  snapshot_before: ColumnType<TicketSnapshot, never, never>;
+  snapshot_after: ColumnType<TicketSnapshot, never, never>;
 }
 
 /** Référentiel BABOK (migration 0009) : lecture seule, aucune écriture possible. */
@@ -262,16 +362,21 @@ export interface BabokTaskTechniqueTable {
 
 export interface Database {
   action_stakeholder: ActionStakeholderTable;
+  app_settings: AppSettingsTable;
   app_user: AppUserTable;
+  attachment: AttachmentTable;
   babok_knowledge_area: BabokKnowledgeAreaTable;
   babok_task: BabokTaskTable;
   babok_task_technique: BabokTaskTechniqueTable;
   babok_technique: BabokTechniqueTable;
+  comment: CommentTable;
   initiative: InitiativeTable;
   initiative_member: InitiativeMemberTable;
   need: NeedTable;
   need_stakeholder: NeedStakeholderTable;
   owner_designation: OwnerDesignationTable;
+  page: PageTable;
+  page_revision: PageRevisionTable;
   reference_acronym: ReferenceAcronymTable;
   reference_category: ReferenceCategoryTable;
   requirement: RequirementTable;
@@ -281,7 +386,9 @@ export interface Database {
   requirement_version: RequirementVersionTable;
   stakeholder: StakeholderTable;
   suggestion_dismissal: SuggestionDismissalTable;
+  question_stakeholder: QuestionStakeholderTable;
   ticket: TicketTable;
+  ticket_link: TicketLinkTable;
   ticket_need: TicketNeedTable;
   ticket_requirement: TicketRequirementTable;
   ticket_version: TicketVersionTable;

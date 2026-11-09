@@ -1,14 +1,20 @@
-// Écran principal (ticket 17, décision 13) : « Mes actions » ou « Tickets ». Changer
-// d'écran ferme les panneaux, avec l'alerte des modifications non enregistrées ;
-// l'adresse du navigateur suit l'écran, et « Précédent » est un changement d'écran.
-import { parseScreenPath, sameScreen, type Screen, screenPath } from '@app/shared';
+// Écran principal (tickets 17 et 22, décision 13) : « Mes actions », « Tickets » ou
+// « Pages ». Changer d'écran, ou de page ouverte, ferme les panneaux et quitte la
+// page en écriture, avec l'alerte des modifications non enregistrées ; l'adresse
+// du navigateur suit l'écran, et « Précédent » est un changement d'écran.
+import { parseScreenPath, sameScreen, type Screen, screenInitiativeId, screenPath } from '@app/shared';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { type PanelContent, usePanels } from './panels';
 
 interface Screens {
   screen: Screen;
-  /** Ferme les panneaux, avec l'alerte, puis affiche l'écran et, s'il est fourni, ce panneau. */
-  goTo: (screen: Screen, panel?: PanelContent) => void;
+  /**
+   * Ferme les panneaux et quitte la saisie de l'écran, avec l'alerte, puis affiche
+   * l'écran et, s'il est fourni, ce panneau ; vrai si la sortie a eu lieu.
+   */
+  goTo: (screen: Screen, panel?: PanelContent) => Promise<boolean>;
+  /** Remplace l'écran sans alerte ni étape pour « Précédent » : la page qui vient d'être créée. */
+  replaceScreen: (screen: Screen) => void;
   /** Affiche les tickets de l'initiative et sa fiche : l'écran et la fiche montrent la même (décision 13). */
   showInitiative: (initiativeId: string) => void;
   /** L'initiative n'est plus accessible (supprimée, quittée) : son écran laisse place à l'accueil. */
@@ -21,7 +27,7 @@ const ScreensContext = createContext<Screens | null>(null);
 const currentIndex = () => (window.history.state as { screenIndex?: number } | null)?.screenIndex ?? 0;
 
 export function ScreensProvider({ children }: { children: ReactNode }) {
-  const { leaveAll, open } = usePanels();
+  const { leaveScreen, open } = usePanels();
   const [screen, setScreen] = useState(() => parseScreenPath(window.location.pathname));
   // Écran affiché et son rang : l'adresse peut déjà être ailleurs pendant une alerte.
   const shown = useRef({ screen, index: currentIndex() });
@@ -32,34 +38,37 @@ export function ScreensProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const goTo = useCallback(
-    (next: Screen, panel?: PanelContent) => {
-      void leaveAll().then((left) => {
-        if (!left) return;
-        if (!sameScreen(next, shown.current.screen)) {
-          const index = shown.current.index + 1;
-          window.history.pushState({ screenIndex: index }, '', screenPath(next));
-          show(next, index);
-        }
-        if (panel) open(panel);
-      });
+    async (next: Screen, panel?: PanelContent) => {
+      if (!(await leaveScreen())) return false;
+      if (!sameScreen(next, shown.current.screen)) {
+        const index = shown.current.index + 1;
+        window.history.pushState({ screenIndex: index }, '', screenPath(next));
+        show(next, index);
+      }
+      if (panel) open(panel);
+      return true;
     },
-    [leaveAll, open, show],
+    [leaveScreen, open, show],
+  );
+
+  const replaceScreen = useCallback(
+    (next: Screen) => {
+      window.history.replaceState({ screenIndex: shown.current.index }, '', screenPath(next));
+      show(next, shown.current.index);
+    },
+    [show],
   );
 
   const showInitiative = useCallback(
-    (initiativeId: string) => goTo({ kind: 'tickets', initiativeId }, { kind: 'initiative', initiativeId }),
+    (initiativeId: string) => void goTo({ kind: 'tickets', initiativeId }, { kind: 'initiative', initiativeId }),
     [goTo],
   );
 
   const initiativeGone = useCallback(
     (initiativeId: string) => {
-      const current = shown.current.screen;
-      if (current.kind !== 'tickets' || current.initiativeId !== initiativeId) return;
-      const home: Screen = { kind: 'myActions' };
-      window.history.replaceState({ screenIndex: shown.current.index }, '', screenPath(home));
-      show(home, shown.current.index);
+      if (screenInitiativeId(shown.current.screen) === initiativeId) replaceScreen({ kind: 'myActions' });
     },
-    [show],
+    [replaceScreen],
   );
 
   // Adresse inconnue : l'accueil s'affiche, l'adresse suit. Le rang survit au rechargement.
@@ -71,7 +80,7 @@ export function ScreensProvider({ children }: { children: ReactNode }) {
     async function onPopState() {
       // Retour sur l'entrée affichée : c'est l'annulation d'un « Précédent » refusé.
       if (currentIndex() === shown.current.index) return;
-      if (await leaveAll()) {
+      if (await leaveScreen()) {
         show(parseScreenPath(window.location.pathname), currentIndex());
         return;
       }
@@ -82,11 +91,11 @@ export function ScreensProvider({ children }: { children: ReactNode }) {
     const listener = () => void onPopState();
     window.addEventListener('popstate', listener);
     return () => window.removeEventListener('popstate', listener);
-  }, [leaveAll, show]);
+  }, [leaveScreen, show]);
 
   const value = useMemo(
-    () => ({ screen, goTo, showInitiative, initiativeGone }),
-    [screen, goTo, showInitiative, initiativeGone],
+    () => ({ screen, goTo, replaceScreen, showInitiative, initiativeGone }),
+    [screen, goTo, replaceScreen, showInitiative, initiativeGone],
   );
   return <ScreensContext.Provider value={value}>{children}</ScreensContext.Provider>;
 }

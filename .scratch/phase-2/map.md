@@ -42,8 +42,8 @@ Aucune : la [spécification](spec.md) et les tickets de réalisation 15 à 31 so
 
 ## Hors périmètre
 
-- Scénarios Gherkin : phase 3.
-- Extension Agile : chantier suivant (module activable, ADR-0012).
+- Scénarios Gherkin : phase 3, chantier suivant.
+- Extension Agile : après la phase 3 (module activable, ADR-0012).
 - Connexion à Jira ou Confluence : envisagée plus tard.
 - Hors-ligne mobile, et sur mobile tout écran autre que « Mes actions » : chantier hors-ligne.
 - Commentaires et pièces jointes sur les besoins et les exigences : écartés de la phase 2, à rouvrir plus tard.
