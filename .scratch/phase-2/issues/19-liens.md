@@ -4,7 +4,7 @@
 
 **Blocked by:** 18 — Types de ticket livrés et Epics
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 09.11.2026)
 
 Règles : décision [04](04-liens.md).
 
