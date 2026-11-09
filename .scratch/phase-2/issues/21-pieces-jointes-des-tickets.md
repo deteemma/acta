@@ -19,7 +19,7 @@ Règles : décision [10](10-pieces-jointes.md), ADR-0014.
 
 ## Réalisation
 
-**À trancher par la responsable fonctionnelle : choix que la décision 10 ne fixe pas.** Ils sont réalisés ainsi en attendant, et faciles à changer :
+**Choix que la décision 10 ne fixe pas, validés par la responsable fonctionnelle le 09.11.2026** : refus des formats Office à macros, format reconnu à l'extension seule, et présentation (unités, ordre de la liste, ajout de plusieurs fichiers sans glisser-déposer, fichier vide accepté, nom de 255 caractères au plus sans « / » ni « \ »). Les écrans restent à valider dans l'application.
 
 1. **Extensions acceptées**, pour chaque famille de la décision : PDF `.pdf` ; Word `.doc` `.docx` ; Excel `.xls` `.xlsx` ; PowerPoint `.ppt` `.pptx` ; OpenDocument `.odt` `.ods` `.odp` `.odg` ; texte `.txt` ; CSV `.csv` ; Markdown `.md` ; images `.png` `.jpg` `.jpeg` `.gif` `.webp` ; BPMN `.bpmn` ; draw.io `.drawio` ; Visio `.vsd` `.vsdx` ; courriels `.eml` `.msg`. Les formats Office **à macros** (`.docm`, `.xlsm`, `.pptm`…) sont refusés, comme des programmes. Le format est reconnu à l'extension du nom ; le contenu n'est pas examiné.
 2. **Unités** : 10 Mo = 10 × 1 024 × 1 024 octets ; 500 Mo de même. Tailles affichées en o, Ko, Mo ou Go, à une décimale.
