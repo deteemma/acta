@@ -2001,6 +2001,12 @@ button.link.pill:hover {
 .page-tree-row.selected .page-tree-add {
   visibility: visible;
 }
+.page-tree-blocked {
+  font-size: var(--text-small);
+}
+.page-tree-blocked:empty {
+  display: none;
+}
 .page-tree-hint,
 .pages-tree-empty,
 .pages-choose,

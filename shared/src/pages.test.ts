@@ -135,7 +135,14 @@ test('au clavier : monter, descendre, passer sous la page sœur précédente, re
   assert.deepEqual(keyboardPlacement(tree, 'A', 'down'), { parentId: null, index: 1 });
   assert.deepEqual(keyboardPlacement(tree, 'A2', 'indent'), { parentId: 'A1', index: 1 });
   assert.deepEqual(keyboardPlacement(tree, 'A1', 'outdent'), { parentId: null, index: 1 });
-  // Rien à faire : première, dernière, sans sœur précédente, déjà au premier niveau.
+  // Première ou dernière de son niveau : la sous-page sort juste avant ou juste après sa parente.
+  assert.deepEqual(keyboardPlacement(tree, 'A1', 'up'), { parentId: null, index: 0 });
+  assert.deepEqual(keyboardPlacement(tree, 'A2', 'down'), { parentId: null, index: 1 });
+  assert.deepEqual(keyboardPlacement(tree, 'A1a', 'up'), { parentId: 'A', index: 0 });
+  assert.deepEqual(keyboardPlacement(tree, 'A1a', 'down'), { parentId: 'A', index: 1 });
+  assert.deepEqual(order(movePage(tree, 'A2', keyboardPlacement(tree, 'A2', 'down')!)), ['A', '  A1', '    A1a', 'A2', 'B']);
+  assert.deepEqual(order(movePage(tree, 'A1', keyboardPlacement(tree, 'A1', 'up')!)), ['A1', '  A1a', 'A', '  A2', 'B']);
+  // Impossible : première ou dernière du premier niveau, sans sœur précédente, déjà au premier niveau.
   assert.equal(keyboardPlacement(tree, 'A', 'up'), null);
   assert.equal(keyboardPlacement(tree, 'B', 'down'), null);
   assert.equal(keyboardPlacement(tree, 'A1', 'indent'), null);

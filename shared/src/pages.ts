@@ -297,27 +297,31 @@ export type PageKeyboardMove = (typeof PAGE_KEYBOARD_MOVES)[number];
 
 /**
  * Au clavier : monter ou descendre parmi ses sœurs, devenir la dernière sous-page
- * de la sœur précédente, ou remonter d'un niveau juste après sa parente. Null si
- * c'est sans effet.
+ * de la sœur précédente, ou remonter d'un niveau juste après sa parente. Une
+ * sous-page déjà première (ou dernière) de son niveau en sort : elle se place
+ * juste avant (ou juste après) sa parente (validé le 09.11.2026). Null si c'est
+ * impossible : première ou dernière du premier niveau, sans sœur précédente, déjà
+ * au premier niveau.
  */
 export function keyboardPlacement(pages: readonly PageTreeItem[], pageId: string, move: PageKeyboardMove): PagePlacement | null {
   const page = pages.find((p) => p.id === pageId);
   if (!page) return null;
   const { parentId, index } = placementOf(pages, page);
   const siblings = childrenOf(pages, parentId);
+  const parent = pages.find((p) => p.id === parentId);
+  // Rang de la parente parmi ses propres sœurs : la page y est insérée avant (+0) ou après (+1).
+  const besideParent = (offset: 0 | 1) =>
+    parent ? { parentId: parent.parentId, index: placementOf(pages, parent).index + offset } : null;
   switch (move) {
     case 'up':
-      return index > 0 ? { parentId, index: index - 1 } : null;
+      return index > 0 ? { parentId, index: index - 1 } : besideParent(0);
     case 'down':
-      return index < siblings.length - 1 ? { parentId, index: index + 1 } : null;
+      return index < siblings.length - 1 ? { parentId, index: index + 1 } : besideParent(1);
     case 'indent': {
       const previous = siblings[index - 1];
       return previous ? { parentId: previous.id, index: childrenOf(pages, previous.id).length } : null;
     }
-    case 'outdent': {
-      const parent = pages.find((p) => p.id === parentId);
-      if (!parent) return null;
-      return { parentId: parent.parentId, index: placementOf(pages, parent).index + 1 };
-    }
+    case 'outdent':
+      return besideParent(1);
   }
 }

@@ -225,6 +225,8 @@ function PageTree({
   const [dragged, setDragged] = useState<string | null>(null);
   const [drop, setDrop] = useState<{ id: string; zone: 'before' | 'inside' } | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  // Déplacement au clavier impossible : dit pourquoi, jusqu'à la touche suivante.
+  const [blocked, setBlocked] = useState<string | null>(null);
   const list = useRef<HTMLUListElement>(null);
   // Ligne qui reçoit le focus au clavier : la page ouverte, sinon la première.
   const tabStop = nodes.some((n) => n.page.id === focused) ? focused : (selectedId ?? nodes[0]?.page.id);
@@ -241,12 +243,14 @@ function PageTree({
 
   function onKeyDown(event: KeyboardEvent<HTMLLIElement>, id: string) {
     const index = nodes.findIndex((n) => n.page.id === id);
+    setBlocked(null);
     if (event.altKey && canEdit) {
       const move = KEYBOARD_MOVES.find((m) => m.key === event.key)?.move;
       if (!move) return;
       event.preventDefault();
       const placement = keyboardPlacement(tree, id, move);
       if (placement) onMove(id, placement);
+      else setBlocked(t(`pages.cannotMove.${move}`, { title: nodes[index]?.page.title ?? '' }));
       return;
     }
     const target =
@@ -347,6 +351,9 @@ function PageTree({
           </li>
         ))}
       </ul>
+      <p className="page-tree-blocked" role="status">
+        {blocked}
+      </p>
       {canEdit && <p className="page-tree-hint">{t('pages.treeHint')}</p>}
     </>
   );

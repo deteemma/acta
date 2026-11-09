@@ -4,7 +4,7 @@
 
 **Blocked by:** 17 — Navigation et écran Tickets
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 09.11.2026)
 
 Règles : décisions [07](07-modele-de-la-page.md) (points 1 à 3, 7, 8), [08](08-editeur-de-page.md) (points 1 à 4, 6, 7), [13](13-coexistence-de-la-navigation.md), ADR-0019. Le prototype de l'éditeur a été supprimé le 07.11.2026 : plus de référence visuelle, les règles ci-dessus font foi.
 
@@ -13,7 +13,7 @@ Règles : décisions [07](07-modele-de-la-page.md) (points 1 à 3, 7, 8), [08](0
 - [x] Référence `CODE-PA-NNN` ; catégorie visible dans l'onglet des références. La page n'existe, avec sa référence, qu'au premier enregistrement.
 - [x] Limite de 200 000 caractères comptée sur le texte. Références : saisie par `#` et par le bouton, restent du texte, reliées à leur objet.
 - [x] Arborescence : profondeur illimitée, ordre libre, déplacement avec les sous-pages par glissement, avec une solution au clavier ; pas sous soi-même. Glissement non vérifié dans le prototype. *Proposition pour le clavier ci-dessous.*
-- [ ] Suppression refusée si la page a des sous-pages ou des liens. *Sous-pages : fait. Liens : les liens d'une page n'existent pas encore, le refus viendra avec le ticket 25.*
+- [x] Suppression refusée si la page a des sous-pages ou des liens. *Sous-pages : fait. Liens : les liens d'une page n'existent pas encore, le refus est reporté au ticket 25.*
 - [x] Adresse : suit l'écran Pages et la page ouverte ; lien partageable, refus pour un non-membre. Panneau d'initiative : ligne « Pages ». Palette : pages par référence et titre.
 - [x] Petit écran : arborescence au-dessus du document. Lecteur et initiative archivée : lecture seule.
 - [x] Règles dans `shared/`, avec tests ; deux barrières dans `scripts/roles/` ; libellés dans les deux langues.
@@ -33,10 +33,27 @@ Règles : décisions [07](07-modele-de-la-page.md) (points 1 à 3, 7, 8), [08](0
 8. L'arborescence est toujours entièrement dépliée.
 9. Une page dont on a tout effacé est enregistrée sans contenu. Elle affiche « Cette page n'a pas encore de contenu ».
 
+**Réponses de la responsable fonctionnelle (09.11.2026).**
+- Choix 2 à 9 : validés tels que réalisés.
+- Choix 8 (arborescence toujours dépliée) : validé pour ce ticket. Pouvoir replier une branche est un besoin à reprendre plus tard, hors de la phase 2.
+- Choix 1 et clavier : **Alt + flèche bas ne fonctionne pas** à l'essai.
+  - Cause, reproduite dans Chrome : dans l'arborescence d'essai, « Page 1 » est seule au premier niveau et « Page 1.1 » est sa seule sous-page. Chaque page y était déjà la dernière parmi ses sœurs : la règle « descendre parmi ses sœurs » ne faisait rien, et le clavier ne le disait pas.
+  - Décision : une sous-page déjà dernière de son niveau sort avec Alt + flèche bas et se place juste après sa parente ; déjà première, elle sort avec Alt + flèche haut et se place juste avant sa parente. Les boutons « Monter » et « Descendre » suivent la même règle.
+  - Un déplacement impossible au clavier affiche un message sous l'arborescence, par exemple « « Page 1.1 » est déjà la dernière page du premier niveau ». Le message s'efface à la touche suivante.
+- Raccourcis de frappe (écart vu à l'écran le 09.11.2026) : en tapant `# Budget 2027`, la ligne devenait un titre, et `2026. Une année` une liste. Décision : la frappe ne transforme jamais le texte ; la mise en forme passe par la barre d'outils et Ctrl+B, Ctrl+I. Une adresse web tapée ou collée devient toujours un lien.
+
 **Vérifié.**
 - Les deux barrières, avec les comptes de test (`scripts/roles/15-pages.mjs`), pour chaque rôle et pour l'initiative archivée : création au premier enregistrement avec la référence PA, contenu JSON relu à l'identique, limite de 200 000 caractères, mise en forme non prévue refusée, déplacement avec les sous-pages, refus sous soi-même ou vers une autre initiative, refus de supprimer une page qui a des sous-pages, palette, non-membre refusé.
 - Le schéma de l'éditeur, hors navigateur, avec un script ponctuel. Il compte exactement les éléments de mise en forme admis par `shared/`. Les trois textes d'essai traversent l'éditeur sans changer : `# Budget 2027` reste du texte et ne devient pas un titre, `2026. Une année` ne devient pas une liste, et `a < b & c` est gardé sans entité HTML. Une frappe suivie d'une annulation revient au JSON de départ, donc la page compte comme « non modifiée ».
-- **Non vérifié à l'écran** : l'extension Chrome n'était pas disponible pendant la réalisation. Il reste à essayer dans le navigateur la lecture seule, l'alerte après annulation, le glissement et le petit écran.
+- **À l'écran, dans Chrome (09.11.2026)**, avec le compte de test propriétaire :
+  - Lecture seule : `a < b & c` est affiché tel quel ; les références sont reliées à leur objet. L'initiative archivée affiche le bandeau, sans « Nouvelle page ».
+  - Les trois textes d'essai restent intacts tapés et collés, après la correction des raccourcis de frappe.
+  - « Annuler » après une saisie ouvre l'alerte. Une frappe annulée par Ctrl+Z, puis « Annuler » : retour en lecture sans alerte.
+  - Alt + flèches : les quatre déplacements, la sortie d'une sous-page par le haut et par le bas, et le message quand le déplacement est impossible. La page déplacée garde le focus.
+  - Suppression : refusée avec le message quand la page a une sous-page ; acceptée après confirmation sinon.
+  - Petit écran, 390 pixels de large : arborescence au-dessus du document, sans défilement horizontal. Boutons « Déplacer » utilisables.
+  - Glissement : vérifié en rejouant les événements du navigateur par script, car l'extension ne sait pas faire un vrai glisser-déposer. Le haut de la ligne place avant, le reste fait une sous-page, les sous-pages suivent, le dépôt sous soi-même est refusé.
+- Ticket validé par la responsable fonctionnelle le 09.11.2026, avec les corrections ci-dessus.
 
 **Limites connues.**
 - Bouton « Image » : ticket 26. Case « Enregistrer comme version N » et historique : ticket 23. Modification simultanée : ticket 24. Liens et refus de suppression d'une page liée : ticket 25.

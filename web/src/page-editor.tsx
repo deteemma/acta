@@ -159,6 +159,11 @@ export default function PageEditor({
   const editor = useEditor({
     extensions: [...pageExtensions(), referenceSuggestion(bridge)],
     content: initialContent,
+    // La frappe ne transforme jamais le texte : « # Budget 2027 » ne devient pas un
+    // titre, « 2026. Une année » pas une liste (validé le 09.11.2026). Au collage,
+    // seules les adresses web deviennent des liens (choix 7).
+    enableInputRules: false,
+    enablePasteRules: ['link'],
     shouldRerenderOnTransaction: false,
     editorProps: { attributes: { 'aria-label': label, 'aria-multiline': 'true', role: 'textbox', class: 'page-content' } },
     onCreate: ({ editor }) => bridge.onReady(editor.getJSON() as PageDoc),
