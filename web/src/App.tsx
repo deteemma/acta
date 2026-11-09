@@ -12,6 +12,7 @@ import { EmptyState } from './empty-state';
 import { login, loginErrorFromUrl, logout, shouldRedirectToLogin } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
+import { Logotype } from './logotype';
 import { CreateInitiativePanel, InitiativePanel, MemberPanel } from './initiative-panels';
 import { MyActions } from './my-actions';
 import { NeedPanel } from './need-panels';
@@ -55,7 +56,7 @@ function SignedOut() {
   return (
     <main className="signed-out">
       <div className="signed-out-text">
-        <h1 className="logotype">{t('app.title')}</h1>
+        <Logotype as="h1" />
         <p className="tagline">{t('app.tagline')}</p>
         <div className="signed-out-buttons">
           <button type="button" className="primary" onClick={() => login().catch((e: unknown) => setFailure(String(e)))}>
@@ -179,7 +180,7 @@ function Shell({ user }: { user: User }) {
           {!navHidden && (
             <nav id="sidebar" className="sidebar" aria-label={t('shell.navigation')}>
               <ResizeHandle area={SIDEBAR} label={t('shell.resizeNav')} className="sidebar-resize" />
-              <span className="logotype">{t('app.title')}</span>
+              <Logotype />
               <button
                 type="button"
                 className="nav-item"

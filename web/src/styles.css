@@ -2556,3 +2556,19 @@ button.link.pill:hover {
   max-width: 100%;
   object-fit: contain;
 }
+
+/* Film du logo : affiché sous le logotype pendant qu'on pointe dessus. */
+.logo-film {
+  position: fixed;
+  z-index: 1000;
+  width: min(40rem, calc(100vw - var(--space-8)));
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+  pointer-events: none;
+}
+.logo-film[hidden] {
+  display: none;
+}
