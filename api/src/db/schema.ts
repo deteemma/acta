@@ -155,6 +155,29 @@ export interface CommentTable {
   deleted_at: ColumnType<Date | null, never, never>;
 }
 
+/** Paramètres de l'application, une seule ligne (migration 0024) ; réglés au ticket 31. */
+export interface AppSettingsTable {
+  id: ColumnType<boolean, never, never>;
+  attachment_quota_mb: ColumnType<number, never, never>;
+}
+
+/** Pièce jointe d'un ticket ou d'une page (migration 0024) : auteur, dates et taille écrits par la base. */
+export interface AttachmentTable {
+  id: ColumnType<string, string, never>;
+  initiative_id: ColumnType<string, string, never>;
+  ticket_id: ColumnType<string | null, string | null, never>;
+  page_id: ColumnType<string | null, string | null, never>;
+  /** Renommer garde l'extension (vérifié par la base). */
+  name: ColumnType<string, string, string>;
+  size_bytes: ColumnType<number, never, never>;
+  /** Mettre le contenu à null supprime le fichier : la base pose l'auteur et la date de la suppression. */
+  content: ColumnType<Buffer | null, Buffer, null>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  deleted_by: ColumnType<string | null, never, never>;
+  deleted_at: ColumnType<Date | null, never, never>;
+}
+
 /** Suggestion écartée par l'équipe (migration 0015). */
 export interface SuggestionDismissalTable {
   initiative_id: string;
@@ -339,7 +362,9 @@ export interface BabokTaskTechniqueTable {
 
 export interface Database {
   action_stakeholder: ActionStakeholderTable;
+  app_settings: AppSettingsTable;
   app_user: AppUserTable;
+  attachment: AttachmentTable;
   babok_knowledge_area: BabokKnowledgeAreaTable;
   babok_task: BabokTaskTable;
   babok_task_technique: BabokTaskTechniqueTable;

@@ -1,5 +1,7 @@
 import type {
   AccountDto,
+  AttachmentDto,
+  AttachmentsDto,
   ActionDto,
   CommentDto,
   CommentInput,
@@ -80,11 +82,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers,
     },
   });
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { refusal?: unknown } | null;
-    throw new ApiError(response.status, typeof body?.refusal === 'string' ? body.refusal : undefined);
-  }
+  if (!response.ok) throw await toApiError(response);
   return (response.status === 204 ? undefined : await response.json()) as T;
+}
+
+/** Contenu d'une pièce jointe : les octets seuls, que l'appelant type lui-même (attachments.tsx). */
+async function requestBlob(path: string): Promise<ArrayBuffer> {
+  const response = await fetch(`/api${path}`, { headers: { Authorization: `Bearer ${await accessToken()}` } });
+  if (!response.ok) throw await toApiError(response);
+  return response.arrayBuffer();
+}
+
+/** Réponse en erreur : son statut et, s'il y en a un, le motif de refus de l'API. */
+async function toApiError(response: Response): Promise<ApiError> {
+  const body = (await response.json().catch(() => null)) as { refusal?: unknown } | null;
+  return new ApiError(response.status, typeof body?.refusal === 'string' ? body.refusal : undefined);
 }
 
 export const api = {
@@ -124,6 +136,23 @@ export const api = {
     request<CommentDto>(`/initiatives/${id}/comments/${commentId}`, { method: 'PATCH', body: JSON.stringify(input) }),
   deleteComment: (id: string, commentId: string) =>
     request<CommentDto>(`/initiatives/${id}/comments/${commentId}`, { method: 'DELETE' }),
+  // Pièces jointes (ticket 21) : contenu envoyé brut, nom dans l'adresse.
+  listTicketAttachments: (id: string, ticketId: string) =>
+    request<AttachmentsDto>(`/initiatives/${id}/tickets/${ticketId}/attachments`),
+  uploadTicketAttachment: (id: string, ticketId: string, file: File) =>
+    request<AttachmentsDto>(`/initiatives/${id}/tickets/${ticketId}/attachments?name=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      body: file,
+      headers: { 'Content-Type': 'application/octet-stream' },
+    }),
+  renameAttachment: (id: string, attachmentId: string, baseName: string) =>
+    request<AttachmentDto>(`/initiatives/${id}/attachments/${attachmentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ baseName }),
+    }),
+  deleteAttachment: (id: string, attachmentId: string) =>
+    request<AttachmentDto>(`/initiatives/${id}/attachments/${attachmentId}`, { method: 'DELETE' }),
+  attachmentContent: (id: string, attachmentId: string) => requestBlob(`/initiatives/${id}/attachments/${attachmentId}/content`),
   createTicketLink: (id: string, input: CreateTicketLinkInput) =>
     request<InitiativeLinksDto>(`/initiatives/${id}/links/tickets`, { method: 'POST', body: JSON.stringify(input) }),
   removeTicketLink: (id: string, ticketId: string, otherTicketId: string) =>

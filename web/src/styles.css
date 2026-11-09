@@ -2440,3 +2440,119 @@ button.link.pill:hover {
   color: var(--muted);
   font-style: italic;
 }
+
+/* Pièces jointes (ticket 21) : liste des fichiers d'un ticket, visionneuse. */
+.attachment-list {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+}
+.attachment {
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) 0;
+}
+.attachment-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.attachment-line > button.link {
+  margin-right: auto;
+  overflow-wrap: anywhere;
+  text-align: left;
+  text-decoration: underline;
+}
+.attachment-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+.attachment-actions button {
+  font-size: var(--text-small);
+}
+.attachment-meta {
+  margin: 0;
+  color: var(--muted);
+}
+.attachment-deleted {
+  color: var(--muted);
+  font-style: italic;
+}
+.attachment-usage {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+}
+/* Le champ de fichier natif reste accessible au clavier, sous l'apparence d'un bouton. */
+.file-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+.file-button:hover {
+  background: var(--bg);
+}
+.file-button:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.rename-attachment-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.rename-attachment-field input {
+  flex: 1;
+  min-width: 0;
+}
+.attachment-viewer {
+  padding: var(--space-4);
+  width: min(60rem, calc(100% - var(--space-8)));
+  height: calc(100% - var(--space-8));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-panel);
+}
+.attachment-viewer[open] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.attachment-viewer::backdrop {
+  background: var(--backdrop);
+}
+.attachment-viewer-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.attachment-viewer-header h2 {
+  margin: 0 auto 0 0;
+  overflow-wrap: anywhere;
+}
+.attachment-viewer-pdf {
+  flex: 1;
+  width: 100%;
+  border: none;
+}
+.attachment-viewer-image {
+  flex: 1;
+  min-height: 0;
+  max-width: 100%;
+  object-fit: contain;
+}

@@ -94,6 +94,14 @@ test('liens : propriétaire et contributeur les créent et les retirent ; lecteu
   assert.equal(can('contributor', 'editLinks', { archived: true }), false);
 });
 
+test('pièces jointes : propriétaire et contributeur ajoutent, renomment et suppriment tout fichier ; lecteur et archivée : ouvrir et télécharger', () => {
+  assert.equal(can('owner', 'editAttachments'), true);
+  assert.equal(can('contributor', 'editAttachments'), true);
+  assert.equal(can('reader', 'editAttachments'), false);
+  assert.equal(can('owner', 'editAttachments', { archived: true }), false);
+  assert.equal(can('reader', 'view', { archived: true }), true);
+});
+
 test('commentaires : propriétaire et contributeur commentent, seul un propriétaire supprime ceux des autres ; archivée : lecture seule', () => {
   assert.equal(can('owner', 'comment'), true);
   assert.equal(can('contributor', 'comment'), true);

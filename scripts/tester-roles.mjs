@@ -26,6 +26,7 @@ const SECTIONS = [
   '16-enregistrements-de-page',
   '17-liens',
   '18-commentaires',
+  '19-pieces-jointes',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);
@@ -45,8 +46,13 @@ const { pgInitiativeId, pgOtherInitiativeId } = run['15-pages'];
 const { rvInitiativeId } = run['16-enregistrements-de-page'];
 const { lkInitiativeId, lkOtherInitiativeId } = run['17-liens'];
 const { cmInitiativeId, cmOtherInitiativeId } = run['18-commentaires'];
+const { ajInitiativeId, ajOtherInitiativeId } = run['19-pieces-jointes'];
 
 console.log('\nNettoyage');
+await check('alice supprime les initiatives des pièces jointes, avec leurs fichiers : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${ajOtherInitiativeId}`)).status, 204);
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${ajInitiativeId}`)).status, 204);
+});
 await check('alice supprime les initiatives des commentaires, avec leurs tickets commentés : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${cmOtherInitiativeId}`)).status, 204);
   assert.equal((await call(alice, 'DELETE', `/initiatives/${cmInitiativeId}`)).status, 204);

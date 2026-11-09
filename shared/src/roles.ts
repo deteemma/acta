@@ -51,6 +51,11 @@ export const INITIATIVE_PERMISSIONS = {
   comment: 'contributor',
   /** Supprimer le commentaire d'un autre membre (phase 2, ticket 20). */
   deleteAnyComment: 'owner',
+  /**
+   * Ajouter, renommer et supprimer une pièce jointe, sur n'importe quel fichier du
+   * ticket (phase 2, ticket 21) ; tout membre l'ouvre et la télécharge (`view`).
+   */
+  editAttachments: 'contributor',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;

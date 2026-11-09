@@ -39,6 +39,7 @@ import { formatDate } from './initiative-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
+import { TicketAttachments } from './attachments';
 import { TicketComments } from './comments';
 import { TicketLinks } from './link-panels';
 import { EpicLink, EpicSelect, TicketAudit, TicketHistory, TicketStatusLabel, ticketTarget } from './ticket-parts';
@@ -134,6 +135,7 @@ export function TicketPanel({
             onChanged={onChanged}
           />
           <TicketComments initiativeId={initiativeId} ticketId={ticket.id} initiative={ticket.initiative} myId={myId} />
+          <TicketAttachments initiativeId={initiativeId} ticketId={ticket.id} initiative={ticket.initiative} />
           <TicketHistory type={ticket.type} babok={null} versions={versions} />
           {canEditTicket(ticket) && (
             <DeleteTicket
