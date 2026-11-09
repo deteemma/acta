@@ -3,10 +3,14 @@ import type {
   ActionDto,
   CreateTicketInput,
   CreatePageInput,
+  DeclarePageVersionInput,
   MovePageInput,
   PageDto,
+  PageRevisionDto,
+  PageRevisionRow,
   PageRow,
   UpdatePageInput,
+  UpdatePageVersionNoteInput,
   TicketDto,
   TicketRow,
   TicketVersionDto,
@@ -116,6 +120,25 @@ export const api = {
   movePage: (id: string, pageId: string, input: MovePageInput) =>
     request<PageRow[]>(`/initiatives/${id}/pages/${pageId}/placement`, { method: 'PUT', body: JSON.stringify(input) }),
   deletePage: (id: string, pageId: string) => request<void>(`/initiatives/${id}/pages/${pageId}`, { method: 'DELETE' }),
+  // Enregistrements et versions de page (ticket 23).
+  listPageRevisions: (id: string, pageId: string) =>
+    request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions`),
+  getPageRevision: (id: string, pageId: string, revisionId: string) =>
+    request<PageRevisionDto>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}`),
+  declarePageVersion: (id: string, pageId: string, revisionId: string, input: DeclarePageVersionInput) =>
+    request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}/version`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  updatePageVersionNote: (id: string, pageId: string, revisionId: string, input: UpdatePageVersionNoteInput) =>
+    request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}/version`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  restorePageRevision: (id: string, pageId: string, revisionId: string) =>
+    request<PageDto>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}/restore`, { method: 'POST' }),
+  deletePageRevision: (id: string, pageId: string, revisionId: string) =>
+    request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions/${revisionId}`, { method: 'DELETE' }),
   listTickets: (id: string) => request<TicketRow[]>(`/initiatives/${id}/tickets`),
   getTicket: (id: string, ticketId: string) => request<TicketDto>(`/initiatives/${id}/tickets/${ticketId}`),
   ticketHistory: (id: string, ticketId: string) =>

@@ -4,6 +4,7 @@ import {
   isAdminRefusal,
   isNeedRefusal,
   isPageRefusal,
+  isPageRevisionRefusal,
   isReferenceRefusal,
   isRequirementRefusal,
   isRequirementStatusRefusal,
@@ -28,6 +29,7 @@ export function toUiError(error: unknown): UiError {
     if (isStakeholderRefusal(error.refusal)) return { key: `stakeholder.refusal.${error.refusal}` };
     if (isNeedRefusal(error.refusal)) return { key: `need.refusal.${error.refusal}` };
     if (isPageRefusal(error.refusal)) return { key: `page.refusal.${error.refusal}` };
+    if (isPageRevisionRefusal(error.refusal)) return { key: `pageRevision.refusal.${error.refusal}` };
     if (isReferenceRefusal(error.refusal)) return { key: `reference.refusal.${error.refusal}` };
     if (isRequirementRefusal(error.refusal)) return { key: `requirement.refusal.${error.refusal}` };
     if (isRequirementStatusRefusal(error.refusal)) return { key: `requirementStatus.refusal.${error.refusal}` };

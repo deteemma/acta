@@ -3,6 +3,7 @@
 // JSON. Règles écrites une seule fois ici, appliquées par l'API et le web, et
 // reproduites par la base (migration 0020).
 import { z } from 'zod';
+import { declarePageVersionSchema, type PageVersionStatus } from './page-revisions.js';
 import type { MemberNameDto } from './schemas.js';
 
 export const PAGE_TITLE_MAX_LENGTH = 200;
@@ -131,8 +132,14 @@ export const createPageSchema = z.object({
 });
 export type CreatePageInput = z.infer<typeof createPageSchema>;
 
-/** Modification du titre et du contenu : seuls les champs fournis changent. */
-export const updatePageSchema = z.object({ title: pageTitle, content: pageContentSchema.nullable() }).partial();
+/**
+ * Modification du titre et du contenu : seuls les champs fournis changent. Avec
+ * `version` (case « Enregistrer comme version N »), le nouvel enregistrement est
+ * déclaré comme version ; sans changement, c'est le dernier qui l'est.
+ */
+export const updatePageSchema = z
+  .object({ title: pageTitle, content: pageContentSchema.nullable(), version: declarePageVersionSchema })
+  .partial();
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
 
 /** Page telle que renvoyée par l'API. */
@@ -150,6 +157,10 @@ export interface PageDto {
   createdBy: MemberNameDto;
   updatedAt: string;
   updatedBy: MemberNameDto;
+  /** Dernier enregistrement : l'état affiché. */
+  revisionId: string;
+  /** Dernière version et modifications depuis (pageVersionStatus). */
+  versions: PageVersionStatus;
 }
 
 /** Ligne de l'arborescence : sans le contenu. */

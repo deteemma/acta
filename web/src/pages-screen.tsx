@@ -18,18 +18,20 @@ import {
   type PageKeyboardMove,
   type PagePlacement,
   type PageRefusal,
+  type PageRevisionRow,
   type PageRow,
   pageTextLength,
   type ReferenceDto,
   sortByReference,
 } from '@app/shared';
-import { ArrowDown, ArrowUp, IndentDecrease, IndentIncrease, Pencil, Plus } from 'lucide-react';
-import { type DragEvent, type KeyboardEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, History, IndentDecrease, IndentIncrease, Pencil, Plus } from 'lucide-react';
+import { type DragEvent, type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { PageContent } from './page-content';
+import { PageComparison, PageHistory, PageRevisionView, type PageShown, VersionNoteField } from './page-history';
 import { SCREEN_TITLE_ID, usePanels } from './panels';
 import { useReferences } from './references';
 import { useScreens } from './screens';
@@ -383,16 +385,96 @@ function PageView({
   const [missing, setMissing] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
+  // Historique en volet à droite (décision 08, point 6) ; le centre montre la page, un enregistrement ou une comparaison.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [shown, setShown] = useState<PageShown>({ kind: 'page' });
+  const [revisions, setRevisions] = useState<PageRevisionRow[] | null>(null);
+  const [status, setStatus] = useState('');
 
-  useEffect(() => {
+  const loadPage = () =>
     api.getPage(initiativeId, pageId).then(setPage, (e: unknown) => {
       if (isRefusal(e)) setMissing(true);
       else setError(toUiError(e));
     });
+  useEffect(() => {
+    void loadPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- la page se relit quand elle change d'identifiant
   }, [initiativeId, pageId]);
+
+  // L'historique se relit à son ouverture et à chaque nouvel enregistrement de la page.
+  const revisionId = page?.revisionId;
+  useEffect(() => {
+    if (!historyOpen || !revisionId) return;
+    api.listPageRevisions(initiativeId, pageId).then(setRevisions, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, pageId, historyOpen, revisionId]);
 
   if (missing) return <p className="error" role="alert">{t('pages.notFound')}</p>;
   if (!page) return <ErrorMessage error={error} />;
+
+  const show = (next: PageShown) => {
+    setShown(next);
+    setStatus('');
+  };
+  const history = historyOpen && (
+    <PageHistory
+      revisions={revisions}
+      shown={shown}
+      onShow={show}
+      onClose={() => {
+        setHistoryOpen(false);
+        setShown({ kind: 'page' });
+      }}
+    />
+  );
+  const withHistory = (center: ReactNode) => (
+    <div className={historyOpen ? 'page-with-history' : undefined}>
+      <div className="page-with-history-center">
+        <p className="visually-hidden" role="status">
+          {status}
+        </p>
+        {center}
+      </div>
+      {history}
+    </div>
+  );
+
+  if (shown.kind === 'revision' && revisions?.some((r) => r.id === shown.id)) {
+    return withHistory(
+      <PageRevisionView
+        key={shown.id}
+        initiativeId={initiativeId}
+        pageId={pageId}
+        revisionId={shown.id}
+        revisions={revisions}
+        canEdit={canEdit}
+        onShow={show}
+        onRevisions={(list, message) => {
+          setRevisions(list);
+          setStatus(message);
+          // Dernière version et modifications depuis : relues avec la page.
+          void loadPage();
+        }}
+        onRestored={(message) => {
+          setShown({ kind: 'page' });
+          setStatus(message);
+          void loadPage();
+          onChanged();
+        }}
+      />,
+    );
+  }
+  if (shown.kind === 'compare') {
+    return withHistory(
+      <PageComparison
+        key={`${shown.fromId}-${shown.toId}`}
+        initiativeId={initiativeId}
+        pageId={pageId}
+        fromId={shown.fromId}
+        toId={shown.toId}
+        onShow={show}
+      />,
+    );
+  }
 
   if (editing && canEdit) {
     return (
@@ -412,10 +494,18 @@ function PageView({
   }
 
   const moveTo = (move: PageKeyboardMove) => keyboardPlacement(tree, page.id, move);
-  return (
+  const { lastVersion, modifiedSinceLastVersion } = page.versions;
+  return withHistory(
     <article className="page-view">
       <div className="panel-kicker">
         {t('referenceCategory.page')} <span className="code">{page.reference}</span>
+        {lastVersion !== null && (
+          <>
+            {' '}
+            <span className="badge accent">{t('page.versionBadge', { number: lastVersion })}</span>
+            {modifiedSinceLastVersion && <small> · {t('page.modifiedSinceVersion', { number: lastVersion })}</small>}
+          </>
+        )}
       </div>
       <div className="page-view-header">
         <h2 id={SCREEN_TITLE_ID} className="page-view-title">
@@ -433,6 +523,10 @@ function PageView({
             </button>
           </span>
         )}
+        <button type="button" aria-pressed={historyOpen} onClick={() => setHistoryOpen(!historyOpen)}>
+          <History />
+          {t('page.history')}
+        </button>
       </div>
       <ErrorMessage error={error} />
       {/* Un document vide est enregistré sans contenu (pageContentSchema). */}
@@ -478,7 +572,7 @@ function PageView({
           />
         </section>
       )}
-    </article>
+    </article>,
   );
 }
 
@@ -566,6 +660,9 @@ function PageEditForm({
   const [baseline, setBaseline] = useState<string | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   const [titleMissing, setTitleMissing] = useState(false);
+  // Pas de version à la création (décision 07, point 5).
+  const [asVersion, setAsVersion] = useState(false);
+  const [versionNote, setVersionNote] = useState('');
 
   const serialized = doc && JSON.stringify(doc);
   const contentChanged = baseline !== null && serialized !== baseline;
@@ -592,6 +689,7 @@ function PageEditForm({
         ? await api.updatePage(initiativeId, page.id, {
             title: parsed.data.title,
             ...(contentChanged && { content: parsed.data.content }),
+            ...(asVersion && { version: { note: versionNote.trim() || null } }),
           })
         : await api.createPage(initiativeId, parsed.data);
       setError(null);
@@ -603,7 +701,10 @@ function PageEditForm({
     }
   }
 
-  const onSubmit = useUnsavedForm({ title, content: contentChanged ? serialized : '' }, save);
+  const onSubmit = useUnsavedForm(
+    { title, content: contentChanged ? serialized : '', asVersion, versionNote: asVersion ? versionNote : '' },
+    save,
+  );
 
   const titleLabel = page ? page.title : parentTitle ? t('pages.newChildOf', { title: parentTitle }) : t('pages.new');
   return (
@@ -622,6 +723,15 @@ function PageEditForm({
           {t('page.save')}
         </button>
       </div>
+      {page && (
+        <div className="page-save-version">
+          <label className="checkbox">
+            <input type="checkbox" checked={asVersion} onChange={(e) => setAsVersion(e.target.checked)} />
+            {t('page.saveAsVersion', { number: page.versions.nextVersion })}
+          </label>
+          {asVersion && <VersionNoteField note={versionNote} onChange={setVersionNote} />}
+        </div>
+      )}
       <ErrorMessage error={error} />
       <label className="page-title-field">
         <span className="visually-hidden">{t('page.titleLabel')}</span>

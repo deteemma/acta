@@ -119,6 +119,26 @@ export interface PageTable {
   updated_at: ColumnType<Date, never, never>;
 }
 
+/**
+ * Enregistrement de page (migration 0021) : écrit par la base à chaque changement
+ * du titre ou du contenu ; seuls la version, sa note et la suppression changent.
+ */
+export interface PageRevisionTable {
+  id: ColumnType<string, never, never>;
+  sequence: ColumnType<string, never, never>;
+  initiative_id: ColumnType<string, never, never>;
+  page_id: ColumnType<string, never, never>;
+  title: ColumnType<string | null, never, never>;
+  content: ColumnType<PageDoc | null, never, never>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  version_number: ColumnType<number | null, never, number>;
+  version_note: ColumnType<string | null, never, string | null>;
+  deleted_by: ColumnType<string | null, never, never>;
+  /** Écrire une date supprime l'enregistrement : la base pose l'auteur, la date et retire le contenu. */
+  deleted_at: ColumnType<Date | null, never, Date>;
+}
+
 /** Suggestion écartée par l'équipe (migration 0015). */
 export interface SuggestionDismissalTable {
   initiative_id: string;
@@ -306,6 +326,7 @@ export interface Database {
   need_stakeholder: NeedStakeholderTable;
   owner_designation: OwnerDesignationTable;
   page: PageTable;
+  page_revision: PageRevisionTable;
   reference_acronym: ReferenceAcronymTable;
   reference_category: ReferenceCategoryTable;
   requirement: RequirementTable;
