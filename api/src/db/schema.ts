@@ -140,6 +140,21 @@ export interface PageRevisionTable {
   deleted_at: ColumnType<Date | null, never, Date>;
 }
 
+/** Commentaire d'un ticket ou d'une page (migration 0023) : auteur et dates écrits par la base. */
+export interface CommentTable {
+  id: ColumnType<string, string, never>;
+  initiative_id: ColumnType<string, string, never>;
+  ticket_id: ColumnType<string | null, string | null, never>;
+  page_id: ColumnType<string | null, string | null, never>;
+  /** Mettre le texte à null supprime le commentaire : la base pose l'auteur et la date de la suppression. */
+  body: ColumnType<string | null, string, string | null>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  edited_at: ColumnType<Date | null, never, never>;
+  deleted_by: ColumnType<string | null, never, never>;
+  deleted_at: ColumnType<Date | null, never, never>;
+}
+
 /** Suggestion écartée par l'équipe (migration 0015). */
 export interface SuggestionDismissalTable {
   initiative_id: string;
@@ -329,6 +344,7 @@ export interface Database {
   babok_task: BabokTaskTable;
   babok_task_technique: BabokTaskTechniqueTable;
   babok_technique: BabokTechniqueTable;
+  comment: CommentTable;
   initiative: InitiativeTable;
   initiative_member: InitiativeMemberTable;
   need: NeedTable;

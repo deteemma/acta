@@ -44,6 +44,7 @@ import { formatDate } from './initiative-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
+import { TicketComments } from './comments';
 import { TicketLinks } from './link-panels';
 import { EpicLink, EpicSelect, TicketAudit, TicketHistory } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
@@ -202,6 +203,7 @@ export function ActionPanel({
   actionId,
   ticketsVersion,
   stakeholdersVersion,
+  myId,
   onChanged,
   onClose,
 }: {
@@ -212,6 +214,8 @@ export function ActionPanel({
   ticketsVersion: number;
   /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
   stakeholdersVersion: number;
+  /** Pour savoir quels commentaires sont les miens. */
+  myId: string | null;
   /** Une action a été modifiée ou supprimée : les listes se rechargent. */
   onChanged: () => void;
   onClose: () => void;
@@ -284,6 +288,7 @@ export function ActionPanel({
             version={ticketsVersion}
             onChanged={onChanged}
           />
+          <TicketComments initiativeId={initiativeId} ticketId={action.id} initiative={action.initiative} myId={myId} />
           <TicketHistory type="action" babok={babok} versions={versions} />
           {canEditActions(action) && (
             <DeleteAction

@@ -39,6 +39,7 @@ import { formatDate } from './initiative-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-panels';
+import { TicketComments } from './comments';
 import { TicketLinks } from './link-panels';
 import { EpicLink, EpicSelect, TicketAudit, TicketHistory, TicketStatusLabel, ticketTarget } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
@@ -51,6 +52,7 @@ export function TicketPanel({
   ticketId,
   ticketsVersion,
   stakeholdersVersion,
+  myId,
   onChanged,
   onClose,
 }: {
@@ -59,6 +61,8 @@ export function TicketPanel({
   /** Change à chaque écriture sur un ticket : l'Epic et ses tickets se rechargent. */
   ticketsVersion: number;
   stakeholdersVersion: number;
+  /** Pour savoir quels commentaires sont les miens. */
+  myId: string | null;
   onChanged: () => void;
   onClose: () => void;
 }) {
@@ -129,6 +133,7 @@ export function TicketPanel({
             version={ticketsVersion}
             onChanged={onChanged}
           />
+          <TicketComments initiativeId={initiativeId} ticketId={ticket.id} initiative={ticket.initiative} myId={myId} />
           <TicketHistory type={ticket.type} babok={null} versions={versions} />
           {canEditTicket(ticket) && (
             <DeleteTicket

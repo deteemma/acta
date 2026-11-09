@@ -367,6 +367,7 @@ function Shell({ user }: { user: User }) {
                       actionId={content.actionId}
                       ticketsVersion={actionsVersion}
                       stakeholdersVersion={stakeholdersVersion}
+                      myId={me?.id ?? null}
                       onChanged={actionsChanged}
                       onClose={close}
                     />
@@ -379,6 +380,7 @@ function Shell({ user }: { user: User }) {
                     ticketId={content.ticketId}
                     ticketsVersion={actionsVersion}
                     stakeholdersVersion={stakeholdersVersion}
+                    myId={me?.id ?? null}
                     onChanged={actionsChanged}
                     onClose={close}
                   />

@@ -87,11 +87,14 @@ export function RichTextEditor({
   label,
   value,
   maxLength,
+  rows = 8,
   onChange,
 }: {
   label: string;
   value: string;
   maxLength: number;
+  /** Hauteur de la zone de texte, en lignes. */
+  rows?: number;
   onChange: (value: string) => void;
 }) {
   const { t } = useI18n();
@@ -138,7 +141,7 @@ export function RichTextEditor({
           <textarea
             ref={ref}
             aria-label={label}
-            rows={8}
+            rows={rows}
             maxLength={maxLength}
             value={value}
             onChange={(e) => onChange(e.target.value)}

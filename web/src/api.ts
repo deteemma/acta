@@ -1,6 +1,8 @@
 import type {
   AccountDto,
   ActionDto,
+  CommentDto,
+  CommentInput,
   CreateNeedLinkInput,
   CreateRequirementLinkInput,
   CreateTicketLinkInput,
@@ -114,6 +116,14 @@ export const api = {
   listOwnerDesignations: (id: string) => request<OwnerDesignationDto[]>(`/initiatives/${id}/owner-designations`),
   // Liens (ticket 19) : ceux de toute l'initiative, que chaque fiche croise avec ses objets.
   listLinks: (id: string) => request<InitiativeLinksDto>(`/initiatives/${id}/links`),
+  listTicketComments: (id: string, ticketId: string) =>
+    request<CommentDto[]>(`/initiatives/${id}/tickets/${ticketId}/comments`),
+  createTicketComment: (id: string, ticketId: string, input: CommentInput) =>
+    request<CommentDto[]>(`/initiatives/${id}/tickets/${ticketId}/comments`, { method: 'POST', body: JSON.stringify(input) }),
+  updateComment: (id: string, commentId: string, input: CommentInput) =>
+    request<CommentDto>(`/initiatives/${id}/comments/${commentId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deleteComment: (id: string, commentId: string) =>
+    request<CommentDto>(`/initiatives/${id}/comments/${commentId}`, { method: 'DELETE' }),
   createTicketLink: (id: string, input: CreateTicketLinkInput) =>
     request<InitiativeLinksDto>(`/initiatives/${id}/links/tickets`, { method: 'POST', body: JSON.stringify(input) }),
   removeTicketLink: (id: string, ticketId: string, otherTicketId: string) =>

@@ -44,6 +44,13 @@ export const INITIATIVE_PERMISSIONS = {
   editPages: 'contributor',
   /** Créer et retirer un lien entre tickets, ou d'un ticket vers un besoin ou une exigence (phase 2, ticket 19). */
   editLinks: 'contributor',
+  /**
+   * Commenter, et modifier ou supprimer ses propres commentaires (phase 2, ticket 20) ;
+   * le détail est vérifié par canEditComment et canDeleteComment (comments.ts).
+   */
+  comment: 'contributor',
+  /** Supprimer le commentaire d'un autre membre (phase 2, ticket 20). */
+  deleteAnyComment: 'owner',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;

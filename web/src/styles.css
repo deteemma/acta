@@ -2411,3 +2411,32 @@ button.link.pill:hover {
 .add-link {
   margin-top: var(--space-2);
 }
+
+/* Commentaires (ticket 20) : fil simple, du plus ancien au plus récent. */
+.comment-thread {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+.comment {
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) 0;
+}
+.comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--muted);
+}
+.comment-meta > small {
+  margin-right: auto;
+}
+.comment-meta button {
+  font-size: var(--text-small);
+}
+.comment-deleted {
+  color: var(--muted);
+  font-style: italic;
+}

@@ -94,6 +94,16 @@ test('liens : propriétaire et contributeur les créent et les retirent ; lecteu
   assert.equal(can('contributor', 'editLinks', { archived: true }), false);
 });
 
+test('commentaires : propriétaire et contributeur commentent, seul un propriétaire supprime ceux des autres ; archivée : lecture seule', () => {
+  assert.equal(can('owner', 'comment'), true);
+  assert.equal(can('contributor', 'comment'), true);
+  assert.equal(can('reader', 'comment'), false);
+  assert.equal(can('owner', 'deleteAnyComment'), true);
+  assert.equal(can('contributor', 'deleteAnyComment'), false);
+  assert.equal(can('owner', 'comment', { archived: true }), false);
+  assert.equal(can('owner', 'deleteAnyComment', { archived: true }), false);
+});
+
 test('pages : propriétaire et contributeur écrivent ; lecteur et initiative archivée : lecture seule', () => {
   assert.equal(can('owner', 'editPages'), true);
   assert.equal(can('contributor', 'editPages'), true);
