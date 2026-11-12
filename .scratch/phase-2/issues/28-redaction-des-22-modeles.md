@@ -4,7 +4,7 @@
 
 **Blocked by:** 27 — Créer une page depuis un modèle
 
-**Status:** ready-for-human (validation dans l’application par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 12.11.2026)
 
 Règles : décision [09](09-modeles-de-page.md) (points 1 à 3), ADR-0012 et ADR-0013. Noms officiels : recherche sur la branche `research/livrables-babok-v3`.
 
