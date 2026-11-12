@@ -22,18 +22,29 @@ await check('alice crée l’initiative et invite bruno (contributeur) et chloé
   assert.equal((await call(alice, 'POST', `/initiatives/${mpInitiativeId}/members`, { email: 'chloe@exemple.test', role: 'reader' })).status, 204);
   suggestionsBefore = await suggestionKeys();
 });
-await check('tout utilisateur connecté, même non membre, consulte les deux modèles d’essai livrés, en deux langues', async () => {
+await check('tout utilisateur connecté, même non membre, consulte les 22 modèles livrés, en deux langues', async () => {
   for (const u of [alice, chloe, admin]) {
     const r = await call(u, 'GET', '/page-templates');
     assert.equal(r.status, 200);
-    approach = r.body.find((t) => t.taskId === '3.1');
-    current = r.body.find((t) => t.taskId === '6.1');
-    assert.ok(approach && current, 'modèles d’essai 3.1 et 6.1');
+    const delivered = r.body.filter((t) => t.origin === 'delivered' && t.active);
+    assert.equal(delivered.length, 22);
+    approach = delivered.find((t) => t.taskId === '3.1');
+    current = delivered.find((t) => t.taskId === '6.1');
+    assert.deepEqual([approach?.name.fr, current?.name.en], ['Approche de l’analyse métier', 'Current State Description']);
   }
   assert.deepEqual([approach.origin, approach.active], ['delivered', true]);
   assert.ok(approach.name.fr && approach.name.en && approach.name.fr !== approach.name.en);
   assert.equal(approach.content.fr.type, 'doc');
   assert.notDeepEqual(approach.content.fr, approach.content.en);
+});
+await check('les 22 modèles livrés : un par livrable retenu, et plus aucun modèle d’essai proposé', async () => {
+  const all = (await call(alice, 'GET', '/page-templates')).body;
+  const tasks = all.filter((t) => t.origin === 'delivered' && t.active).map((t) => t.taskId).sort();
+  assert.deepEqual(tasks, ['3.1', '3.2', '3.3', '3.4', '3.5', '4.1', '4.2', '5.1', '6.1', '6.2', '6.2', '6.4', '6.4', '7.1', '7.4', '7.5', '7.6', '8.1', '8.2', '8.3', '8.4', '8.5']);
+  assert.deepEqual(all.filter((t) => t.active && /\((essai|trial)\)/.test(t.name.fr + t.name.en)), []);
+  const future = all.find((t) => t.name.fr === 'Description de l’état futur');
+  assert.ok(JSON.stringify(future.content.fr).includes('Objectifs métier'), 'section Objectifs métier');
+  assert.ok(JSON.stringify(future.content.en).includes('Business objectives'));
 });
 await check('bruno (contributeur) crée une page depuis un modèle, en français : mention du modèle, tâche, contenu copié tel quel', async () => {
   const r = await call(bruno, 'POST', pages(), {

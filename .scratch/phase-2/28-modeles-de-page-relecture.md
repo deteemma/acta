@@ -18,6 +18,10 @@ de l'IIBA.
 
 ## Points à trancher avant la migration
 
+**Validé le 12.11.2026** par la responsable fonctionnelle : les six propositions
+ci-dessous sont acceptées, et les 22 modèles validés tels quels. Source de la
+migration `api/migrations/0026_modeles_de_page_livres.sql`.
+
 1. **Nom anglais de « Conception » (5.1)** — le livrable officiel s'appelle
    *Designs* (au pluriel, avec un état entre parenthèses). Proposé : **Design**,
    au singulier comme « Conception », puisqu'une page porte une conception.
