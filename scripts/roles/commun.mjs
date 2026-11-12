@@ -87,3 +87,12 @@ export async function inDbTransaction(steps) {
     await client.end();
   }
 }
+
+/**
+ * Enregistre une page comme le fait l'écran : saisie basée sur son état actuel,
+ * lu juste avant (modification simultanée, ticket 24).
+ */
+export async function savePage(user, path, body) {
+  const { revisionId } = (await call(user, 'GET', path)).body;
+  return call(user, 'PATCH', path, { baseRevisionId: revisionId, ...body });
+}

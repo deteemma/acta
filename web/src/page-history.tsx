@@ -12,6 +12,7 @@ import {
   memberName,
   nextPageVersionNumber,
   PAGE_VERSION_NOTE_MAX_LENGTH,
+  type PageDoc,
   type PageDiffPart,
   type PageRevisionDto,
   type PageRevisionRow,
@@ -388,9 +389,6 @@ export function PageComparison({
 
   if (!pair) return <ErrorMessage error={error} />;
   const [from, to] = pair;
-  const titleDiff = diffPageTexts(from.title ?? '', to.title ?? '');
-  const contentDiff = diffPageTexts(pageComparisonText(from.content), pageComparisonText(to.content));
-  const unchanged = (parts: PageDiffPart[]) => parts.every((p) => p.kind === 'same');
 
   return (
     <article className="page-view page-comparison">
@@ -405,6 +403,28 @@ export function PageComparison({
         <small>{t('pageCompare.legend')}</small>
       </p>
       <ErrorMessage error={error} />
+      <PageDiff from={from} to={to} />
+    </article>
+  );
+}
+
+/** Ce que la comparaison lit d'un état de la page : un enregistrement, ou une saisie (ticket 24). */
+export interface ComparedPage {
+  title: string | null;
+  content: PageDoc | null;
+}
+
+/**
+ * Différences de deux états de la page, dans un seul texte (décision 08, point 8) :
+ * le titre au-dessus du contenu, seulement s'il a changé.
+ */
+export function PageDiff({ from, to }: { from: ComparedPage; to: ComparedPage }) {
+  const { t } = useI18n();
+  const titleDiff = diffPageTexts(from.title ?? '', to.title ?? '');
+  const contentDiff = diffPageTexts(pageComparisonText(from.content), pageComparisonText(to.content));
+  const unchanged = (parts: PageDiffPart[]) => parts.every((p) => p.kind === 'same');
+  return (
+    <>
       {!unchanged(titleDiff) && (
         <section>
           <h3>{t('pageCompare.titleLabel')}</h3>
@@ -415,7 +435,7 @@ export function PageComparison({
         <h3>{t('pageCompare.contentLabel')}</h3>
         {unchanged(contentDiff) ? <p className="page-empty">{t('pageCompare.noDifference')}</p> : <DiffText parts={contentDiff} />}
       </section>
-    </article>
+    </>
   );
 }
 

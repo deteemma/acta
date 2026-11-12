@@ -3,7 +3,7 @@
 // JSON. Règles écrites une seule fois ici, appliquées par l'API et le web, et
 // reproduites par la base (migration 0020).
 import { z } from 'zod';
-import { declarePageVersionSchema, type PageVersionStatus } from './page-revisions.js';
+import { declarePageVersionSchema, type PageSaveRefusal, type PageVersionStatus } from './page-revisions.js';
 import { pageTemplateChoiceSchema, type PageTemplateMention } from './page-templates.js';
 import type { MemberNameDto } from './schemas.js';
 
@@ -145,8 +145,23 @@ export type CreatePageInput = z.infer<typeof createPageSchema>;
  */
 export const updatePageSchema = z
   .object({ title: pageTitle, content: pageContentSchema.nullable(), version: declarePageVersionSchema })
-  .partial();
+  .partial()
+  .extend({
+    /**
+     * Enregistrement sur lequel la saisie est basée, l'état de la page à son
+     * ouverture : s'il n'est plus l'état actuel, l'enregistrement est refusé
+     * (checkPageSaveBase, ticket 24).
+     */
+    baseRevisionId: z.uuid(),
+  });
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
+
+/** Corps de la réponse 409 `pageChangedSince` : la page dans son état actuel, avec qui l'a enregistrée et quand. */
+export interface PageChangedSinceBody {
+  statusCode: 409;
+  refusal: PageSaveRefusal;
+  page: PageDto;
+}
 
 /** Page telle que renvoyée par l'API. */
 export interface PageDto {

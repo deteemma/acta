@@ -1,4 +1,4 @@
-import { assert, check, call, asUserInDb, inDbTransaction, alice, bruno, chloe, admin, code } from './commun.mjs';
+import { assert, check, call, asUserInDb, inDbTransaction, alice, bruno, chloe, admin, code, savePage } from './commun.mjs';
 
 // Enregistrements et versions de page (phase 2, ticket 23). alice propriétaire,
 // bruno contributeur, chloé lectrice ; admin n'est pas membre.
@@ -28,14 +28,14 @@ await check('la création est le premier enregistrement, sans version', async ()
   assert.deepEqual([list[0].id, list[0].versionNumber, list[0].createdBy.email], [r.body.revisionId, null, 'bruno@exemple.test']);
 });
 await check('enregistrer le titre ou le contenu conserve un enregistrement ; déplacer ou ne rien changer, non', async () => {
-  await call(bruno, 'PATCH', page(), { content: doc('deux') });
-  await call(bruno, 'PATCH', page(), { title: 'Budget 2027' });
-  await call(bruno, 'PATCH', page(), { title: 'Budget 2027' });
+  await savePage(bruno, page(), { content: doc('deux') });
+  await savePage(bruno, page(), { title: 'Budget 2027' });
+  await savePage(bruno, page(), { title: 'Budget 2027' });
   await call(bruno, 'PUT', `${page()}/placement`, { parentId: null, index: 0 });
   assert.equal((await history()).length, 3);
 });
 await check('« Enregistrer comme version 1 » avec une note ; chloé (lectrice) voit l’historique et ouvre un enregistrement', async () => {
-  const r = await call(bruno, 'PATCH', page(), { content: doc('trois'), version: { note: 'Relue' } });
+  const r = await savePage(bruno, page(), { content: doc('trois'), version: { note: 'Relue' } });
   assert.equal(r.status, 200);
   assert.deepEqual(r.body.versions, { lastVersion: 1, modifiedSinceLastVersion: false, nextVersion: 2 });
   const list = await history(chloe);
@@ -48,7 +48,7 @@ await check('après coup : seulement après la dernière version (409), puis num
   const before = (await history())[1].id;
   const refused = await call(alice, 'POST', `${revision(before)}/version`, {});
   assert.deepEqual([refused.status, refused.body.refusal], [409, 'pageVersionNotAfterLast']);
-  await call(bruno, 'PATCH', page(), { content: doc('quatre') });
+  await savePage(bruno, page(), { content: doc('quatre') });
   const last = (await history()).at(-1).id;
   assert.equal((await call(alice, 'POST', `${revision(last)}/version`, { note: 'x'.repeat(501) })).status, 400);
   const declared = await call(alice, 'POST', `${revision(last)}/version`, { note: 'Validée' });
@@ -91,7 +91,7 @@ await check('supprimer : sauf le dernier (409) ; la trace reste, sans contenu ; 
   assert.deepEqual(p.versions, { lastVersion: 1, modifiedSinceLastVersion: true, nextVersion: 3 });
   const deletedAgain = await call(bruno, 'DELETE', revision(version2.id));
   assert.deepEqual([deletedAgain.status, deletedAgain.body.refusal], [409, 'pageRevisionDeleted']);
-  const saved = await call(bruno, 'PATCH', page(), { content: doc('cinq'), version: { note: null } });
+  const saved = await savePage(bruno, page(), { content: doc('cinq'), version: { note: null } });
   assert.equal(saved.body.versions.lastVersion, 3);
 });
 await check('chloé (lectrice) ne déclare, ne corrige, ne restaure ni ne supprime : 403 ; admin (non-membre) : 404', async () => {

@@ -3,6 +3,7 @@ import { updatePageSchema } from './pages.js';
 import assert from 'node:assert/strict';
 import {
   checkPageRevisionDelete,
+  checkPageSaveBase,
   checkPageRevisionRestore,
   checkPageVersionNote,
   currentPageRevision,
@@ -132,8 +133,9 @@ test('note de version facultative, 500 caractères au plus ; vide, elle est reti
 });
 
 test('enregistrer peut déclarer le nouvel enregistrement comme version, avec sa note', () => {
-  assert.deepEqual(updatePageSchema.parse({ title: 'Budget', version: { note: 'Relue' } }), { title: 'Budget', version: { note: 'Relue' } });
-  assert.equal(updatePageSchema.parse({ title: 'Budget' }).version, undefined);
+  const baseRevisionId = '0b6c4d3e-1f2a-4b5c-8d9e-0f1a2b3c4d5e';
+  assert.deepEqual(updatePageSchema.parse({ baseRevisionId, title: 'Budget', version: { note: 'Relue' } }), { baseRevisionId, title: 'Budget', version: { note: 'Relue' } });
+  assert.equal(updatePageSchema.parse({ baseRevisionId, title: 'Budget' }).version, undefined);
 });
 
 test('seule une version porte une note ; un enregistrement supprimé ne se corrige ni ne se restaure', () => {
@@ -148,4 +150,24 @@ test('l’état actuel de la page est son dernier enregistrement encore présent
   assert.equal(currentPageRevision(revisions('', 'v1', ''))?.id, 'r3');
   assert.equal(currentPageRevision([...revisions('', 'v1x', '')].reverse())?.id, 'r3');
   assert.equal(checkPageRevisionRestore(revisions('', ''), 'r2'), 'currentPageRevision');
+});
+
+// ── Modification simultanée (ticket 24) ──────────────────────────────────────
+
+test('enregistrer une saisie basée sur l’état actuel de la page est permis', () => {
+  assert.equal(checkPageSaveBase(revisions('', 'v1', ''), 'r3'), null);
+});
+
+test('la page enregistrée depuis l’ouverture de la saisie : l’enregistrement est refusé', () => {
+  assert.equal(checkPageSaveBase(revisions('', ''), 'r1'), 'pageChangedSince');
+  // Un enregistrement supprimé depuis n’y change rien : la saisie reste basée sur un état dépassé.
+  assert.equal(checkPageSaveBase(revisions('', 'x', ''), 'r2'), 'pageChangedSince');
+  // Une base qui n’est pas un enregistrement de la page ne vaut pas l’état actuel.
+  assert.equal(checkPageSaveBase(revisions(''), 'autre'), 'pageChangedSince');
+});
+
+test('une modification dit sur quel enregistrement la saisie est basée', () => {
+  const base = '0b6c4d3e-1f2a-4b5c-8d9e-0f1a2b3c4d5e';
+  assert.equal(updatePageSchema.safeParse({ title: 'Budget' }).success, false);
+  assert.deepEqual(updatePageSchema.parse({ baseRevisionId: base, title: 'Budget' }), { baseRevisionId: base, title: 'Budget' });
 });

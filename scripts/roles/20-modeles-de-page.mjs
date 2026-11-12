@@ -1,4 +1,4 @@
-import { assert, check, call, asUserInDb, alice, bruno, chloe, admin, code } from './commun.mjs';
+import { assert, check, call, asUserInDb, alice, bruno, chloe, admin, code, savePage } from './commun.mjs';
 // Calcul de la couverture du tableau de bord, tel que le web l'affiche.
 const { initiativeDashboard } = await import('/app/api/node_modules/@app/shared/dist/index.js');
 
@@ -75,7 +75,7 @@ await check('une page vide n’a ni modèle ni tâche', async () => {
   assert.deepEqual([r.status, r.body.template, r.body.taskId], [201, null, null]);
 });
 await check('modifier la page ne change ni son modèle ni sa tâche', async () => {
-  const r = await call(bruno, 'PATCH', `${pages()}/${firstPageId}`, { title: 'Approche révisée', template: { id: current.id, locale: 'en' }, taskId: '6.1' });
+  const r = await savePage(bruno, `${pages()}/${firstPageId}`, { title: 'Approche révisée', template: { id: current.id, locale: 'en' }, taskId: '6.1' });
   assert.equal(r.status, 200);
   assert.deepEqual([r.body.template, r.body.taskId], [{ id: approach.id, name: approach.name.fr }, '3.1']);
 });

@@ -2604,3 +2604,28 @@ button.link.pill:hover {
 .logo-film[hidden] {
   display: none;
 }
+
+/* Modification simultanée (ticket 24) : bandeau du refus, au-dessus de la saisie. */
+.page-conflict {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--tone-attention-bg);
+  color: var(--tone-attention-fg);
+}
+.page-conflict p {
+  margin: 0;
+}
+.page-conflict-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.page-conflict-comparison {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+}

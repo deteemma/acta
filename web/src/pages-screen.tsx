@@ -16,6 +16,7 @@ import {
   memberName,
   PAGE_TEXT_MAX_LENGTH,
   PAGE_TITLE_MAX_LENGTH,
+  type PageChangedSinceBody,
   type PageDoc,
   type PageDto,
   type PageKeyboardMove,
@@ -25,6 +26,7 @@ import {
   type PageRow,
   type PageTemplateDto,
   pageTemplateGroups,
+  isPageSaveRefusal,
   pageTextLength,
   type ReferenceDto,
   sortByReference,
@@ -37,7 +39,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { PageContent } from './page-content';
-import { PageComparison, PageHistory, PageRevisionView, type PageShown, VersionNoteField } from './page-history';
+import { PageComparison, PageDiff, PageHistory, PageRevisionView, type PageShown, VersionNoteField } from './page-history';
 import { SCREEN_TITLE_ID, usePanels } from './panels';
 import { useReferences } from './references';
 import { useScreens } from './screens';
@@ -514,6 +516,12 @@ function PageView({
           onChanged();
         }}
         onCancel={() => setEditing(false)}
+        onTakeTheirs={(latest) => {
+          setPage(latest);
+          setEditing(false);
+          // Son titre a pu changer : l'arborescence se relit.
+          onChanged();
+        }}
       />
     );
   }
@@ -685,6 +693,7 @@ function PageEditForm({
   parentTitle,
   onSaved,
   onCancel,
+  onTakeTheirs,
 }: {
   initiativeId: string;
   /** Null : nouvelle page, créée au premier enregistrement. */
@@ -696,9 +705,15 @@ function PageEditForm({
   parentTitle: string | null;
   onSaved: (page: PageDto) => void;
   onCancel: () => void;
+  /** « Abandonner ma saisie et prendre la sienne » : la page dans son état actuel (ticket 24). */
+  onTakeTheirs?: (latest: PageDto) => void;
 }) {
   const { t, locale } = useI18n();
   const { settleScreen } = usePanels();
+  // Modification simultanée (ticket 24) : la page telle qu'enregistrée entre-temps,
+  // quand l'API a refusé l'enregistrement ; null tant qu'il n'y a pas eu de refus.
+  const [latest, setLatest] = useState<PageDto | null>(null);
+  const [comparing, setComparing] = useState(false);
   const references = useReferences();
   // La langue de la page est celle de l'interface à l'ouverture du brouillon (décision 09, point 4).
   const [templateLocale] = useState(locale);
@@ -724,7 +739,12 @@ function PageEditForm({
     return [...all.filter(own), ...all.filter((r) => !own(r))].filter((r) => r.id !== page?.id);
   }, [references, initiativeId, page?.id]);
 
-  async function save(): Promise<boolean> {
+  /**
+   * Enregistre la saisie, basée sur l'état de la page à son ouverture. `onTopOf` :
+   * « Enregistrer ma saisie à la suite » de cet état ; la saisie entière, titre et
+   * contenu, le remplace (décision 08, point 9).
+   */
+  async function save(onTopOf?: PageDto): Promise<boolean> {
     // Un document vide devient null (pageContentSchema).
     const parsed = createPageSchema.safeParse({
       title,
@@ -740,8 +760,9 @@ function PageEditForm({
     try {
       const saved = page
         ? await api.updatePage(initiativeId, page.id, {
+            baseRevisionId: (onTopOf ?? page).revisionId,
             title: parsed.data.title,
-            ...(contentChanged && { content: parsed.data.content }),
+            ...((contentChanged || onTopOf) && { content: parsed.data.content }),
             ...(asVersion && { version: { note: versionNote.trim() || null } }),
           })
         : await api.createPage(initiativeId, parsed.data);
@@ -749,7 +770,14 @@ function PageEditForm({
       onSaved(saved);
       return true;
     } catch (e) {
-      setError(toUiError(e));
+      if (e instanceof ApiError && isPageSaveRefusal(e.refusal)) {
+        // La page a été enregistrée entre-temps : le bandeau le dit, la saisie reste.
+        setLatest((e.body as PageChangedSinceBody).page);
+        setComparing(false);
+        setError(null);
+      } else {
+        setError(toUiError(e));
+      }
       return false;
     }
   }
@@ -780,12 +808,43 @@ function PageEditForm({
         <div className="page-save-version">
           <label className="checkbox">
             <input type="checkbox" checked={asVersion} onChange={(e) => setAsVersion(e.target.checked)} />
-            {t('page.saveAsVersion', { number: page.versions.nextVersion })}
+            {t('page.saveAsVersion', { number: (latest ?? page).versions.nextVersion })}
           </label>
           {asVersion && <VersionNoteField note={versionNote} onChange={setVersionNote} />}
         </div>
       )}
       <ErrorMessage error={error} />
+      {latest && (
+        // Bandeau du refus (décision 08, point 9) : reste affiché au-dessus de la saisie.
+        <div className="page-conflict" role="alert">
+          <p>
+            {t('pageConflict.message', {
+              name: memberName(latest.updatedBy),
+              date: formatDateTime(locale, latest.updatedAt),
+            })}
+          </p>
+          <div className="page-conflict-buttons">
+            <button type="button" aria-expanded={comparing} onClick={() => setComparing(!comparing)}>
+              {t(comparing ? 'pageConflict.hideComparison' : 'pageConflict.compare')}
+            </button>
+            <button type="button" className="primary" onClick={() => void save(latest)}>
+              {t('pageConflict.saveAnyway')}
+            </button>
+            <button type="button" className="danger" onClick={() => onTakeTheirs?.(latest)}>
+              {t('pageConflict.takeTheirs')}
+            </button>
+          </div>
+          <small>{t('pageConflict.saveAnywayHint')}</small>
+          {comparing && (
+            <div className="page-conflict-comparison">
+              <p>
+                <small>{t('pageConflict.legend')}</small>
+              </p>
+              <PageDiff from={latest} to={{ title, content: doc }} />
+            </div>
+          )}
+        </div>
+      )}
       <label className="page-title-field">
         <span className="visually-hidden">{t('page.titleLabel')}</span>
         <input

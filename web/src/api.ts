@@ -69,6 +69,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly refusal?: string,
+    /** Corps entier de la réponse : certains refus y joignent l'état actuel (ex. `PageChangedSinceBody`). */
+    readonly body?: unknown,
   ) {
     super(`HTTP ${status}`);
   }
@@ -98,7 +100,7 @@ async function requestBlob(path: string): Promise<ArrayBuffer> {
 /** Réponse en erreur : son statut et, s'il y en a un, le motif de refus de l'API. */
 async function toApiError(response: Response): Promise<ApiError> {
   const body = (await response.json().catch(() => null)) as { refusal?: unknown } | null;
-  return new ApiError(response.status, typeof body?.refusal === 'string' ? body.refusal : undefined);
+  return new ApiError(response.status, typeof body?.refusal === 'string' ? body.refusal : undefined, body ?? undefined);
 }
 
 export const api = {

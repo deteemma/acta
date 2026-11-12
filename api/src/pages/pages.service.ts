@@ -4,6 +4,7 @@ import {
   checkPageMove,
   checkPageRevisionDelete,
   checkPageRevisionRestore,
+  checkPageSaveBase,
   checkPageVersionDeclare,
   checkPageVersionNote,
   type CreatePageInput,
@@ -14,11 +15,13 @@ import {
   movePage,
   nextPagePosition,
   nextPageVersionNumber,
+  type PageChangedSinceBody,
   type PageDto,
   type PageRefusal,
   type PageRevisionDto,
   type PageRevisionItem,
   type PageRevisionRefusal,
+  type PageSaveRefusal,
   type PageRevisionRow,
   type PageRow,
   type PageTemplateDto,
@@ -93,6 +96,11 @@ export class PagesService {
       const current = await this.loadPage(tx, initiativeId, pageId);
       const changes = input.title !== undefined || input.content !== undefined;
       if (!changes && !input.version) return current;
+      // Modification simultanée (ticket 24) : pas de verrou d'écriture pour l'utilisateur,
+      // mais deux enregistrements arrivés en même temps passent l'un après l'autre ; le
+      // second lit alors l'enregistrement du premier, et il est refusé.
+      const refusal = checkPageSaveBase(await this.lockRevisions(tx, pageId), input.baseRevisionId);
+      if (refusal) throw pageSaveRefusal(refusal, await this.loadPage(tx, initiativeId, pageId));
       if (changes) {
         await tx
           .updateTable('page')
@@ -476,6 +484,10 @@ function translateRevisionError(error: unknown): never {
   }
   throw error;
 }
+
+/** Refus d'un enregistrement de la page, avec la page dans son état actuel (ticket 24). */
+export const pageSaveRefusal = (refusal: PageSaveRefusal, page: PageDto) =>
+  new ConflictException({ statusCode: 409, refusal, page } satisfies PageChangedSinceBody);
 
 export const revisionRefusal = (refusal: PageRevisionRefusal) => new ConflictException({ statusCode: 409, refusal });
 

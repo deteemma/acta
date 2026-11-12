@@ -21,7 +21,7 @@ test('une page porte un titre obligatoire de 200 caractères au plus ; deux page
   assert.equal(createPageSchema.safeParse({ title: '  ' }).success, false);
   assert.equal(createPageSchema.safeParse({ title: 'x'.repeat(200) }).success, true);
   assert.equal(createPageSchema.safeParse({ title: 'x'.repeat(201) }).success, false);
-  assert.equal(updatePageSchema.safeParse({ title: '' }).success, false);
+  assert.equal(updatePageSchema.safeParse({ baseRevisionId: '0b6c4d3e-1f2a-4b5c-8d9e-0f1a2b3c4d5e', title: '' }).success, false);
 });
 
 test('le contenu est facultatif ; la page se crée au premier niveau ou sous une page parente', () => {
@@ -40,7 +40,7 @@ test('une page se crée vide ou depuis un modèle, dans la langue d’interface 
 
 test('le modèle d’origine et la tâche d’une page ne se modifient pas après la création', () => {
   const id = '1b2c3d4e-5f60-4a1b-8c9d-0e1f2a3b4c5d';
-  assert.deepEqual(updatePageSchema.parse({ title: 'Approche', template: { id, locale: 'fr' }, taskId: '6.1' }), { title: 'Approche' });
+  assert.deepEqual(updatePageSchema.parse({ baseRevisionId: id, title: 'Approche', template: { id, locale: 'fr' }, taskId: '6.1' }), { baseRevisionId: id, title: 'Approche' });
 });
 
 test('la longueur se compte sur le texte, pas sur le JSON ni la mise en forme', () => {
@@ -170,7 +170,7 @@ test('une nouvelle page se place en dernier parmi ses sœurs', () => {
 test('un document vide, tel que l’éditeur l’écrit, est enregistré sans contenu', () => {
   for (const content of [doc({ type: 'paragraph' }), doc(), { type: 'doc' }]) {
     assert.equal(createPageSchema.parse({ title: 'T', content }).content, null, JSON.stringify(content));
-    assert.equal(updatePageSchema.parse({ content }).content, null);
+    assert.equal(updatePageSchema.parse({ baseRevisionId: '0b6c4d3e-1f2a-4b5c-8d9e-0f1a2b3c4d5e', content }).content, null);
   }
   assert.notEqual(createPageSchema.parse({ title: 'T', content: doc(paragraph('x')) }).content, null);
   // Un tableau vide reste du contenu.
