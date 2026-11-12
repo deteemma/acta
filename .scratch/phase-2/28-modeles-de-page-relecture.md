@@ -1,4 +1,4 @@
-# Ticket 28 — Les 22 modèles de page à valider
+# Ticket 28 — Les 22 modèles de page (validés le 12.11.2026)
 
 Document de relecture destiné à la responsable fonctionnelle (décision 09,
 ADR-0012, ADR-0013). Les noms des modèles sont les noms officiels des livrables

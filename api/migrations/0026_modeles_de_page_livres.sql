@@ -3,7 +3,8 @@
 -- textes d'aide rédigés pour ACTA, sans texte de l'IIBA (ADR-0012), validés par la
 -- responsable fonctionnelle le 12.11.2026.
 --
--- Généré depuis le document de relecture .scratch/phase-2/28-modeles-de-page-relecture.md :
+-- Généré par scripts/generer-modeles-de-page.mjs depuis le document de relecture
+-- .scratch/phase-2/28-modeles-de-page-relecture.md :
 -- un titre de niveau 4 devient un titre de niveau 2, un paragraphe en italique un
 -- texte d'aide, un tableau un tableau à remplir (une ligne vide sous l'en-tête).
 
