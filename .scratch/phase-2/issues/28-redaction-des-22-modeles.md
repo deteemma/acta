@@ -14,3 +14,13 @@ Règles : décision [09](09-modeles-de-page.md) (points 1 à 3), ADR-0012 et ADR
 - [ ] « Description de l'état futur » contient une section sur les objectifs métier. « Actions recommandées » précise qu'une action retenue peut devenir un ticket Action. « Résultats d'élicitation » rappelle qu'on confirme en déclarant une version.
 - [ ] Relecture : un document de relecture des 22 modèles, comme pour les résumés du référentiel (`.scratch/phase-1/06-referentiel-babok-resumes.md`), validé avant la migration.
 - [ ] Migration des données livrées ; retrait des deux modèles d'essai du ticket 27.
+
+## Réalisation
+
+**12.11.2026 — rédaction.** Les 22 modèles sont rédigés dans
+[`28-modeles-de-page-relecture.md`](../28-modeles-de-page-relecture.md), en
+français et en anglais. En attente de relecture par la responsable
+fonctionnelle, avec six points à trancher en tête du document (noms anglais de
+« Conception » et de 7.1, phrase d'introduction, sort des modèles d'essai déjà
+utilisés…). Aucune migration avant validation : le document validé sert ensuite
+de source à la migration.
