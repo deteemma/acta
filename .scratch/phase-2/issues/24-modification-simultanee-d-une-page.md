@@ -4,7 +4,7 @@
 
 **Blocked by:** 23 — Enregistrements et versions
 
-**Status:** ready-for-agent
+**Status:** done (validé par la responsable fonctionnelle le 12.11.2026)
 
 Règles : décisions [07](07-modele-de-la-page.md) (point 6) et [08](08-editeur-de-page.md) (point 9).
 
@@ -31,6 +31,7 @@ Règles : décisions [07](07-modele-de-la-page.md) (point 6) et [08](08-editeur-
 - Règle dans `shared/src/page-revisions.ts` (`checkPageSaveBase`) : 3 tests. La modification d'une page exige désormais l'enregistrement sur lequel la saisie est basée (`baseRevisionId`).
 - Test de bout en bout à deux sessions, alice et bruno (`scripts/roles/21-modification-simultanee.mjs`, 8 contrôles) : refus 409 avec qui et quand ; aucun enregistrement écrit par le refus ; « à la suite » accepté, l'enregistrement de l'autre reste dans l'historique avec son contenu ; version refusée sur une saisie dépassée ; restauration qui refuse, déplacement qui ne refuse pas ; cinq fois deux enregistrements envoyés en même temps sur la même base : toujours un accepté, un refusé, un seul enregistrement de plus.
 - À l'écran (Chrome, une seule personne avec deux onglets) : le bandeau et ses trois boutons, la comparaison, l'historique, et le refus depuis « Enregistrer » de l'alerte du ticket 15 (sortie annulée, saisie intacte). Une page « Essai ticket 24 » est restée dans l'initiative ISSUE14 de la base locale. Libellés anglais non essayés à l'écran.
+- Ticket validé par la responsable fonctionnelle le 12.11.2026, avec les choix 1 à 8 tels que réalisés.
 
 **Technique.**
 - L'API prend le verrou de transaction déjà utilisé pour les enregistrements de la page (`page_revisions:<page>`), puis compare l'enregistrement actuel à la base envoyée ; le refus renvoie la page dans son état actuel (`PageChangedSinceBody`).
