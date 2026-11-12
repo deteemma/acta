@@ -4,7 +4,7 @@
 
 **Blocked by:** 22 — Pages : arborescence et écriture
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 12.11.2026)
 
 Règles : décision [09](09-modeles-de-page.md) (points 3, 4, 7, 8, 9).
 
@@ -17,7 +17,7 @@ Règles : décision [09](09-modeles-de-page.md) (points 3, 4, 7, 8, 9).
 
 ## Réalisation
 
-**À trancher par la responsable fonctionnelle : choix que la décision 09 ne fixe pas.** Ils sont réalisés ainsi en attendant, et faciles à changer :
+**Choix que la décision 09 ne fixe pas, validés par la responsable fonctionnelle le 12.11.2026 :**
 1. « Nouvelle page », comme « Sous-page » et le bouton + de l'arborescence, ouvre d'abord un écran de choix : « Page vide » en premier, puis les modèles actifs sous le nom de leur domaine de connaissance. Chaque modèle affiche aussi sa tâche.
 2. Ordre : les domaines dans l'ordre du référentiel, puis les tâches, puis le nom du modèle par ordre alphabétique dans la langue de l'interface.
 3. Un modèle sans tâche (possible seulement pour un modèle ajouté, ticket 30) est rangé à la fin, sous « Autres modèles ».
@@ -34,7 +34,7 @@ Règles : décision [09](09-modeles-de-page.md) (points 3, 4, 7, 8, 9).
   - la fiche de la tâche retrouve les pages, sans celles des initiatives dont on n'est pas membre ;
   - après création de pages des tâches 3.1 et 6.1, aucune tâche n'est couverte au calcul du tableau de bord, et les suggestions sont identiques (R1, sur la tâche 3.1, reste proposée) ;
   - le compte applicatif ne modifie ni ne supprime aucun modèle, administrateur compris.
-- **Pas vérifié à l'écran** : Chrome n'a pas pu ouvrir https://acta.localhost (page d'erreur, probablement le certificat local), alors que le serveur répondait. Les parcours de la section « Pour essayer » restent à faire.
+- Claude n'a pas pu ouvrir https://acta.localhost dans Chrome (page d'erreur, probablement le certificat local). Ticket validé dans l'application par la responsable fonctionnelle le 12.11.2026.
 
 **Limites connues.**
 - Le contenu est copié par le web, puisqu'on peut le modifier avant le premier enregistrement. Un appel direct à l'API pourrait envoyer un autre contenu que celui du modèle ; la base vérifie seulement que le nom repris est l'un de ceux du modèle.
