@@ -268,6 +268,7 @@ function Shell({ user }: { user: User }) {
                     initiativeId={screen.initiativeId}
                     pageId={screen.pageId}
                     initiative={initiatives.find((i) => i.id === screen.initiativeId)}
+                    babok={babok}
                     version={pagesVersion}
                     onChanged={pagesChanged}
                   />

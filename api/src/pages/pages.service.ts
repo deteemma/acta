@@ -9,6 +9,7 @@ import {
   type CreatePageInput,
   currentPageRevision,
   type DeclarePageVersionInput,
+  isOfferedPageTemplate,
   type MovePageInput,
   movePage,
   nextPagePosition,
@@ -20,9 +21,12 @@ import {
   type PageRevisionRefusal,
   type PageRevisionRow,
   type PageRow,
+  type PageTemplateDto,
   pageVersionStatus,
+  type TaskPageDto,
   type UpdatePageInput,
   type UpdatePageVersionNoteInput,
+  sortByReference,
 } from '@app/shared';
 import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
@@ -42,13 +46,25 @@ export class PagesService {
     return this.database.asUser(userId, (tx) => this.loadPage(tx, initiativeId, pageId));
   }
 
-  /** Premier enregistrement : la référence est attribuée par la base, la page se place en dernier. */
+  /**
+   * Premier enregistrement : la référence est attribuée par la base, la page se place
+   * en dernier. Depuis un modèle actif, la page en garde la mention, sous son nom dans
+   * la langue de l'auteur ; la base y ajoute la tâche du modèle.
+   */
   create(userId: string, initiativeId: string, input: CreatePageInput): Promise<PageDto> {
     const id = randomUUID();
     return this.database.asUser(userId, async (tx) => {
       const tree = await this.lockTree(tx, initiativeId);
       const refusal = input.parentId === null ? null : checkPageMove(tree, id, input.parentId);
       if (refusal) throw pageRefusal(refusal);
+      const template = input.template
+        ? await tx
+            .selectFrom('page_template')
+            .select(['id', 'name_fr', 'name_en', 'active'])
+            .where('id', '=', input.template.id)
+            .executeTakeFirst()
+        : null;
+      if (input.template && !(template && isOfferedPageTemplate(template))) throw pageRefusal('unknownPageTemplate');
       await tx
         .insertInto('page')
         .values({
@@ -58,6 +74,8 @@ export class PagesService {
           content: input.content === null ? null : JSON.stringify(input.content),
           parent_id: input.parentId,
           position: nextPagePosition(tree, input.parentId),
+          template_id: template?.id ?? null,
+          template_name: template && input.template ? template[`name_${input.template.locale}`] : null,
         })
         .execute()
         .catch(translateTreeError);
@@ -370,6 +388,9 @@ export class PagesService {
         'p.updated_by',
         'uu.email as updated_by_email',
         'uu.display_name as updated_by_display_name',
+        'p.template_id',
+        'p.template_name',
+        'p.task_id',
       ])
       .where('p.id', '=', pageId)
       .where('p.initiative_id', '=', initiativeId)
@@ -390,7 +411,44 @@ export class PagesService {
       updatedBy: { userId: r.updated_by, email: r.updated_by_email, displayName: r.updated_by_display_name },
       revisionId: currentPageRevision(revisions)!.id,
       versions: pageVersionStatus(revisions),
+      template: r.template_id && r.template_name ? { id: r.template_id, name: r.template_name } : null,
+      taskId: r.task_id,
     };
+  }
+
+  // ── Modèles de page (ticket 27) ────────────────────────────────────────────
+
+  /** Tous les modèles, actifs ou non : le web ne propose que les actifs (pageTemplateGroups). */
+  listTemplates(userId: string): Promise<PageTemplateDto[]> {
+    return this.database.asUser(userId, async (tx) => {
+      const rows = await tx
+        .selectFrom('page_template')
+        .select(['id', 'name_fr', 'name_en', 'content_fr', 'content_en', 'task_id', 'origin', 'active'])
+        .orderBy('name_fr')
+        .execute();
+      return rows.map((r) => ({
+        id: r.id,
+        name: { fr: r.name_fr, en: r.name_en },
+        content: { fr: r.content_fr, en: r.content_en },
+        taskId: r.task_id,
+        origin: r.origin,
+        active: r.active,
+      }));
+    });
+  }
+
+  /** Pages créées depuis un modèle de la tâche, dans mes initiatives (la RLS limite aux membres). */
+  listTaskPages(userId: string, taskId: string): Promise<TaskPageDto[]> {
+    return this.database.asUser(userId, async (tx) => {
+      const rows = await tx
+        .selectFrom('page')
+        .select(['id', 'initiative_id', 'reference', 'title'])
+        .where('task_id', '=', taskId)
+        .execute();
+      return sortByReference(
+        rows.map((r) => ({ id: r.id, initiativeId: r.initiative_id, reference: r.reference, title: r.title })),
+      );
+    });
   }
 }
 
@@ -398,6 +456,8 @@ export class PagesService {
 function translateTreeError(error: unknown): never {
   if (isConstraintViolation(error, 'page_parent_fkey')) throw pageRefusal('unknownPage');
   if (isConstraintViolation(error, 'page_under_itself')) throw pageRefusal('pageUnderItself');
+  // Modèle désactivé entre la lecture et l'écriture.
+  if (isConstraintViolation(error, 'page_template_active')) throw pageRefusal('unknownPageTemplate');
   throw error;
 }
 

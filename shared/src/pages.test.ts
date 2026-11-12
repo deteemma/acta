@@ -26,9 +26,21 @@ test('une page porte un titre obligatoire de 200 caractères au plus ; deux page
 
 test('le contenu est facultatif ; la page se crée au premier niveau ou sous une page parente', () => {
   const parentId = '7a6b5c4d-3e2f-4a1b-8c9d-0e1f2a3b4c5d';
-  assert.deepEqual(createPageSchema.parse({ title: 'Budget' }), { title: 'Budget', content: null, parentId: null });
+  assert.deepEqual(createPageSchema.parse({ title: 'Budget' }), { title: 'Budget', content: null, parentId: null, template: null });
   assert.equal(createPageSchema.parse({ title: 'Budget', parentId }).parentId, parentId);
   assert.equal(createPageSchema.safeParse({ title: 'Budget', parentId: 'pas-un-id' }).success, false);
+});
+
+test('une page se crée vide ou depuis un modèle, dans la langue d’interface de son auteur', () => {
+  const id = '1b2c3d4e-5f60-4a1b-8c9d-0e1f2a3b4c5d';
+  assert.deepEqual(createPageSchema.parse({ title: 'Approche', template: { id, locale: 'en' } }).template, { id, locale: 'en' });
+  assert.equal(createPageSchema.safeParse({ title: 'Approche', template: { id, locale: 'de' } }).success, false);
+  assert.equal(createPageSchema.safeParse({ title: 'Approche', template: { id: 'pas-un-id', locale: 'fr' } }).success, false);
+});
+
+test('le modèle d’origine et la tâche d’une page ne se modifient pas après la création', () => {
+  const id = '1b2c3d4e-5f60-4a1b-8c9d-0e1f2a3b4c5d';
+  assert.deepEqual(updatePageSchema.parse({ title: 'Approche', template: { id, locale: 'fr' }, taskId: '6.1' }), { title: 'Approche' });
 });
 
 test('la longueur se compte sur le texte, pas sur le JSON ni la mise en forme', () => {

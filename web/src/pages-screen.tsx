@@ -1,13 +1,16 @@
 // Écran Pages d'une initiative (ticket 22, décisions 07, 08 et 13) : arborescence
 // à gauche (au-dessus sur petit écran), document en pleine page. « Modifier » passe
 // la page en écriture au même endroit ; une nouvelle page n'existe qu'à son premier
-// enregistrement. Règles dans @app/shared (pages.ts).
+// enregistrement, vide ou depuis un modèle (ticket 27). Règles dans @app/shared
+// (pages.ts, page-templates.ts).
 import {
+  type BabokDto,
   can,
   checkPageDelete,
   createPageSchema,
   dropPlacement,
   flattenPageTree,
+  findBabokElement,
   type InitiativeDto,
   keyboardPlacement,
   memberName,
@@ -20,13 +23,16 @@ import {
   type PageRefusal,
   type PageRevisionRow,
   type PageRow,
+  type PageTemplateDto,
+  pageTemplateGroups,
   pageTextLength,
   type ReferenceDto,
   sortByReference,
 } from '@app/shared';
-import { ArrowDown, ArrowUp, History, IndentDecrease, IndentIncrease, Pencil, Plus } from 'lucide-react';
+import { ArrowDown, ArrowUp, FilePlus, History, IndentDecrease, IndentIncrease, Pencil, Plus } from 'lucide-react';
 import { type DragEvent, type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from './api';
+import { BabokName } from './babok-panels';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
@@ -57,18 +63,23 @@ interface Draft {
   parentId: string | null;
   /** Page ouverte au moment de la demande : changer de page abandonne le brouillon. */
   at: string | null;
+  /** Absent tant que l'on choisit ; null : page vide ; sinon le modèle choisi. */
+  template?: PageTemplateDto | null;
 }
 
 export function PagesScreen({
   initiativeId,
   pageId,
   initiative,
+  babok,
   version,
   onChanged,
 }: {
   initiativeId: string;
   /** Page ouverte ; null : aucune. */
   pageId: string | null;
+  /** Référentiel : regroupe les modèles et nomme la tâche d'une page ; null tant qu'il n'est pas chargé. */
+  babok: BabokDto | null;
   /** Absente tant que la liste des initiatives n'est pas chargée. */
   initiative: InitiativeDto | undefined;
   /** Change à chaque création, modification, déplacement ou suppression d'une page. */
@@ -127,6 +138,7 @@ export function PagesScreen({
   }
 
   const shownDraft = draft && draft.at === pageId ? draft : null;
+  const draftParentTitle = tree?.find((p) => p.id === shownDraft?.parentId)?.title ?? null;
   return (
     <section className="pages">
       {initiative && (
@@ -166,12 +178,20 @@ export function PagesScreen({
           )}
         </nav>
         <div className="pages-document">
-          {shownDraft ? (
+          {shownDraft && shownDraft.template === undefined ? (
+            <PageTemplateChooser
+              babok={babok}
+              parentTitle={draftParentTitle}
+              onChoose={(template) => setDraft({ ...shownDraft, template })}
+              onCancel={() => setDraft(null)}
+            />
+          ) : shownDraft ? (
             <PageEditForm
               initiativeId={initiativeId}
               page={null}
+              template={shownDraft.template ?? null}
               parentId={shownDraft.parentId}
-              parentTitle={tree?.find((p) => p.id === shownDraft.parentId)?.title ?? null}
+              parentTitle={draftParentTitle}
               onSaved={(created) => {
                 setDraft(null);
                 onChanged();
@@ -186,6 +206,7 @@ export function PagesScreen({
               initiativeId={initiativeId}
               pageId={pageId}
               tree={tree ?? []}
+              babok={babok}
               canEdit={canEdit}
               onAddChild={() => startDraft(pageId)}
               onMove={(placement) => void move(pageId, placement)}
@@ -366,6 +387,7 @@ function PageView({
   initiativeId,
   pageId,
   tree,
+  babok,
   canEdit,
   onAddChild,
   onMove,
@@ -374,6 +396,7 @@ function PageView({
   initiativeId: string;
   pageId: string;
   tree: PageRow[];
+  babok: BabokDto | null;
   canEdit: boolean;
   onAddChild: () => void;
   onMove: (placement: PagePlacement) => void;
@@ -381,6 +404,7 @@ function PageView({
 }) {
   const { t, locale } = useI18n();
   const { replaceScreen } = useScreens();
+  const { open } = usePanels();
   const [page, setPage] = useState<PageDto | null>(null);
   const [missing, setMissing] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -481,6 +505,7 @@ function PageView({
       <PageEditForm
         initiativeId={initiativeId}
         page={page}
+        template={null}
         parentId={page.parentId}
         parentTitle={null}
         onSaved={(saved) => {
@@ -494,6 +519,7 @@ function PageView({
   }
 
   const moveTo = (move: PageKeyboardMove) => keyboardPlacement(tree, page.id, move);
+  const task = page.taskId && babok ? findBabokElement(babok, page.taskId) : undefined;
   const { lastVersion, modifiedSinceLastVersion } = page.versions;
   return withHistory(
     <article className="page-view">
@@ -528,6 +554,23 @@ function PageView({
           {t('page.history')}
         </button>
       </div>
+      {page.template && (
+        // Modèle d'origine, sous le nom qu'il portait, et sa tâche : figés (décision 09, points 7 et 8).
+        <p className="page-origin">
+          <small>
+            {t('page.template', { name: page.template.name })}
+            {task && (
+              <>
+                {' · '}
+                {t('page.task')}{' '}
+                <button type="button" className="link" onClick={() => open({ kind: 'babokElement', elementId: task.id })}>
+                  <span className="code">{task.section}</span> <BabokName element={task} />
+                </button>
+              </>
+            )}
+          </small>
+        </p>
+      )}
       <ErrorMessage error={error} />
       {/* Un document vide est enregistré sans contenu (pageContentSchema). */}
       {page.content ? (
@@ -637,6 +680,7 @@ function DeletePage({
 function PageEditForm({
   initiativeId,
   page,
+  template,
   parentId,
   parentTitle,
   onSaved,
@@ -645,6 +689,8 @@ function PageEditForm({
   initiativeId: string;
   /** Null : nouvelle page, créée au premier enregistrement. */
   page: PageDto | null;
+  /** Nouvelle page depuis un modèle : titre et contenu préremplis dans la langue de l'interface. */
+  template: PageTemplateDto | null;
   parentId: string | null;
   /** Nouvelle sous-page : titre de sa parente. */
   parentTitle: string | null;
@@ -654,7 +700,9 @@ function PageEditForm({
   const { t, locale } = useI18n();
   const { settleScreen } = usePanels();
   const references = useReferences();
-  const [title, setTitle] = useState(page?.title ?? '');
+  // La langue de la page est celle de l'interface à l'ouverture du brouillon (décision 09, point 4).
+  const [templateLocale] = useState(locale);
+  const [title, setTitle] = useState(page?.title ?? template?.name[templateLocale] ?? '');
   const [doc, setDoc] = useState<PageDoc | null>(page?.content ?? null);
   // Contenu tel que l'éditeur l'a lu à l'ouverture : y revenir (Annuler, Ctrl+Z) n'est pas une modification.
   const [baseline, setBaseline] = useState<string | null>(null);
@@ -678,7 +726,12 @@ function PageEditForm({
 
   async function save(): Promise<boolean> {
     // Un document vide devient null (pageContentSchema).
-    const parsed = createPageSchema.safeParse({ title, content: doc, parentId });
+    const parsed = createPageSchema.safeParse({
+      title,
+      content: doc,
+      parentId,
+      template: template && { id: template.id, locale: templateLocale },
+    });
     if (!parsed.success) {
       setTitleMissing(!title.trim());
       setError(tooLong ? { key: 'page.tooLong', params: { max: PAGE_TEXT_MAX_LENGTH.toLocaleString(locale) } } : { key: 'page.titleRequired' });
@@ -749,7 +802,7 @@ function PageEditForm({
       </label>
       <Suspense fallback={<p>{t('common.loading')}</p>}>
         <PageEditor
-          initialContent={page?.content ?? null}
+          initialContent={page?.content ?? template?.content[templateLocale] ?? null}
           references={suggestions}
           label={t('page.contentLabel')}
           onReady={(initial) => {
@@ -760,5 +813,79 @@ function PageEditForm({
         />
       </Suspense>
     </form>
+  );
+}
+
+/**
+ * Premier pas de « Nouvelle page » (décision 09, point 9) : une page vide, ou l'un
+ * des modèles actifs, par domaine de connaissance. Rien n'est créé avant le premier
+ * enregistrement ; un même modèle sert autant de fois qu'on veut.
+ */
+function PageTemplateChooser({
+  babok,
+  parentTitle,
+  onChoose,
+  onCancel,
+}: {
+  babok: BabokDto | null;
+  parentTitle: string | null;
+  onChoose: (template: PageTemplateDto | null) => void;
+  onCancel: () => void;
+}) {
+  const { t, locale } = useI18n();
+  const [templates, setTemplates] = useState<PageTemplateDto[] | null>(null);
+  const [error, setError] = useState<UiError | null>(null);
+
+  useEffect(() => {
+    api.listPageTemplates().then(setTemplates, (e: unknown) => setError(toUiError(e)));
+  }, []);
+
+  const groups = babok && templates ? pageTemplateGroups(babok, templates, locale) : [];
+  return (
+    <section className="page-template-chooser" aria-labelledby={SCREEN_TITLE_ID}>
+      <div className="page-save-bar">
+        <span id={SCREEN_TITLE_ID} className="page-save-bar-title">
+          {parentTitle ? t('pages.newChildOf', { title: parentTitle }) : t('pages.new')}
+        </span>
+        <button type="button" onClick={onCancel}>
+          {t('common.cancel')}
+        </button>
+      </div>
+      <h2 className="page-template-heading">{t('pages.chooseTemplate')}</h2>
+      <ErrorMessage error={error} />
+      <ul className="page-template-list">
+        <li>
+          <button type="button" autoFocus onClick={() => onChoose(null)}>
+            <FilePlus />
+            <span>{t('pages.blankPage')}</span>
+          </button>
+        </li>
+      </ul>
+      {!templates && !error && <p>{t('common.loading')}</p>}
+      {groups.map(({ knowledgeArea, templates: ofGroup }) => (
+        <section key={knowledgeArea?.id ?? 'other'}>
+          <h3 className="group-title">
+            {knowledgeArea ? <BabokName element={knowledgeArea} /> : t('pages.otherTemplates')}
+          </h3>
+          <ul className="page-template-list">
+            {ofGroup.map((template) => {
+              const task = template.taskId && babok ? findBabokElement(babok, template.taskId) : undefined;
+              return (
+                <li key={template.id}>
+                  <button type="button" onClick={() => onChoose(template)}>
+                    <span>{template.name[locale]}</span>
+                    {task && (
+                      <small>
+                        <span className="code">{task.section}</span> <BabokName element={task} />
+                      </small>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </section>
   );
 }

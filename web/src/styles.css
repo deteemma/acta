@@ -2160,6 +2160,38 @@ button.link.pill:hover {
   color: var(--danger);
   font-weight: 600;
 }
+/* Modèles de page (ticket 27) : choix à la création, mention sur la page. */
+.page-origin {
+  margin: var(--space-1) 0 var(--space-3);
+  color: var(--muted);
+}
+.page-template-heading {
+  font-size: var(--text-section-title);
+  margin: var(--space-3) 0;
+}
+.page-template-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+.page-template-list button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  text-align: start;
+}
+.page-template-list button > svg {
+  margin-bottom: var(--space-1);
+}
+.page-template-list small {
+  color: var(--muted);
+}
 .page-title-field input {
   width: 100%;
   font-size: var(--text-section-title);

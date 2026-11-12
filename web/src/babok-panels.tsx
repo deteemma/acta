@@ -7,11 +7,15 @@ import {
   findBabokElement,
   tasksOfKnowledgeArea,
   tasksUsingTechnique,
+  type TaskPageDto,
   techniquesOfTask,
 } from '@app/shared';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from './api';
+import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { Panel, usePanels } from './panels';
+import { useScreens } from './screens';
 
 /** Nom dans la langue de l'interface ; en français, le nom anglais en info-bulle (ADR-0013). */
 export function BabokName({ element }: { element: BabokElementDto }) {
@@ -163,6 +167,7 @@ export function BabokElementPanel({
             {t('babok.techniquesOfTask')} <span className="count">{techniquesOfTask(babok, element).length}</span>
           </h3>
           <BabokLinks elements={techniquesOfTask(babok, element)} />
+          <TaskPages taskId={element.id} />
         </>
       )}
       {element.kind === 'technique' && (
@@ -174,5 +179,48 @@ export function BabokElementPanel({
         </>
       )}
     </Panel>
+  );
+}
+
+/**
+ * Pages créées depuis un modèle de la tâche (ticket 27, décision 09, point 8), dans
+ * les initiatives dont je suis membre. Une référence ouvre l'écran Pages sur elle.
+ */
+function TaskPages({ taskId }: { taskId: string }) {
+  const { t } = useI18n();
+  const { goTo } = useScreens();
+  const [pages, setPages] = useState<TaskPageDto[] | null>(null);
+  const [error, setError] = useState<UiError | null>(null);
+
+  useEffect(() => {
+    api.listTaskPages(taskId).then(setPages, (e: unknown) => setError(toUiError(e)));
+  }, [taskId]);
+
+  return (
+    <>
+      <h3 className="group-title">
+        {t('babok.taskPages')} {pages && <span className="count">{pages.length}</span>}
+      </h3>
+      <ErrorMessage error={error} />
+      <p>
+        <small>{t('babok.taskPagesHint')}</small>
+      </p>
+      {pages && pages.length === 0 && <p><small>{t('babok.taskPagesNone')}</small></p>}
+      {pages && pages.length > 0 && (
+        <ul className="links">
+          {pages.map((page) => (
+            <li key={page.id}>
+              <button
+                type="button"
+                className="link"
+                onClick={() => void goTo({ kind: 'pages', initiativeId: page.initiativeId, pageId: page.id })}
+              >
+                <span className="code">{page.reference}</span> {page.title}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

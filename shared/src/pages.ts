@@ -4,6 +4,7 @@
 // reproduites par la base (migration 0020).
 import { z } from 'zod';
 import { declarePageVersionSchema, type PageVersionStatus } from './page-revisions.js';
+import { pageTemplateChoiceSchema, type PageTemplateMention } from './page-templates.js';
 import type { MemberNameDto } from './schemas.js';
 
 export const PAGE_TITLE_MAX_LENGTH = 200;
@@ -129,6 +130,11 @@ export const createPageSchema = z.object({
   content: pageContentSchema.nullable().default(null),
   /** Page parente de la même initiative ; null pour une page de premier niveau. */
   parentId: z.uuid().nullable().default(null),
+  /**
+   * Modèle d'origine (ticket 27) ; null pour une page vide. Le contenu envoyé est
+   * celui du modèle, copié par le web puis éventuellement déjà modifié.
+   */
+  template: pageTemplateChoiceSchema.nullable().default(null),
 });
 export type CreatePageInput = z.infer<typeof createPageSchema>;
 
@@ -161,6 +167,10 @@ export interface PageDto {
   revisionId: string;
   /** Dernière version et modifications depuis (pageVersionStatus). */
   versions: PageVersionStatus;
+  /** Modèle d'origine, sous le nom qu'il portait à la création ; null pour une page vide. Figé. */
+  template: PageTemplateMention | null;
+  /** Tâche BABOK du modèle d'origine, figée à la création ; elle ne rend pas la tâche couverte. */
+  taskId: string | null;
 }
 
 /** Ligne de l'arborescence : sans le contenu. */
@@ -198,9 +208,10 @@ export type MovePageInput = z.infer<typeof movePageSchema>;
  * Refus d'une écriture sur une page, renvoyés par l'API (`refusal`) :
  * - `unknownPage` : la page parente n'est pas une page de l'initiative ;
  * - `pageUnderItself` : une page ne se range pas sous elle-même ni sous l'une de ses sous-pages ;
- * - `pageHasSubpages` : une page qui a des sous-pages ne se supprime pas.
+ * - `pageHasSubpages` : une page qui a des sous-pages ne se supprime pas ;
+ * - `unknownPageTemplate` : le modèle choisi n'existe pas ou n'est plus proposé (désactivé).
  */
-export const PAGE_REFUSALS = ['unknownPage', 'pageUnderItself', 'pageHasSubpages'] as const;
+export const PAGE_REFUSALS = ['unknownPage', 'pageUnderItself', 'pageHasSubpages', 'unknownPageTemplate'] as const;
 export type PageRefusal = (typeof PAGE_REFUSALS)[number];
 export const isPageRefusal = (value: unknown): value is PageRefusal => PAGE_REFUSALS.some((r) => r === value);
 

@@ -7,6 +7,7 @@ import type {
   Locale,
   NeedNature,
   PageDoc,
+  PageTemplateOrigin,
   ReferenceCategory,
   RequirementSnapshot,
   RequirementStatus,
@@ -118,6 +119,23 @@ export interface PageTable {
   created_at: ColumnType<Date, never, never>;
   updated_by: ColumnType<string, never, never>;
   updated_at: ColumnType<Date, never, never>;
+  /** Modèle d'origine et son nom à la création (migration 0025) : posés à l'insertion, figés ensuite. */
+  template_id: ColumnType<string | null, string | null | undefined, never>;
+  template_name: ColumnType<string | null, string | null | undefined, never>;
+  /** Tâche du modèle, posée par la base à l'insertion. */
+  task_id: ColumnType<string | null, never, never>;
+}
+
+/** Modèle de page (migration 0025) : lecture seule pour le compte applicatif avant le ticket 30. */
+export interface PageTemplateTable {
+  id: ColumnType<string, never, never>;
+  name_fr: string;
+  name_en: string;
+  content_fr: ColumnType<PageDoc, string, string>;
+  content_en: ColumnType<PageDoc, string, string>;
+  task_id: string | null;
+  origin: PageTemplateOrigin;
+  active: boolean;
 }
 
 /**
@@ -376,6 +394,7 @@ export interface Database {
   need_stakeholder: NeedStakeholderTable;
   owner_designation: OwnerDesignationTable;
   page: PageTable;
+  page_template: PageTemplateTable;
   page_revision: PageRevisionTable;
   reference_acronym: ReferenceAcronymTable;
   reference_category: ReferenceCategoryTable;

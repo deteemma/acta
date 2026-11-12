@@ -17,6 +17,8 @@ import type {
   PageRevisionDto,
   PageRevisionRow,
   PageRow,
+  PageTemplateDto,
+  TaskPageDto,
   UpdatePageInput,
   UpdatePageVersionNoteInput,
   TicketDto,
@@ -177,6 +179,9 @@ export const api = {
   movePage: (id: string, pageId: string, input: MovePageInput) =>
     request<PageRow[]>(`/initiatives/${id}/pages/${pageId}/placement`, { method: 'PUT', body: JSON.stringify(input) }),
   deletePage: (id: string, pageId: string) => request<void>(`/initiatives/${id}/pages/${pageId}`, { method: 'DELETE' }),
+  // Modèles de page (ticket 27).
+  listPageTemplates: () => request<PageTemplateDto[]>('/page-templates'),
+  listTaskPages: (taskId: string) => request<TaskPageDto[]>(`/babok/tasks/${encodeURIComponent(taskId)}/pages`),
   // Enregistrements et versions de page (ticket 23).
   listPageRevisions: (id: string, pageId: string) =>
     request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions`),

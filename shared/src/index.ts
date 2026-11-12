@@ -27,3 +27,4 @@ export * from './suggestions.js';
 export * from './team.js';
 export * from './tickets.js';
 export * from './unsaved-changes.js';
+export * from './page-templates.js';
