@@ -4,16 +4,16 @@
 
 **Blocked by:** 21 — Pièces jointes des tickets ; 23 — Enregistrements et versions
 
-**Status:** ready-for-agent
+**Status:** done (validé par la responsable fonctionnelle le 13.11.2026)
 
 Règles : décisions [10](10-pieces-jointes.md) (points 7 à 9) et [08](08-editeur-de-page.md) (point 5).
 
-- [ ] Image par bouton, collage et dépôt, avec les formats et limites du ticket 21 ; collage et dépôt non vérifiés dans le prototype.
-- [ ] Rattachée seulement à l'enregistrement de la saisie : abandonner ne laisse rien, y compris pour une page pas encore créée. Aucun fichier orphelin après une fermeture brutale.
-- [ ] Listée parmi les pièces jointes avec la mention « affichée dans le texte ». La liste n'est pas versionnée.
-- [ ] Une image retirée du texte reste dans la liste et s'affiche dans les anciens enregistrements. Supprimer un enregistrement ne supprime aucun fichier.
-- [ ] Suppression refusée si l'image figure dans le dernier enregistrement ; sinon avertissement listant les enregistrements touchés, puis « image supprimée » à sa place, y compris après une restauration.
-- [ ] L'image n'est pas lisible par un non-membre ; deux barrières dans `scripts/roles/` ; libellés dans les deux langues.
+- [x] Image par bouton, collage et dépôt, avec les formats et limites du ticket 21 ; collage et dépôt non vérifiés dans le prototype.
+- [x] Rattachée seulement à l'enregistrement de la saisie : abandonner ne laisse rien, y compris pour une page pas encore créée. Aucun fichier orphelin après une fermeture brutale.
+- [x] Listée parmi les pièces jointes avec la mention « affichée dans le texte ». La liste n'est pas versionnée.
+- [x] Une image retirée du texte reste dans la liste et s'affiche dans les anciens enregistrements. Supprimer un enregistrement ne supprime aucun fichier.
+- [x] Suppression refusée si l'image figure dans le dernier enregistrement ; sinon avertissement listant les enregistrements touchés, puis « image supprimée » à sa place, y compris après une restauration.
+- [x] L'image n'est pas lisible par un non-membre ; deux barrières dans `scripts/roles/` ; libellés dans les deux langues.
 
 ## Réalisation
 
@@ -40,6 +40,7 @@ Règles : décisions [10](10-pieces-jointes.md) (points 7 à 9) et [08](08-edite
 - Migration `0028` : contrôle en fin de transaction que le texte d'une page n'affiche que ses propres images ; refus de supprimer une image du dernier enregistrement. Routes : `GET`/`POST /initiatives/<id>/pages/<page>/attachments`, `GET …/pages/<page>/attachments/<fichier>/revisions`. `AttachmentDto.inText`.
 - Docker Compose 5 construit toujours avec « bake », qui demandait ici une permission de plus : l'image a été construite par `docker build -f api/Dockerfile -t ghcr.io/deteemma/acta:local .`, puis `docker compose up -d`.
 - Après la revue : un collage depuis Word ou Excel (texte accompagné d'une image de la sélection) colle le texte, pas l'image ; seules les images seules du presse-papiers s'insèrent. Les images sont relues à chaque ouverture d'une page, pour qu'une image supprimée par un autre membre y affiche « Image supprimée ». Un envoi arrêté plus de 30 secondes sans aucun octet reçu est abandonné, pour ne pas retenir la transaction et ses verrous.
+- Ticket validé par la responsable fonctionnelle le 13.11.2026, avec les choix 1 à 9 tels que réalisés.
 - Limite connue : pendant l'envoi d'un enregistrement avec images, les autres ajouts de fichiers de la même initiative attendent qu'il se termine (verrou de la limite de pièces jointes, comme au ticket 21).
 
 ## Commentaires
