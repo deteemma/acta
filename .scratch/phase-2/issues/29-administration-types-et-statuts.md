@@ -4,7 +4,7 @@
 
 **Blocked by:** 18 — Types de ticket livrés et Epics
 
-**Status:** ready-for-agent
+**Status:** done (validé par la responsable fonctionnelle le 13.11.2026)
 
 Règles : décisions [03](03-types-de-ticket-et-statuts-parametrables.md) (points 3, 6 à 10) et [14](14-ecrans-d-administration.md) (points 1 et 2).
 
@@ -38,6 +38,8 @@ Règles : décisions [03](03-types-de-ticket-et-statuts-parametrables.md) (point
 - Migration `0029` : tables `ticket_type` et `ticket_status` (livrés et ajoutés, famille, « fermé », ordre, indicateur `used`), clés étrangères `ticket_type_fkey` et `ticket_status_fkey` sur `ticket` à la place des contrôles fixes ; le déclencheur pose le statut initial (premier du type), refuse un type ou un statut désactivé, et marque type et statut « utilisés ». Fonctions `admin_*` (seconde barrière). Un type ajouté est une catégorie de référence de plus, qui porte son code.
 - Routes : `GET /ticket-types` (tout utilisateur connecté) ; `GET`/`POST /admin/ticket-types`, `PATCH`/`DELETE /admin/ticket-types/<type>`, `POST /admin/ticket-types/<type>/statuses`, `PATCH`/`DELETE …/statuses/<statut>`.
 - Une catégorie de référence inconnue renvoie désormais 404 (au lieu de 400), puisque les catégories ne forment plus une liste fixe.
+
+- Ticket validé par la responsable fonctionnelle le 13.11.2026, avec les choix 4 à 9 tels que réalisés.
 
 **Limites connues.**
 - Le téléphone lit la liste des types en mode connecté. Sans réponse, il retombe sur les types livrés : un statut ajouté à l'Action s'afficherait alors par son code et serait traité comme ouvert. Le hors-ligne reste le dernier chantier.
