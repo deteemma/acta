@@ -4,7 +4,7 @@
 
 **Blocked by:** 27 — Créer une page depuis un modèle
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 14.11.2026)
 
 Règles : décisions [09](09-modeles-de-page.md) (point 6) et [14](14-ecrans-d-administration.md) (points 1 et 3).
 
@@ -37,6 +37,8 @@ Règles : décisions [09](09-modeles-de-page.md) (point 6) et [14](14-ecrans-d-a
 **Technique.**
 - Migration `0030` : indicateur `used` sur `page_template` (posé par le déclencheur à la création d'une page), contrôles du contenu (au moins un mot, sans image) et des noms, fonctions `admin_*` (seconde barrière). Le compte applicatif n'écrit toujours pas directement dans la table.
 - Routes : `GET`/`POST /admin/page-templates`, `PATCH`/`DELETE /admin/page-templates/<modèle>`.
+
+- Ticket validé par la responsable fonctionnelle le 14.11.2026, avec les choix 5 à 9 tels que réalisés.
 
 **Limites connues.**
 - La base refuse deux noms qui ne diffèrent que par les majuscules, mais pas par les seuls accents (« Etat » et « État » ajoutés au même instant par deux administrateurs) ; l'API, elle, les refuse. Même limite qu'au ticket 29.
