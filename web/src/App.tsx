@@ -4,6 +4,7 @@ import { Archive, BookOpen, FileText, ListChecks, LogOut, PanelLeft, Plus, Searc
 import { useEffect, useState } from 'react';
 import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
+import { PageTemplatePanel } from './admin-page-templates';
 import { AlertsButton, AlertsPanel, useMyAlerts } from './alerts';
 import { api } from './api';
 import { BabokElementPanel, BabokPanel } from './babok-panels';
@@ -343,7 +344,9 @@ function Shell({ user }: { user: User }) {
               case 'member':
                 return <MemberPanel member={content.member} onClose={close} />;
               case 'admin':
-                return me && <AdminPanel myId={me.id} onClose={close} />;
+                return me && <AdminPanel myId={me.id} babok={babok} onClose={close} />;
+              case 'pageTemplate':
+                return babok && <PageTemplatePanel babok={babok} templateId={content.templateId} onClose={close} />;
               case 'babok':
                 return babok && <BabokPanel babok={babok} onClose={close} />;
               case 'babokElement': {

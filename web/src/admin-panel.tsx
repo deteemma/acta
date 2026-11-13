@@ -1,12 +1,15 @@
 // Administration (ticket 05, ADR-0005) : comptes de Keycloak, initiatives sans
 // propriétaire actif, acronymes des références (ticket 09), statuts d'exigence
-// (ticket 11), types de ticket et leurs statuts (ticket 29, admin-ticket-types.tsx).
+// (ticket 11), types de ticket et leurs statuts (ticket 29, admin-ticket-types.tsx),
+// modèles de page (ticket 30, admin-page-templates.tsx).
 // Les contrôles proposés et les refus suivent les règles de
-// @app/shared (admin.ts, references.ts, requirement-statuses.ts).
+// @app/shared (admin.ts, references.ts, requirement-statuses.ts, ticket-type-catalog.ts,
+// page-template-admin.ts).
 import {
   ACRONYM_MAX_LENGTH,
   memberName,
   type AccountDto,
+  type BabokDto,
   type AdminRequirementStatusDto,
   checkAccountChange,
   checkAcronymChange,
@@ -29,6 +32,7 @@ import {
 import { useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import { adminRefusalError, ErrorMessage, toUiError, type UiError } from './errors';
+import { PageTemplatesSection } from './admin-page-templates';
 import { TicketTypesSection } from './admin-ticket-types';
 import { useTicketLabels, useTicketTypes } from './ticket-types';
 import { useI18n } from './i18n';
@@ -51,14 +55,14 @@ function adminError(error: unknown): UiError {
 const accountName = (account: AccountDto) =>
   [account.firstName, account.lastName].filter(Boolean).join(' ') || account.username;
 
-type AdminTab = 'accounts' | 'orphans' | 'references' | 'statuses' | 'ticketTypes';
+type AdminTab = 'accounts' | 'orphans' | 'references' | 'statuses' | 'ticketTypes' | 'pageTemplates';
 
 /**
- * Onglets (refonte du design, validé le 01.11.2026 ; « Types de ticket » : décision 14 de la phase 2). Toutes les sections
+ * Onglets (refonte du design, validé le 01.11.2026 ; « Types de ticket » et « Modèles de page » : décision 14 de la phase 2). Toutes les sections
  * restent montées : elles se chargent à l'ouverture, ce qui donne les compteurs,
  * et une saisie en cours survit au changement d'onglet.
  */
-export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => void }) {
+export function AdminPanel({ myId, babok, onClose }: { myId: string; babok: BabokDto | null; onClose: () => void }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<AdminTab>('accounts');
   const [accountCount, setAccountCount] = useState<number | null>(null);
@@ -69,6 +73,7 @@ export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => voi
     { id: 'references', label: t('admin.references'), count: null },
     { id: 'statuses', label: t('admin.requirementStatuses'), count: null },
     { id: 'ticketTypes', label: t('admin.ticketTypes'), count: null },
+    { id: 'pageTemplates', label: t('admin.pageTemplates'), count: null },
   ];
   const panel = (id: AdminTab) => ({ role: 'tabpanel', id: `admin-${id}`, 'aria-labelledby': `admin-tab-${id}`, hidden: tab !== id });
   return (
@@ -113,6 +118,9 @@ export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => voi
         <RevealFormContext.Provider value={() => setTab('ticketTypes')}>
           <TicketTypesSection />
         </RevealFormContext.Provider>
+      </div>
+      <div {...panel('pageTemplates')}>
+        <PageTemplatesSection babok={babok} />
       </div>
     </Panel>
   );

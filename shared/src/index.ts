@@ -29,4 +29,5 @@ export * from './team.js';
 export * from './tickets.js';
 export * from './unsaved-changes.js';
 export * from './page-templates.js';
+export * from './page-template-admin.js';
 export * from './ticket-type-catalog.js';

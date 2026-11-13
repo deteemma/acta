@@ -170,6 +170,7 @@ export default function PageEditor({
   onImageFiles,
   onReady,
   onChange,
+  forTemplate = false,
 }: {
   initialContent: PageDoc | null;
   /** Références proposées, dans l'ordre où les montrer. */
@@ -183,6 +184,11 @@ export default function PageEditor({
   /** Contenu tel que l'éditeur le lit à l'ouverture : point de comparaison des modifications. */
   onReady: (doc: PageDoc) => void;
   onChange: (doc: PageDoc) => void;
+  /**
+   * Modèle de page (ticket 30) : ni image (décision 14, point 3), ni référence,
+   * puisqu'un modèle ne porte aucune donnée de l'initiative (décision 09, point 3).
+   */
+  forTemplate?: boolean;
 }) {
   const { t } = useI18n();
   const { categoryLabel } = useTicketLabels();
@@ -204,7 +210,7 @@ export default function PageEditor({
         resolve: resolveImage,
         labels: { image: t('page.image'), deleted: t('page.imageDeleted'), unavailable: t('page.imageUnavailable') },
       }),
-      referenceSuggestion(bridge),
+      ...(forTemplate ? [] : [referenceSuggestion(bridge)]),
     ],
     content: initialContent,
     // La frappe ne transforme jamais le texte : « # Budget 2027 » ne devient pas un
@@ -219,11 +225,12 @@ export default function PageEditor({
       // Word ou Excel joignent une image de la sélection à son texte : le texte l'emporte alors.
       handlePaste: (view, event) => {
         const data = event.clipboardData;
+        if (forTemplate) return false;
         if (!data || data.types.includes('text/html') || data.types.includes('text/plain')) return false;
         return insertImageFiles(view, bridge, [...data.files], null);
       },
       handleDrop: (view, event, _slice, moved) => {
-        if (moved) return false;
+        if (moved || forTemplate) return false;
         const files = [...(event.dataTransfer?.files ?? [])];
         const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? null;
         if (files.length > 0) event.preventDefault();
@@ -248,6 +255,7 @@ export default function PageEditor({
         onReference={insertReference}
         onImages={(files) => insertImageFiles(editor.view, bridge, files, null)}
         onEscapeSuggestion={() => exitSuggestion(editor.view, referenceSuggestionKey)}
+        forTemplate={forTemplate}
       />
       <EditorContent editor={editor} />
       {suggestion && (
@@ -283,11 +291,13 @@ function Toolbar({
   onReference,
   onImages,
   onEscapeSuggestion,
+  forTemplate,
 }: {
   editor: Editor;
   onReference: () => void;
   onImages: (files: File[]) => void;
   onEscapeSuggestion: () => void;
+  forTemplate: boolean;
 }) {
   const { t } = useI18n();
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
@@ -359,6 +369,7 @@ function Toolbar({
         {tool('bulletList', <List />, state.bulletList, () => chain().toggleBulletList().run())}
         {tool('orderedList', <ListOrdered />, state.orderedList, () => chain().toggleOrderedList().run())}
         {tool('table', <Table />, state.table, () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), state.table)}
+        {!forTemplate && (
         <label className="button file-button page-toolbar-file" title={t('page.tool.image')}>
           <ImagePlus />
           {t('page.tool.image')}
@@ -373,13 +384,16 @@ function Toolbar({
             }}
           />
         </label>
+        )}
       </span>
-      <span className="page-toolbar-group">
-        <button type="button" title={t('page.tool.reference')} onClick={onReference}>
-          <Hash />
-          {t('page.tool.reference')}
-        </button>
-      </span>
+      {!forTemplate && (
+        <span className="page-toolbar-group">
+          <button type="button" title={t('page.tool.reference')} onClick={onReference}>
+            <Hash />
+            {t('page.tool.reference')}
+          </button>
+        </span>
+      )}
       <span className="page-toolbar-group">
         {tool('undo', <Undo2 />, false, () => chain().undo().run(), !state.canUndo)}
         {tool('redo', <Redo2 />, false, () => chain().redo().run(), !state.canRedo)}

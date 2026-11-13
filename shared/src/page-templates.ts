@@ -28,28 +28,34 @@ export interface PageTemplateDto {
 /** Seul un modèle actif est proposé, et sert à créer une page (décision 09, point 6). */
 export const isOfferedPageTemplate = (template: Pick<PageTemplateDto, 'active'>): boolean => template.active;
 
-/** Groupe de la liste « Nouvelle page » : un domaine de connaissance, ou null pour les modèles sans tâche. */
-export interface PageTemplateGroup {
+/** Groupe de la liste « Nouvelle page », ou de l'administration : un domaine de connaissance, ou null pour les modèles sans tâche. */
+export interface PageTemplateGroup<T extends PageTemplateDto = PageTemplateDto> {
   knowledgeArea: KnowledgeAreaDto | null;
-  templates: PageTemplateDto[];
+  templates: T[];
 }
 
 /**
  * Modèles proposés par « Nouvelle page » (décision 09, point 9) : les modèles
  * actifs, par domaine de connaissance dans l'ordre du référentiel, puis par tâche,
  * puis par nom dans la langue de l'interface. Les modèles sans tâche viennent à la fin.
+ * `withInactive` : l'administration (ticket 30) les liste tous, désactivés compris.
  */
-export function pageTemplateGroups(babok: BabokDto, templates: readonly PageTemplateDto[], locale: Locale): PageTemplateGroup[] {
+export function pageTemplateGroups<T extends PageTemplateDto>(
+  babok: BabokDto,
+  templates: readonly T[],
+  locale: Locale,
+  { withInactive = false }: { withInactive?: boolean } = {},
+): PageTemplateGroup<T>[] {
   const taskRank = new Map(babok.tasks.map((task, rank) => [task.id, rank]));
   const areaOf = new Map(babok.tasks.map((task) => [task.id, task.knowledgeAreaId]));
   const sorted = templates
-    .filter(isOfferedPageTemplate)
+    .filter((t) => withInactive || isOfferedPageTemplate(t))
     .sort(
       (a, b) =>
         (taskRank.get(a.taskId ?? '') ?? Infinity) - (taskRank.get(b.taskId ?? '') ?? Infinity) ||
         a.name[locale].localeCompare(b.name[locale], locale),
     );
-  const groups: PageTemplateGroup[] = babok.knowledgeAreas.map((knowledgeArea) => ({
+  const groups: PageTemplateGroup<T>[] = babok.knowledgeAreas.map((knowledgeArea) => ({
     knowledgeArea,
     templates: sorted.filter((t) => t.taskId !== null && areaOf.get(t.taskId) === knowledgeArea.id),
   }));
@@ -77,3 +83,4 @@ export interface TaskPageDto {
   reference: string;
   title: string;
 }
+

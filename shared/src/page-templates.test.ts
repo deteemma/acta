@@ -65,3 +65,21 @@ test('un modèle sans tâche BABOK est proposé à la fin, hors des domaines de 
 test('sans modèle actif, seule la page vide est proposée : aucun groupe', () => {
   assert.deepEqual(pageTemplateGroups(babok, [template('ancien', '3.1', 'Ancien', 'Old', false)], 'fr'), []);
 });
+
+
+test('l’administration liste tous les modèles par domaine de connaissance, désactivés compris', () => {
+  const groups = pageTemplateGroups(
+    babok,
+    [template('ancien', '3.1', 'Ancien', 'Old', false), template('libre', null, 'Libre', 'Free', false), template('etat', '6.1', 'État', 'State')],
+    'fr',
+    { withInactive: true },
+  );
+  assert.deepEqual(
+    groups.map((g) => [g.knowledgeArea?.id ?? null, g.templates.map((t) => t.id)]),
+    [
+      ['3', ['ancien']],
+      ['6', ['etat']],
+      [null, ['libre']],
+    ],
+  );
+});

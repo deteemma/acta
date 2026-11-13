@@ -29,7 +29,8 @@ import { InitiativeRoleGuard } from './initiatives/initiative-role.guard.js';
 import { InitiativesService } from './initiatives/initiatives.service.js';
 import { NeedsController } from './needs/needs.controller.js';
 import { NeedsService } from './needs/needs.service.js';
-import { PageTemplatesController } from './pages/page-templates.controller.js';
+import { AdminPageTemplatesService } from './pages/admin-page-templates.service.js';
+import { AdminPageTemplatesController, PageTemplatesController } from './pages/page-templates.controller.js';
 import { PagesController } from './pages/pages.controller.js';
 import { PagesService } from './pages/pages.service.js';
 import {
@@ -63,6 +64,7 @@ import { UsersService } from './users/users.service.js';
     NeedsController,
     PagesController,
     PageTemplatesController,
+    AdminPageTemplatesController,
     ReferenceCategoriesController,
     RequirementStatusesController,
     TicketTypesController,
@@ -88,6 +90,7 @@ import { UsersService } from './users/users.service.js';
     StakeholdersService,
     NeedsService,
     PagesService,
+    AdminPageTemplatesService,
     ReferenceCategoriesService,
     RequirementStatusesService,
     TicketTypesService,

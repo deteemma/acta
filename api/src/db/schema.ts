@@ -127,7 +127,7 @@ export interface PageTable {
   task_id: ColumnType<string | null, never, never>;
 }
 
-/** Modèle de page (migration 0025) : lecture seule pour le compte applicatif avant le ticket 30. */
+/** Modèle de page (migrations 0025 et 0030) : écrit seulement par les fonctions admin_* (ticket 30). */
 export interface PageTemplateTable {
   id: ColumnType<string, never, never>;
   name_fr: string;
@@ -137,6 +137,8 @@ export interface PageTemplateTable {
   task_id: string | null;
   origin: PageTemplateOrigin;
   active: boolean;
+  /** Une page a déjà été créée depuis ce modèle : il ne se supprime plus. */
+  used: ColumnType<boolean, never, never>;
 }
 
 /**

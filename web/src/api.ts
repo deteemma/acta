@@ -20,6 +20,7 @@ import type {
   PageRevisionRow,
   PageRow,
   PageTemplateDto,
+  PageTemplateInput,
   TaskPageDto,
   UpdatePageInput,
   UpdatePageVersionNoteInput,
@@ -28,11 +29,13 @@ import type {
   TicketVersionDto,
   UpdateTicketInput,
   AdminRequirementStatusDto,
+  AdminPageTemplateDto,
   AdminTicketTypeDto,
   CreateTicketStatusInput,
   CreateTicketTypeInput,
   TicketTypeDto,
   UpdateTicketStatusInput,
+  UpdatePageTemplateInput,
   UpdateTicketTypeInput,
   CreateActionInput,
   UpdateActionInput,
@@ -245,6 +248,13 @@ export const api = {
   // Modèles de page (ticket 27).
   listPageTemplates: () => request<PageTemplateDto[]>('/page-templates'),
   listTaskPages: (taskId: string) => request<TaskPageDto[]>(`/babok/tasks/${encodeURIComponent(taskId)}/pages`),
+  /** Administration des modèles de page (ticket 30) : chaque appel renvoie toute la liste, à jour. */
+  listAdminPageTemplates: () => request<AdminPageTemplateDto[]>('/admin/page-templates'),
+  addPageTemplate: (input: PageTemplateInput) =>
+    request<AdminPageTemplateDto[]>('/admin/page-templates', { method: 'POST', body: JSON.stringify(input) }),
+  updatePageTemplate: (id: string, input: UpdatePageTemplateInput) =>
+    request<AdminPageTemplateDto[]>(`/admin/page-templates/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deletePageTemplate: (id: string) => request<AdminPageTemplateDto[]>(`/admin/page-templates/${id}`, { method: 'DELETE' }),
   // Enregistrements et versions de page (ticket 23).
   listPageRevisions: (id: string, pageId: string) =>
     request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions`),
