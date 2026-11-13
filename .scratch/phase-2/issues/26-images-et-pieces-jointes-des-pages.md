@@ -41,3 +41,7 @@ Règles : décisions [10](10-pieces-jointes.md) (points 7 à 9) et [08](08-edite
 - Docker Compose 5 construit toujours avec « bake », qui demandait ici une permission de plus : l'image a été construite par `docker build -f api/Dockerfile -t ghcr.io/deteemma/acta:local .`, puis `docker compose up -d`.
 - Après la revue : un collage depuis Word ou Excel (texte accompagné d'une image de la sélection) colle le texte, pas l'image ; seules les images seules du presse-papiers s'insèrent. Les images sont relues à chaque ouverture d'une page, pour qu'une image supprimée par un autre membre y affiche « Image supprimée ». Un envoi arrêté plus de 30 secondes sans aucun octet reçu est abandonné, pour ne pas retenir la transaction et ses verrous.
 - Limite connue : pendant l'envoi d'un enregistrement avec images, les autres ajouts de fichiers de la même initiative attendent qu'il se termine (verrou de la limite de pièces jointes, comme au ticket 21).
+
+## Commentaires
+
+- 13.11.2026, responsable fonctionnelle : choix 5 validé. Un fichier qui n'est pas une image, déposé ou collé dans le texte pendant l'écriture, est refusé avec le message ; il se joint par « Joindre des fichiers » dans la section « Pièces jointes » de la page.
