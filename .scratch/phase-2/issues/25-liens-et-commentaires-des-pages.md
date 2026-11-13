@@ -4,7 +4,7 @@
 
 **Blocked by:** 19 — Liens ; 20 — Commentaires ; 22 — Pages : arborescence et écriture
 
-**Status:** ready-for-agent
+**Status:** done (validé par la responsable fonctionnelle le 13.11.2026)
 
 Règles : décisions [04](04-liens.md) (point 5) et [05](05-commentaires.md).
 
@@ -30,6 +30,7 @@ Règles : décisions [04](04-liens.md) (point 5) et [05](05-commentaires.md).
 - `scripts/roles/22-liens-et-commentaires-des-pages.mjs`, API et base, chaque rôle et l'initiative archivée : liens vers un ticket, une action, un besoin, une exigence, créés depuis l'un ou l'autre objet ; doublon refusé ; lien entre deux pages impossible ; objets d'une autre initiative refusés ; aucun enregistrement de page, aucune entrée d'historique du ticket ni de l'exigence ; refus de supprimer la page et chacun des objets liés ; commentaires de page avec les droits du ticket 20, auteur devenu lecteur refusé par l'API et par la base ; fil intact après un nouvel enregistrement ; commentaires partis avec la page. L'ensemble de `scripts/tester-roles.sh` passe.
 - Écrans non vérifiés dans le navigateur par l'agent : l'extension Chrome s'est déconnectée pendant la réalisation.
 - Une initiative d'essai « Liens des pages » (code se terminant par `PL`) est restée dans la base locale, après un premier passage des tests de rôles interrompu.
+- Ticket validé par la responsable fonctionnelle le 13.11.2026, avec les choix 1 à 8 tels que réalisés.
 
 **Technique.**
 - Migration `0027` : tables `page_ticket`, `page_need` et `page_requirement`, une paire au plus (clé primaire), clés composites qui interdisent les liens entre initiatives et la suppression d'un objet lié ; RLS comme `ticket_link`. Aucune table pour un lien entre deux pages. Tables hors de la publication PowerSync.
