@@ -8,7 +8,7 @@ import {
   type BabokDto,
   can,
   checkPageDelete,
-  createPageSchema,
+  createPageWithImagesSchema,
   dropPlacement,
   flattenPageTree,
   findBabokElement,
@@ -33,7 +33,7 @@ import {
   sortByReference,
 } from '@app/shared';
 import { ArrowDown, ArrowUp, FilePlus, History, IndentDecrease, IndentIncrease, Pencil, Plus } from 'lucide-react';
-import { type DragEvent, type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { type DragEvent, type KeyboardEvent, lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { BabokName } from './babok-panels';
 import { PageComments } from './comments';
@@ -41,7 +41,9 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { PageLinks, useLinkData } from './link-panels';
+import { FileError, PageAttachments } from './attachments';
 import { PageContent } from './page-content';
+import { forgetAttachmentImages, PageImageSource, PendingImages } from './page-images';
 import { PageComparison, PageDiff, PageHistory, PageRevisionView, type PageShown, VersionNoteField } from './page-history';
 import { SCREEN_TITLE_ID, usePanels } from './panels';
 import { useReferences } from './references';
@@ -153,6 +155,7 @@ export function PagesScreen({
   const shownDraft = draft && draft.at === pageId ? draft : null;
   const draftParentTitle = tree?.find((p) => p.id === shownDraft?.parentId)?.title ?? null;
   return (
+    <PageImageSource.Provider value={initiativeId}>
     <section className="pages">
       {initiative && (
         <div className="panel-kicker">
@@ -235,6 +238,7 @@ export function PagesScreen({
         </div>
       </div>
     </section>
+    </PageImageSource.Provider>
   );
 }
 
@@ -449,6 +453,8 @@ function PageView({
       else setError(toUiError(e));
     });
   useEffect(() => {
+    // Images relues à l'ouverture : une image supprimée entre-temps n'est plus montrée.
+    forgetAttachmentImages();
     void loadPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- la page se relit quand elle change d'identifiant
   }, [initiativeId, pageId]);
@@ -632,6 +638,10 @@ function PageView({
         <ErrorMessage error={linksError} />
       )}
       {initiative && <PageComments initiativeId={initiativeId} pageId={page.id} initiative={initiative} myId={myId} />}
+      {initiative && (
+        // Rechargée à chaque enregistrement : nouvelles images et mention « affichée dans le texte » (ticket 26).
+        <PageAttachments key={page.revisionId} initiativeId={initiativeId} pageId={page.id} initiative={initiative} />
+      )}
       {canEdit && (
         <section className="owner-actions page-owner-actions">
           <div role="group" aria-label={t('page.moveGroup')} className="page-move">
@@ -766,6 +776,19 @@ function PageEditForm({
   const [asVersion, setAsVersion] = useState(false);
   const [versionNote, setVersionNote] = useState('');
 
+  // Images insérées pendant la saisie : gardées dans le navigateur jusqu'à « Enregistrer » (ticket 26).
+  const [pendingImages] = useState(() => new PendingImages(initiativeId));
+  const [imageErrors, setImageErrors] = useState<{ name: string; error: UiError }[]>([]);
+  useEffect(() => () => pendingImages.release(), [pendingImages]);
+  const onImageFiles = useCallback(
+    (files: File[]) => {
+      const { refs, refused } = pendingImages.add(files);
+      setImageErrors(refused);
+      return refs;
+    },
+    [pendingImages],
+  );
+
   const serialized = doc && JSON.stringify(doc);
   const contentChanged = baseline !== null && serialized !== baseline;
   const length = doc ? pageTextLength(doc) : 0;
@@ -784,27 +807,35 @@ function PageEditForm({
    * contenu, le remplace (décision 08, point 9).
    */
   async function save(onTopOf?: PageDto): Promise<boolean> {
+    // Images insérées depuis l'ouverture et encore dans le texte : leurs fichiers partent avec l'enregistrement.
+    const sent = pendingImages.sendable(doc);
     // Un document vide devient null (pageContentSchema).
-    const parsed = createPageSchema.safeParse({
+    const parsed = createPageWithImagesSchema.safeParse({
       title,
       content: doc,
       parentId,
       template: template && { id: template.id, locale: templateLocale },
+      uploads: sent.uploads,
     });
     if (!parsed.success) {
       setTitleMissing(!title.trim());
       setError(tooLong ? { key: 'page.tooLong', params: { max: PAGE_TEXT_MAX_LENGTH.toLocaleString(locale) } } : { key: 'page.titleRequired' });
       return false;
     }
+    const { uploads, ...created } = parsed.data;
+    const changes = page && {
+      baseRevisionId: (onTopOf ?? page).revisionId,
+      title: created.title,
+      ...((contentChanged || onTopOf) && { content: created.content }),
+      ...(asVersion && { version: { note: versionNote.trim() || null } }),
+    };
     try {
-      const saved = page
-        ? await api.updatePage(initiativeId, page.id, {
-            baseRevisionId: (onTopOf ?? page).revisionId,
-            title: parsed.data.title,
-            ...((contentChanged || onTopOf) && { content: parsed.data.content }),
-            ...(asVersion && { version: { note: versionNote.trim() || null } }),
-          })
-        : await api.createPage(initiativeId, parsed.data);
+      const saved =
+        uploads.length > 0
+          ? await api.savePageWithImages(initiativeId, page?.id ?? null, { ...(changes ?? created), uploads }, sent.files)
+          : changes
+            ? await api.updatePage(initiativeId, page.id, changes)
+            : await api.createPage(initiativeId, created);
       setError(null);
       onSaved(saved);
       return true;
@@ -815,10 +846,18 @@ function PageEditForm({
         setComparing(false);
         setError(null);
       } else {
-        setError(toUiError(e));
+        setError(fileError(e));
       }
       return false;
     }
+  }
+
+  /** Refus visant l'un des fichiers envoyés : le message nomme le fichier. */
+  function fileError(e: unknown): UiError {
+    const error = toUiError(e);
+    const name = e instanceof ApiError ? (e.body as { name?: unknown } | undefined)?.name : undefined;
+    if (typeof name !== 'string') return error;
+    return { raw: t('attachment.fileError', { name, message: 'raw' in error ? error.raw : t(error.key, error.params) }) };
   }
 
   const onSubmit = useUnsavedForm(
@@ -898,11 +937,16 @@ function PageEditForm({
           }}
         />
       </label>
+      {imageErrors.map(({ name, error }, i) => (
+        <FileError key={i} name={name} error={error} />
+      ))}
       <Suspense fallback={<p>{t('common.loading')}</p>}>
         <PageEditor
           initialContent={page?.content ?? template?.content[templateLocale] ?? null}
           references={suggestions}
           label={t('page.contentLabel')}
+          resolveImage={pendingImages.resolve}
+          onImageFiles={onImageFiles}
           onReady={(initial) => {
             setDoc(initial);
             setBaseline(JSON.stringify(initial));

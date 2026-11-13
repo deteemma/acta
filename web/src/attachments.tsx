@@ -1,5 +1,5 @@
 // Pièces jointes (ticket 21, décision 10) : section de la fiche d'un ticket, de
-// tout type. Règles dans @app/shared (attachments.ts, roles.ts). Le contenu d'un
+// tout type, et d'une page (ticket 26). Règles dans @app/shared (attachments.ts, roles.ts). Le contenu d'un
 // fichier n'est jamais exécuté : une image ou un PDF s'ouvre dans une visionneuse
 // sous son seul type (jamais HTML ni SVG, refusés à l'envoi), tout autre format se
 // télécharge comme une suite d'octets.
@@ -13,7 +13,9 @@ import {
   checkAttachmentUpload,
   fileSize,
   type InitiativeRole,
+  isImageAttachment,
   memberName,
+  type PageRevisionRow,
   renamedAttachment,
   sortAttachments,
 } from '@app/shared';
@@ -21,6 +23,7 @@ import { type ChangeEvent, type MouseEvent, type SyntheticEvent, useEffect, useR
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
+import { forgetAttachmentImage } from './page-images';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -47,6 +50,48 @@ export function TicketAttachments({
   ticketId: string;
   initiative: { myRole: InitiativeRole | null; archived: boolean };
 }) {
+  return (
+    <Attachments
+      initiativeId={initiativeId}
+      initiative={initiative}
+      subject={{ kind: 'ticket', id: ticketId }}
+      hint="attachment.hint"
+    />
+  );
+}
+
+/**
+ * Section « Pièces jointes » d'une page (ticket 26), sous ses commentaires : ses
+ * fichiers et les images de son texte, qui y portent la mention « affichée dans le
+ * texte ». La liste n'est pas versionnée avec la page.
+ */
+export function PageAttachments({
+  initiativeId,
+  pageId,
+  initiative,
+}: {
+  initiativeId: string;
+  pageId: string;
+  initiative: { myRole: InitiativeRole | null; archived: boolean };
+}) {
+  return (
+    <Attachments initiativeId={initiativeId} initiative={initiative} subject={{ kind: 'page', id: pageId }} hint="attachment.hintPage" />
+  );
+}
+
+type Subject = { kind: 'ticket' | 'page'; id: string };
+
+function Attachments({
+  initiativeId,
+  initiative,
+  subject,
+  hint,
+}: {
+  initiativeId: string;
+  initiative: { myRole: InitiativeRole | null; archived: boolean };
+  subject: Subject;
+  hint: 'attachment.hint' | 'attachment.hintPage';
+}) {
   const { t } = useI18n();
   const size = useFileSize();
   const [attachments, setAttachments] = useState<AttachmentDto[] | null>(null);
@@ -56,14 +101,17 @@ export function TicketAttachments({
   const canEdit = can(initiative.myRole, 'editAttachments', initiative);
 
   useEffect(() => {
-    api.listTicketAttachments(initiativeId, ticketId).then(
+    (subject.kind === 'ticket'
+      ? api.listTicketAttachments(initiativeId, subject.id)
+      : api.listPageAttachments(initiativeId, subject.id)
+    ).then(
       (r) => {
         setAttachments(r.attachments);
         setUsage(r.usage);
       },
       (e: unknown) => setError(toUiError(e)),
     );
-  }, [initiativeId, ticketId]);
+  }, [initiativeId, subject.kind, subject.id]);
 
   // Les lignes de trace des fichiers supprimés ne comptent pas.
   const count = attachments?.filter((a) => a.deletedAt === null).length ?? 0;
@@ -89,6 +137,7 @@ export function TicketAttachments({
             <AttachmentItem
               key={attachment.id}
               initiativeId={initiativeId}
+              pageId={subject.kind === 'page' ? subject.id : null}
               attachment={attachment}
               canEdit={canEdit}
               onOpen={() => setViewing(attachment)}
@@ -105,8 +154,12 @@ export function TicketAttachments({
       {canEdit && usage && (
         <AddAttachments
           usage={usage}
+          hint={hint}
           onUpload={async (file) => {
-            const r = await api.uploadTicketAttachment(initiativeId, ticketId, file);
+            const r =
+              subject.kind === 'ticket'
+                ? await api.uploadTicketAttachment(initiativeId, subject.id, file)
+                : await api.uploadPageAttachment(initiativeId, subject.id, file);
             setAttachments(r.attachments);
             setUsage(r.usage);
             return r.usage;
@@ -119,7 +172,15 @@ export function TicketAttachments({
 }
 
 /** Ajout : plusieurs fichiers à la fois, envoyés l'un après l'autre ; chaque refus est signalé avec le nom du fichier. */
-function AddAttachments({ usage, onUpload }: { usage: AttachmentUsage; onUpload: (file: File) => Promise<AttachmentUsage> }) {
+function AddAttachments({
+  usage,
+  hint,
+  onUpload,
+}: {
+  usage: AttachmentUsage;
+  hint: 'attachment.hint' | 'attachment.hintPage';
+  onUpload: (file: File) => Promise<AttachmentUsage>;
+}) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ name: string; error: UiError }[]>([]);
@@ -164,13 +225,13 @@ function AddAttachments({ usage, onUpload }: { usage: AttachmentUsage; onUpload:
         <FileError key={i} name={name} error={error} />
       ))}
       <p>
-        <small>{t('attachment.hint')}</small>
+        <small>{t(hint)}</small>
       </p>
     </div>
   );
 }
 
-function FileError({ name, error }: { name: string; error: UiError }) {
+export function FileError({ name, error }: { name: string; error: UiError }) {
   const { t } = useI18n();
   const message = 'raw' in error ? error.raw : t(error.key, error.params);
   return <ErrorMessage error={{ raw: t('attachment.fileError', { name, message }) }} />;
@@ -178,12 +239,15 @@ function FileError({ name, error }: { name: string; error: UiError }) {
 
 function AttachmentItem({
   initiativeId,
+  pageId,
   attachment,
   canEdit,
   onOpen,
   onChanged,
 }: {
   initiativeId: string;
+  /** Fichier d'une page : une image de son texte suit les règles du ticket 26. */
+  pageId: string | null;
   attachment: AttachmentDto;
   canEdit: boolean;
   onOpen: () => void;
@@ -193,6 +257,8 @@ function AttachmentItem({
   const size = useFileSize();
   const [renaming, setRenaming] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // Enregistrements de la page qui affichent l'image : l'avertissement les signale avant la suppression.
+  const [shownIn, setShownIn] = useState<PageRevisionRow[]>([]);
   const [error, setError] = useState<UiError | null>(null);
   const name = attachment.name;
 
@@ -219,9 +285,28 @@ function AttachmentItem({
     }
   }
 
+  /**
+   * Une image du dernier enregistrement ne se supprime pas ; une image d'anciens
+   * enregistrements, après un avertissement qui les signale (décision 10, point 9).
+   */
+  async function askDelete() {
+    setError(null);
+    if (attachment.inText) {
+      setError({ key: 'attachment.refusal.imageInLastRevision' });
+      return;
+    }
+    try {
+      setShownIn(pageId && isImageAttachment(name) ? await api.pageImageRevisions(initiativeId, pageId, attachment.id) : []);
+      setConfirming(true);
+    } catch (e) {
+      setError(toUiError(e));
+    }
+  }
+
   async function remove() {
     try {
       onChanged(await api.deleteAttachment(initiativeId, attachment.id), attachment.sizeBytes);
+      forgetAttachmentImage(attachment.id);
     } catch (e) {
       setConfirming(false);
       setError(toUiError(e));
@@ -253,7 +338,7 @@ function AttachmentItem({
               </button>
             )}
             {canEdit && (
-              <button type="button" className="ghost" aria-label={t('attachment.deleteLabel', { name })} onClick={() => setConfirming(true)}>
+              <button type="button" className="ghost" aria-label={t('attachment.deleteLabel', { name })} onClick={() => void askDelete()}>
                 {t('attachment.delete')}
               </button>
             )}
@@ -268,6 +353,7 @@ function AttachmentItem({
             name: memberName(attachment.author),
             date: formatDateTime(locale, attachment.createdAt),
           })}
+          {attachment.inText && <> · <span className="badge">{t('attachment.inText')}</span></>}
         </small>
       </p>
       {renaming && (
@@ -283,6 +369,19 @@ function AttachmentItem({
       {confirming && (
         <div role="alertdialog" aria-labelledby={`attachment-delete-${attachment.id}`} className="confirm">
           <p id={`attachment-delete-${attachment.id}`}>{t('attachment.deleteConfirm', { name })}</p>
+          {shownIn.length > 0 && (
+            <>
+              <p>{t('attachment.deleteImageWarning')}</p>
+              <ul className="attachment-revisions">
+                {shownIn.map((r) => (
+                  <li key={r.id}>
+                    {t('attachment.revisionLine', { date: formatDateTime(locale, r.createdAt), name: memberName(r.createdBy) })}
+                    {r.versionNumber !== null && <> · {t('attachment.revisionVersion', { number: r.versionNumber })}</>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           <button type="button" autoFocus onClick={() => setConfirming(false)}>
             {t('common.cancel')}
           </button>{' '}

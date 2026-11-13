@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
+import { Readable } from 'node:stream';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
 import {
   createPageSchema,
   type CreatePageInput,
@@ -18,7 +19,23 @@ import {
 import { type AuthenticatedUser, CurrentUser } from '../auth/authenticated-user.js';
 import { RequireInitiativeRole } from '../initiatives/initiative-role.guard.js';
 import { ZodValidationPipe } from '../zod-validation.pipe.js';
+import { PageSaveStream } from './page-save-stream.js';
 import { PagesService } from './pages.service.js';
+
+/**
+ * Corps d'un enregistrement avec images : le flux de la requête (main.ts). En cas
+ * de refus, le reste du corps est lu et jeté, pour que la réponse parvienne au
+ * navigateur qui envoie encore.
+ */
+async function withSaveStream<T>(body: unknown, save: (stream: PageSaveStream) => Promise<T>): Promise<T> {
+  if (!(body instanceof Readable)) throw new BadRequestException();
+  try {
+    return await save(new PageSaveStream(body));
+  } catch (error) {
+    body.resume();
+    throw error;
+  }
+}
 
 /** Pages d'une initiative (ticket 22) : tout membre consulte, propriétaires et contributeurs écrivent. */
 @Controller('initiatives/:initiativeId/pages')
@@ -42,6 +59,32 @@ export class PagesController {
     @Body(new ZodValidationPipe(createPageSchema)) body: CreatePageInput,
   ): Promise<PageDto> {
     return this.pages.create(user.id, initiativeId, body);
+  }
+
+  /**
+   * Création avec les fichiers des images insérées dans la saisie (ticket 26) :
+   * corps PAGE_SAVE_WITH_IMAGES_TYPE, lu au fil de l'eau (main.ts).
+   */
+  @Post('with-images')
+  @RequireInitiativeRole('editPages')
+  createWithImages(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Body() body: unknown,
+  ): Promise<PageDto> {
+    return withSaveStream(body, (stream) => this.pages.saveWithImages(user.id, initiativeId, null, stream));
+  }
+
+  /** Modification avec les fichiers des images insérées depuis l'ouverture de la saisie (ticket 26). */
+  @Patch(':pageId/with-images')
+  @RequireInitiativeRole('editPages')
+  updateWithImages(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('pageId', ParseUUIDPipe) pageId: string,
+    @Body() body: unknown,
+  ): Promise<PageDto> {
+    return withSaveStream(body, (stream) => this.pages.saveWithImages(user.id, initiativeId, pageId, stream));
   }
 
   @Get(':pageId')

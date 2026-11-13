@@ -1,5 +1,5 @@
 // Pièces jointes (phase 2, ticket 21, décision 10, ADR-0014) : fichiers rattachés à
-// un ticket, de tout type, et plus tard à une page (ticket 26). Règles écrites une
+// un ticket, de tout type, ou à une page (ticket 26, page-images.ts). Règles écrites une
 // seule fois ici, appliquées par l'API et reproduites par la base (migration 0024).
 // Une pièce jointe ne figure dans aucun historique.
 import { z } from 'zod';
@@ -175,9 +175,11 @@ export interface AttachmentDto {
   /** Suppression définitive : qui et quand ; seule la ligne de trace reste, avec le nom. */
   deletedBy: MemberNameDto | null;
   deletedAt: string | null;
+  /** Image affichée dans le texte de la page, son dernier enregistrement (ticket 26) ; toujours faux sur un ticket. */
+  inText: boolean;
 }
 
-/** Fichiers d'un ticket et occupation de son initiative. */
+/** Fichiers d'un ticket ou d'une page, et occupation de son initiative. */
 export interface AttachmentsDto {
   attachments: AttachmentDto[];
   usage: AttachmentUsage;
@@ -189,8 +191,23 @@ export interface AttachmentsDto {
  * - `fileTooLarge` : plus de 10 Mo ;
  * - `quotaExceeded` : la limite de pièces jointes de l'initiative serait dépassée ;
  * - `attachmentDeleted` : le fichier a déjà été supprimé.
+ *
+ * Images du texte d'une page (ticket 26, page-images.ts) :
+ * - `notAnImage` : seules les images (PNG, JPEG, GIF, WebP) s'insèrent dans le texte ;
+ * - `unknownUpload` : une image insérée sans son fichier, ou un fichier envoyé hors du texte ;
+ * - `imageNotOnPage` : le texte désigne une image qui n'est pas une pièce jointe de la page ;
+ * - `imageInLastRevision` : l'image figure dans le dernier enregistrement, elle ne se supprime pas.
  */
-export const ATTACHMENT_REFUSALS = ['formatNotAccepted', 'fileTooLarge', 'quotaExceeded', 'attachmentDeleted'] as const;
+export const ATTACHMENT_REFUSALS = [
+  'formatNotAccepted',
+  'fileTooLarge',
+  'quotaExceeded',
+  'attachmentDeleted',
+  'notAnImage',
+  'unknownUpload',
+  'imageNotOnPage',
+  'imageInLastRevision',
+] as const;
 export type AttachmentRefusal = (typeof ATTACHMENT_REFUSALS)[number];
 export const isAttachmentRefusal = (value: unknown): value is AttachmentRefusal =>
   ATTACHMENT_REFUSALS.some((r) => r === value);

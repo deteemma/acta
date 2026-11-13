@@ -63,7 +63,10 @@ import type {
   UpdateInitiativeInput,
   UpdateMeInput,
   UpdateMemberInput,
+  CreatePageWithImagesInput,
+  UpdatePageWithImagesInput,
 } from '@app/shared';
+import { ATTACHMENT_EXTENSIONS, PAGE_SAVE_WITH_IMAGES_TYPE } from '@app/shared';
 import { accessToken } from './auth';
 
 export class ApiError extends Error {
@@ -162,6 +165,49 @@ export const api = {
   deleteAttachment: (id: string, attachmentId: string) =>
     request<AttachmentDto>(`/initiatives/${id}/attachments/${attachmentId}`, { method: 'DELETE' }),
   attachmentContent: (id: string, attachmentId: string) => requestBlob(`/initiatives/${id}/attachments/${attachmentId}/content`),
+  /** Image affichée dans le texte d'une page : ses octets, sous le type d'image servi par l'API (liste fixe des formats). */
+  attachmentImage: async (id: string, attachmentId: string) => {
+    const response = await fetch(`/api/initiatives/${id}/attachments/${attachmentId}/content`, {
+      headers: { Authorization: `Bearer ${await accessToken()}` },
+    });
+    if (!response.ok) throw await toApiError(response);
+    const type = response.headers.get('Content-Type') ?? '';
+    // Jamais sous un autre type que l'une des images de la liste fixe des formats (pas de SVG : refusé à l'envoi).
+    const isImage = Object.values(ATTACHMENT_EXTENSIONS).some((e) => e.mime === type && type.startsWith('image/'));
+    return new Blob([await response.arrayBuffer()], { type: isImage ? type : 'application/octet-stream' });
+  },
+  // Pièces jointes d'une page (ticket 26) ; ses images arrivent avec son enregistrement (savePageWithImages).
+  listPageAttachments: (id: string, pageId: string) =>
+    request<AttachmentsDto>(`/initiatives/${id}/pages/${pageId}/attachments`),
+  uploadPageAttachment: (id: string, pageId: string, file: File) =>
+    request<AttachmentsDto>(`/initiatives/${id}/pages/${pageId}/attachments?name=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      body: file,
+      headers: { 'Content-Type': 'application/octet-stream' },
+    }),
+  pageImageRevisions: (id: string, pageId: string, attachmentId: string) =>
+    request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/attachments/${attachmentId}/revisions`),
+  /**
+   * Enregistrement d'une saisie et des fichiers de ses images insérées, en une
+   * requête (PAGE_SAVE_WITH_IMAGES_TYPE) : longueur de l'en-tête, en-tête JSON,
+   * puis les fichiers dans l'ordre de `uploads`. Le navigateur lit les fichiers au
+   * fil de l'envoi. `pageId` null : création.
+   */
+  savePageWithImages: (
+    id: string,
+    pageId: string | null,
+    input: CreatePageWithImagesInput | UpdatePageWithImagesInput,
+    files: readonly Blob[],
+  ) => {
+    const header = new TextEncoder().encode(JSON.stringify(input));
+    const length = new Uint8Array(4);
+    new DataView(length.buffer).setUint32(0, header.length);
+    return request<PageDto>(`/initiatives/${id}/pages/${pageId ? `${pageId}/with-images` : 'with-images'}`, {
+      method: pageId ? 'PATCH' : 'POST',
+      body: new Blob([length, header, ...files]),
+      headers: { 'Content-Type': PAGE_SAVE_WITH_IMAGES_TYPE },
+    });
+  },
   createTicketLink: (id: string, input: CreateTicketLinkInput) =>
     request<InitiativeLinksDto>(`/initiatives/${id}/links/tickets`, { method: 'POST', body: JSON.stringify(input) }),
   removeTicketLink: (id: string, ticketId: string, otherTicketId: string) =>

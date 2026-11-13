@@ -3,13 +3,66 @@
 // Tout le reste est désactivé, pour qu'un collage depuis Word n'apporte rien
 // d'autre. Importé seulement par l'éditeur, chargé à la demande.
 import { isSafePageHref, PAGE_HEADING_LEVELS, splitReferences } from '@app/shared';
-import { Extension } from '@tiptap/core';
+import { Extension, Node } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { TableKit } from '@tiptap/extension-table';
 import StarterKit from '@tiptap/starter-kit';
 
-export function pageExtensions() {
+/** Adresse affichable d'une image du texte (`attachmentId`, ou `upload:<clé>` avant l'enregistrement). */
+export type ImageResolver = (attachmentId: string) => Promise<string | 'deleted' | 'unavailable'>;
+
+/**
+ * Image du texte (ticket 26) : bloc qui désigne sa pièce jointe par son seul
+ * identifiant, enregistré tel quel dans le JSON (`attrs.attachmentId`), jamais par
+ * une adresse. Un collage depuis une autre application n'apporte aucune image par
+ * son HTML : seuls les fichiers image collés ou déposés s'insèrent (page-editor.tsx).
+ */
+const PageImage = Node.create<{ resolve: ImageResolver | null; labels: { image: string; deleted: string; unavailable: string } }>({
+  name: 'image',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  // Sans `resolve` (test de compatibilité), aucune vue n'est créée : les libellés ne servent pas.
+  addOptions: () => ({ resolve: null, labels: { image: '', deleted: '', unavailable: '' } }),
+  addAttributes: () => ({
+    attachmentId: {
+      default: null,
+      parseHTML: (element) => element.getAttribute('data-attachment-id'),
+      renderHTML: (attributes) => ({ 'data-attachment-id': attributes.attachmentId as string }),
+    },
+  }),
+  parseHTML: () => [{ tag: 'img[data-attachment-id]' }],
+  renderHTML: ({ HTMLAttributes }) => ['img', HTMLAttributes],
+  addNodeView() {
+    const { resolve, labels } = this.options;
+    if (!resolve) return null;
+    return ({ node }) => {
+      const dom = document.createElement('p');
+      dom.className = 'page-image';
+      dom.contentEditable = 'false';
+      const id = node.attrs.attachmentId as string | null;
+      if (id) {
+        void resolve(id).then((state) => {
+          if (state === 'deleted' || state === 'unavailable') {
+            const note = document.createElement('small');
+            note.textContent = state === 'deleted' ? labels.deleted : labels.unavailable;
+            dom.classList.add('page-image-missing');
+            dom.append(note);
+          } else {
+            const img = document.createElement('img');
+            img.src = state;
+            img.alt = labels.image;
+            dom.append(img);
+          }
+        });
+      }
+      return { dom };
+    };
+  },
+});
+
+export function pageExtensions(images?: { resolve: ImageResolver; labels: { image: string; deleted: string; unavailable: string } }) {
   return [
     StarterKit.configure({
       blockquote: false,
@@ -30,6 +83,7 @@ export function pageExtensions() {
     }),
     // Pas de largeur de colonne réglable (décision 08, point 2).
     TableKit.configure({ table: { resizable: false } }),
+    images ? PageImage.configure(images) : PageImage,
     ReferenceHighlight,
   ];
 }

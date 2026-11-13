@@ -11,6 +11,7 @@ export * from './links.js';
 export * from './needs.js';
 export * from './pages.js';
 export * from './page-revisions.js';
+export * from './page-images.js';
 export * from './references.js';
 export * from './requirement-statuses.js';
 export * from './requirements-export.js';

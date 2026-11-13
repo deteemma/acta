@@ -15,6 +15,7 @@ import {
 import {
   type AttachmentDto,
   type AttachmentsDto,
+  type PageRevisionRow,
   type RenameAttachmentInput,
   renameAttachmentInputSchema,
 } from '@app/shared';
@@ -58,6 +59,44 @@ export class AttachmentsController {
     const content = body === undefined || body === null ? Buffer.alloc(0) : body;
     if (typeof name !== 'string' || !Buffer.isBuffer(content)) throw new BadRequestException();
     return this.attachments.create(user.id, initiativeId, { ticketId }, name, content);
+  }
+
+  // ── Pages (ticket 26) : mêmes droits ; une image du texte arrive avec l'enregistrement de la page ──
+
+  @Get('pages/:pageId/attachments')
+  @RequireInitiativeRole('view')
+  listForPage(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('pageId', ParseUUIDPipe) pageId: string,
+  ): Promise<AttachmentsDto> {
+    return this.attachments.list(user.id, initiativeId, { pageId });
+  }
+
+  @Post('pages/:pageId/attachments')
+  @RequireInitiativeRole('editAttachments')
+  createForPage(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('pageId', ParseUUIDPipe) pageId: string,
+    @Query('name') name: unknown,
+    @Body() body: unknown,
+  ): Promise<AttachmentsDto> {
+    const content = body === undefined || body === null ? Buffer.alloc(0) : body;
+    if (typeof name !== 'string' || !Buffer.isBuffer(content)) throw new BadRequestException();
+    return this.attachments.create(user.id, initiativeId, { pageId }, name, content);
+  }
+
+  /** Enregistrements qui affichent l'image : signalés avant sa suppression. */
+  @Get('pages/:pageId/attachments/:attachmentId/revisions')
+  @RequireInitiativeRole('view')
+  revisionsShowing(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('pageId', ParseUUIDPipe) pageId: string,
+    @Param('attachmentId', ParseUUIDPipe) attachmentId: string,
+  ): Promise<PageRevisionRow[]> {
+    return this.attachments.revisionsShowing(user.id, initiativeId, pageId, attachmentId);
   }
 
   /**

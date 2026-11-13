@@ -1,7 +1,14 @@
 // Éditeur de page (ticket 22, décision 08, ADR-0019) : Tiptap, dans le rendu final,
 // avec une barre d'outils sur les tokens de design. Chargé à la demande (import
 // dynamique depuis pages-screen.tsx) : le reste d'ACTA ne charge pas Tiptap.
-import { isSafePageHref, type PageDoc, type ReferenceDto, searchReferences } from '@app/shared';
+import {
+  ATTACHMENT_EXTENSIONS,
+  isImageAttachment,
+  isSafePageHref,
+  type PageDoc,
+  type ReferenceDto,
+  searchReferences,
+} from '@app/shared';
 import { Extension } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
 import { EditorContent, type Editor, useEditor, useEditorState } from '@tiptap/react';
@@ -12,6 +19,7 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  ImagePlus,
   Italic,
   Link,
   List,
@@ -21,9 +29,16 @@ import {
   Undo2,
   Unlink,
 } from 'lucide-react';
+import type { EditorView } from '@tiptap/pm/view';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useI18n } from './i18n';
-import { pageExtensions } from './page-editor-extensions';
+import { type ImageResolver, pageExtensions } from './page-editor-extensions';
+
+/** Sélecteur du bouton « Image » : les extensions d'image acceptées (le serveur contrôle de nouveau). */
+const IMAGE_ACCEPT = Object.keys(ATTACHMENT_EXTENSIONS)
+  .filter((extension) => isImageAttachment(`x.${extension}`))
+  .map((extension) => `.${extension}`)
+  .join(',');
 
 /** Références proposées à la saisie de `#` : au plus ce nombre. */
 const SUGGESTION_LIMIT = 8;
@@ -48,9 +63,11 @@ class EditorBridge {
   onReady: (doc: PageDoc) => void = () => undefined;
   onChange: (doc: PageDoc) => void = () => undefined;
   onSuggestion: (state: SuggestionState | null) => void = () => undefined;
+  /** Fichiers à insérer comme images : les références des fichiers acceptés (`upload:<clé>`). */
+  onImageFiles: (files: File[]) => string[] = () => [];
 
   /** Rappels et références du dernier rendu. */
-  connect(props: Pick<EditorBridge, 'references' | 'onReady' | 'onChange' | 'onSuggestion'>) {
+  connect(props: Pick<EditorBridge, 'references' | 'onReady' | 'onChange' | 'onSuggestion' | 'onImageFiles'>) {
     Object.assign(this, props);
   }
 
@@ -127,10 +144,29 @@ function referenceSuggestion(bridge: EditorBridge) {
   });
 }
 
+/**
+ * Insère une image par fichier accepté (ticket 26) : à la place de la sélection, ou
+ * là où les fichiers ont été déposés. Vrai si des fichiers étaient en jeu : le
+ * navigateur ne fait alors rien d'autre (pas d'image collée en HTML).
+ */
+function insertImageFiles(view: EditorView, bridge: EditorBridge, files: File[], at: number | null): boolean {
+  if (files.length === 0) return false;
+  const imageType = view.state.schema.nodes.image!;
+  let tr = view.state.tr;
+  for (const ref of bridge.onImageFiles(files)) {
+    const node = imageType.create({ attachmentId: ref });
+    tr = at === null ? tr.replaceSelectionWith(node) : tr.replaceRangeWith(tr.mapping.map(at), tr.mapping.map(at), node);
+  }
+  if (tr.docChanged) view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
 export default function PageEditor({
   initialContent,
   references,
   label,
+  resolveImage,
+  onImageFiles,
   onReady,
   onChange,
 }: {
@@ -139,6 +175,10 @@ export default function PageEditor({
   references: readonly ReferenceDto[];
   /** Nom accessible de la zone d'écriture. */
   label: string;
+  /** Adresse affichable d'une image du texte, enregistrée ou insérée pendant la saisie. */
+  resolveImage: ImageResolver;
+  /** Fichiers choisis, collés ou déposés : les références de ceux acceptés comme images ; les refus sont signalés par l'appelant. */
+  onImageFiles: (files: File[]) => string[];
   /** Contenu tel que l'éditeur le lit à l'ouverture : point de comparaison des modifications. */
   onReady: (doc: PageDoc) => void;
   onChange: (doc: PageDoc) => void;
@@ -148,16 +188,22 @@ export default function PageEditor({
   // Rappels connus dès la création : Tiptap peut signaler qu'il est prêt avant le premier effet.
   const [bridge] = useState(() => {
     const created = new EditorBridge();
-    created.connect({ references, onReady, onChange, onSuggestion: setSuggestion });
+    created.connect({ references, onReady, onChange, onSuggestion: setSuggestion, onImageFiles });
     return created;
   });
 
   useEffect(() => {
-    bridge.connect({ references, onReady, onChange, onSuggestion: setSuggestion });
-  }, [bridge, references, onReady, onChange]);
+    bridge.connect({ references, onReady, onChange, onSuggestion: setSuggestion, onImageFiles });
+  }, [bridge, references, onReady, onChange, onImageFiles]);
 
   const editor = useEditor({
-    extensions: [...pageExtensions(), referenceSuggestion(bridge)],
+    extensions: [
+      ...pageExtensions({
+        resolve: resolveImage,
+        labels: { image: t('page.image'), deleted: t('page.imageDeleted'), unavailable: t('page.imageUnavailable') },
+      }),
+      referenceSuggestion(bridge),
+    ],
     content: initialContent,
     // La frappe ne transforme jamais le texte : « # Budget 2027 » ne devient pas un
     // titre, « 2026. Une année » pas une liste (validé le 09.11.2026). Au collage,
@@ -165,7 +211,23 @@ export default function PageEditor({
     enableInputRules: false,
     enablePasteRules: ['link'],
     shouldRerenderOnTransaction: false,
-    editorProps: { attributes: { 'aria-label': label, 'aria-multiline': 'true', role: 'textbox', class: 'page-content' } },
+    editorProps: {
+      attributes: { 'aria-label': label, 'aria-multiline': 'true', role: 'textbox', class: 'page-content' },
+      // Coller ou déposer des fichiers : chacun devient une image du texte, ou est refusé avec un message.
+      // Word ou Excel joignent une image de la sélection à son texte : le texte l'emporte alors.
+      handlePaste: (view, event) => {
+        const data = event.clipboardData;
+        if (!data || data.types.includes('text/html') || data.types.includes('text/plain')) return false;
+        return insertImageFiles(view, bridge, [...data.files], null);
+      },
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved) return false;
+        const files = [...(event.dataTransfer?.files ?? [])];
+        const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? null;
+        if (files.length > 0) event.preventDefault();
+        return insertImageFiles(view, bridge, files, at);
+      },
+    },
     onCreate: ({ editor }) => bridge.onReady(editor.getJSON() as PageDoc),
     onUpdate: ({ editor }) => bridge.onChange(editor.getJSON() as PageDoc),
   });
@@ -182,6 +244,7 @@ export default function PageEditor({
       <Toolbar
         editor={editor}
         onReference={insertReference}
+        onImages={(files) => insertImageFiles(editor.view, bridge, files, null)}
         onEscapeSuggestion={() => exitSuggestion(editor.view, referenceSuggestionKey)}
       />
       <EditorContent editor={editor} />
@@ -216,10 +279,12 @@ export default function PageEditor({
 function Toolbar({
   editor,
   onReference,
+  onImages,
   onEscapeSuggestion,
 }: {
   editor: Editor;
   onReference: () => void;
+  onImages: (files: File[]) => void;
   onEscapeSuggestion: () => void;
 }) {
   const { t } = useI18n();
@@ -292,6 +357,20 @@ function Toolbar({
         {tool('bulletList', <List />, state.bulletList, () => chain().toggleBulletList().run())}
         {tool('orderedList', <ListOrdered />, state.orderedList, () => chain().toggleOrderedList().run())}
         {tool('table', <Table />, state.table, () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), state.table)}
+        <label className="button file-button page-toolbar-file" title={t('page.tool.image')}>
+          <ImagePlus />
+          {t('page.tool.image')}
+          <input
+            type="file"
+            multiple
+            accept={IMAGE_ACCEPT}
+            onChange={(e) => {
+              const files = [...(e.target.files ?? [])];
+              e.target.value = '';
+              onImages(files);
+            }}
+          />
+        </label>
       </span>
       <span className="page-toolbar-group">
         <button type="button" title={t('page.tool.reference')} onClick={onReference}>

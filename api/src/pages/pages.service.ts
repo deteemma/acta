@@ -2,7 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   checkPageDelete,
+  checkPageImages,
   checkPageMove,
+  checkPageUploads,
+  createPageWithImagesSchema,
+  type PageDoc,
+  resolvePageUploads,
+  updatePageWithImagesSchema,
   checkPageRevisionDelete,
   checkPageRevisionRestore,
   checkPageSaveBase,
@@ -35,7 +41,9 @@ import {
 import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js';
+import { attachmentRefusal, loadUsage, transfers, write as writeAttachment } from '../attachments/attachments.service.js';
 import { loadPageLinks } from '../links/links.service.js';
+import type { PageSaveStream } from './page-save-stream.js';
 
 /** Pages d'une initiative (ticket 22) : la RLS limite aux membres, les guards aux rôles. */
 @Injectable()
@@ -59,33 +67,98 @@ export class PagesService {
   create(userId: string, initiativeId: string, input: CreatePageInput): Promise<PageDto> {
     const id = randomUUID();
     return this.database.asUser(userId, async (tx) => {
-      const tree = await this.lockTree(tx, initiativeId);
-      const refusal = input.parentId === null ? null : checkPageMove(tree, id, input.parentId);
-      if (refusal) throw pageRefusal(refusal);
-      const template = input.template
-        ? await tx
-            .selectFrom('page_template')
-            .select(['id', 'name_fr', 'name_en', 'active'])
-            .where('id', '=', input.template.id)
-            .executeTakeFirst()
-        : null;
-      if (input.template && !(template && isOfferedPageTemplate(template))) throw pageRefusal('unknownPageTemplate');
-      await tx
-        .insertInto('page')
-        .values({
-          id,
-          initiative_id: initiativeId,
-          title: input.title,
-          content: input.content === null ? null : JSON.stringify(input.content),
-          parent_id: input.parentId,
-          position: nextPagePosition(tree, input.parentId),
-          template_id: template?.id ?? null,
-          template_name: template && input.template ? template[`name_${input.template.locale}`] : null,
-        })
-        .execute()
-        .catch(translateTreeError);
+      await this.insertPage(tx, initiativeId, id, input);
+      await this.checkImages(tx, initiativeId, id, input.content);
       return this.loadPage(tx, initiativeId, id);
     });
+  }
+
+  /**
+   * Enregistrement d'une saisie avec les fichiers de ses images insérées (ticket 26,
+   * décision 10, point 7) : la page, puis chaque fichier lu à son tour, dans une
+   * seule transaction. Abandonner la saisie n'envoie rien ; une requête
+   * interrompue, ou un refus, n'écrit rien : aucun fichier n'est rattaché à la page
+   * hors d'un enregistrement. `pageId` null : création.
+   */
+  async saveWithImages(userId: string, initiativeId: string, pageId: string | null, body: PageSaveStream): Promise<PageDto> {
+    const header = await body.header();
+    const parsed = pageId ? updatePageWithImagesSchema.safeParse(header) : createPageWithImagesSchema.safeParse(header);
+    if (!parsed.success) throw new BadRequestException();
+    const { uploads, ...input } = parsed.data;
+    return transfers.run(() =>
+      this.database.asUser(userId, async (tx) => {
+        const refusal = checkPageUploads(input.content ?? null, uploads, await loadUsage(tx, initiativeId));
+        if (refusal) throw attachmentRefusal(refusal.refusal, refusal.name);
+        const ids = Object.fromEntries(uploads.map((u) => [u.key, randomUUID()]));
+        const content = input.content && resolvePageUploads(input.content, ids);
+        const id = pageId ?? randomUUID();
+        // La page d'abord : les fichiers lui sont rattachés ; la base vérifie ses images en fin de transaction.
+        if (pageId) await this.applyUpdate(tx, initiativeId, pageId, { ...(input as UpdatePageInput), content });
+        else await this.insertPage(tx, initiativeId, id, { ...(input as CreatePageInput), content: content ?? null });
+        for (const upload of uploads) {
+          const bytes = await body.read(upload.sizeBytes);
+          await writeAttachment(
+            () =>
+              tx
+                .insertInto('attachment')
+                .values({ id: ids[upload.key]!, initiative_id: initiativeId, page_id: id, name: upload.name, content: bytes })
+                .execute(),
+            upload.name,
+          );
+        }
+        await body.end();
+        await this.checkImages(tx, initiativeId, id, content);
+        return this.loadPage(tx, initiativeId, id);
+      }),
+    );
+  }
+
+  /**
+   * Le texte n'affiche que des images de la page (checkPageImages), puis la même
+   * vérification par la base, sans attendre la fin de la transaction.
+   */
+  private async checkImages(tx: Tx, initiativeId: string, pageId: string, content: PageDoc | null | undefined) {
+    if (content === undefined) return;
+    const files = await tx
+      .selectFrom('attachment')
+      .select(['id', 'name'])
+      .where('initiative_id', '=', initiativeId)
+      .where('page_id', '=', pageId)
+      .execute();
+    const refusal = checkPageImages(content, files);
+    if (refusal) throw attachmentRefusal(refusal);
+    await sql`SET CONSTRAINTS page_images_on_page IMMEDIATE`.execute(tx).catch((error: unknown) => {
+      if (isConstraintViolation(error, 'page_image_not_on_page')) throw attachmentRefusal('imageNotOnPage');
+      throw error;
+    });
+  }
+
+  private async insertPage(tx: Tx, initiativeId: string, id: string, input: CreatePageInput): Promise<void> {
+    const tree = await this.lockTree(tx, initiativeId);
+    const refusal = input.parentId === null ? null : checkPageMove(tree, id, input.parentId);
+    if (refusal) throw pageRefusal(refusal);
+    const template = input.template
+      ? await tx
+          .selectFrom('page_template')
+          .select(['id', 'name_fr', 'name_en', 'active'])
+          .where('id', '=', input.template.id)
+          .executeTakeFirst()
+      : null;
+    if (input.template && !(template && isOfferedPageTemplate(template))) throw pageRefusal('unknownPageTemplate');
+    await tx
+      .insertInto('page')
+      .values({
+        id,
+        initiative_id: initiativeId,
+        title: input.title,
+        content: input.content === null ? null : JSON.stringify(input.content),
+        parent_id: input.parentId,
+        position: nextPagePosition(tree, input.parentId),
+        template_id: template?.id ?? null,
+        template_name: template && input.template ? template[`name_${input.template.locale}`] : null,
+      })
+      .execute()
+      .catch(translateTreeError);
   }
 
   /**
@@ -95,31 +168,36 @@ export class PagesService {
    */
   update(userId: string, initiativeId: string, pageId: string, input: UpdatePageInput): Promise<PageDto> {
     return this.database.asUser(userId, async (tx) => {
-      const current = await this.loadPage(tx, initiativeId, pageId);
-      const changes = input.title !== undefined || input.content !== undefined;
-      if (!changes && !input.version) return current;
-      // Modification simultanée (ticket 24) : pas de verrou d'écriture pour l'utilisateur,
-      // mais deux enregistrements arrivés en même temps passent l'un après l'autre ; le
-      // second lit alors l'enregistrement du premier, et il est refusé.
-      const refusal = checkPageSaveBase(await this.lockRevisions(tx, pageId), input.baseRevisionId);
-      if (refusal) throw pageSaveRefusal(refusal, await this.loadPage(tx, initiativeId, pageId));
-      if (changes) {
-        await tx
-          .updateTable('page')
-          .set({
-            title: input.title,
-            content: input.content === undefined ? undefined : input.content && JSON.stringify(input.content),
-          })
-          .where('id', '=', pageId)
-          .where('initiative_id', '=', initiativeId)
-          .execute();
-      }
-      if (input.version) {
-        const revisions = await this.lockRevisions(tx, pageId);
-        await this.declare(tx, revisions, currentPageRevision(revisions)!.id, input.version);
-      }
+      await this.applyUpdate(tx, initiativeId, pageId, input);
+      await this.checkImages(tx, initiativeId, pageId, input.content);
       return this.loadPage(tx, initiativeId, pageId);
     });
+  }
+
+  private async applyUpdate(tx: Tx, initiativeId: string, pageId: string, input: UpdatePageInput): Promise<void> {
+    await this.loadPage(tx, initiativeId, pageId);
+    const changes = input.title !== undefined || input.content !== undefined;
+    if (!changes && !input.version) return;
+    // Modification simultanée (ticket 24) : pas de verrou d'écriture pour l'utilisateur,
+    // mais deux enregistrements arrivés en même temps passent l'un après l'autre ; le
+    // second lit alors l'enregistrement du premier, et il est refusé.
+    const refusal = checkPageSaveBase(await this.lockRevisions(tx, pageId), input.baseRevisionId);
+    if (refusal) throw pageSaveRefusal(refusal, await this.loadPage(tx, initiativeId, pageId));
+    if (changes) {
+      await tx
+        .updateTable('page')
+        .set({
+          title: input.title,
+          content: input.content === undefined ? undefined : input.content && JSON.stringify(input.content),
+        })
+        .where('id', '=', pageId)
+        .where('initiative_id', '=', initiativeId)
+        .execute();
+    }
+    if (input.version) {
+      const revisions = await this.lockRevisions(tx, pageId);
+      await this.declare(tx, revisions, currentPageRevision(revisions)!.id, input.version);
+    }
   }
 
   // ── Enregistrements et versions (ticket 23) ────────────────────────────────

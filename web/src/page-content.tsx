@@ -3,6 +3,7 @@
 // du HTML. Les références, restées du texte, sont reliées à leur objet.
 import { isSafePageHref, type PageDoc, type PageMark, type PageNode, splitReferences } from '@app/shared';
 import type { ReactNode } from 'react';
+import { PageImage } from './page-images';
 import { ReferenceMention } from './references';
 
 export function PageContent({ doc }: { doc: PageDoc }) {
@@ -55,6 +56,11 @@ function renderNode(node: PageNode, key: number): ReactNode {
           {renderChildren(node)}
         </Cell>
       );
+    }
+    case 'image': {
+      // Pièce jointe de la page (ticket 26), lue avec les droits du membre.
+      const id = node.attrs?.attachmentId;
+      return typeof id === 'string' ? <PageImage key={key} attachmentId={id} /> : null;
     }
     case 'text':
       return <Text key={key} text={node.text ?? ''} marks={node.marks ?? []} />;

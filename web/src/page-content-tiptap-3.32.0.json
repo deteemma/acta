@@ -283,6 +283,12 @@
       ]
     },
     {
+      "type": "image",
+      "attrs": {
+        "attachmentId": "0b6c4d3e-1f2a-4b5c-8d9e-0f1a2b3c4d5e"
+      }
+    },
+    {
       "type": "paragraph"
     }
   ]
