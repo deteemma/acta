@@ -95,6 +95,21 @@ export const ATTACHMENT_QUOTA_MIN_MB = 10;
 export const ATTACHMENT_QUOTA_MAX_MB = 1024;
 export const attachmentQuotaBytes = (quotaMb: number) => quotaMb * MEBIBYTE;
 
+/**
+ * Réglage de la limite par l'administrateur (ticket 31, décision 14 point 4) : un
+ * nombre entier de Mo entre les bornes, refusé sinon. La baisser ne supprime aucun
+ * fichier : seuls les ajouts sont refusés (checkAttachmentUpload).
+ */
+export const attachmentQuotaInputSchema = z.object({
+  quotaMb: z.number().int().min(ATTACHMENT_QUOTA_MIN_MB).max(ATTACHMENT_QUOTA_MAX_MB),
+});
+export type AttachmentQuotaInput = z.infer<typeof attachmentQuotaInputSchema>;
+
+/** Limite réglée, telle que l'administrateur la voit : sans l'occupation des initiatives. */
+export interface AttachmentQuotaDto {
+  quotaMb: number;
+}
+
 /** Occupation d'une initiative : les fichiers non supprimés, et sa limite. Visible par tout membre. */
 export interface AttachmentUsage {
   usedBytes: number;

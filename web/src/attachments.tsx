@@ -32,7 +32,8 @@ const ACCEPT = Object.keys(ATTACHMENT_EXTENSIONS)
   .map((extension) => `.${extension}`)
   .join(',');
 
-function useFileSize() {
+/** Taille lisible : « 12,3 Mo » (aussi pour l'administration, ticket 31). */
+export function useFileSize() {
   const { t, locale } = useI18n();
   return (bytes: number) => {
     const { value, unit } = fileSize(bytes);

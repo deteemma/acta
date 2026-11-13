@@ -1,10 +1,11 @@
 // Administration (ticket 05, ADR-0005) : comptes de Keycloak, initiatives sans
 // propriétaire actif, acronymes des références (ticket 09), statuts d'exigence
 // (ticket 11), types de ticket et leurs statuts (ticket 29, admin-ticket-types.tsx),
-// modèles de page (ticket 30, admin-page-templates.tsx).
+// modèles de page (ticket 30, admin-page-templates.tsx), limite de pièces jointes
+// (ticket 31, admin-attachment-quota.tsx).
 // Les contrôles proposés et les refus suivent les règles de
 // @app/shared (admin.ts, references.ts, requirement-statuses.ts, ticket-type-catalog.ts,
-// page-template-admin.ts).
+// page-template-admin.ts, attachments.ts).
 import {
   ACRONYM_MAX_LENGTH,
   memberName,
@@ -32,6 +33,7 @@ import {
 import { useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import { adminRefusalError, ErrorMessage, toUiError, type UiError } from './errors';
+import { AttachmentQuotaSection } from './admin-attachment-quota';
 import { PageTemplatesSection } from './admin-page-templates';
 import { TicketTypesSection } from './admin-ticket-types';
 import { useTicketLabels, useTicketTypes } from './ticket-types';
@@ -55,10 +57,10 @@ function adminError(error: unknown): UiError {
 const accountName = (account: AccountDto) =>
   [account.firstName, account.lastName].filter(Boolean).join(' ') || account.username;
 
-type AdminTab = 'accounts' | 'orphans' | 'references' | 'statuses' | 'ticketTypes' | 'pageTemplates';
+type AdminTab = 'accounts' | 'orphans' | 'references' | 'statuses' | 'ticketTypes' | 'pageTemplates' | 'attachments';
 
 /**
- * Onglets (refonte du design, validé le 01.11.2026 ; « Types de ticket » et « Modèles de page » : décision 14 de la phase 2). Toutes les sections
+ * Onglets (refonte du design, validé le 01.11.2026 ; « Types de ticket », « Modèles de page » et « Pièces jointes » : décision 14 de la phase 2). Toutes les sections
  * restent montées : elles se chargent à l'ouverture, ce qui donne les compteurs,
  * et une saisie en cours survit au changement d'onglet.
  */
@@ -74,6 +76,7 @@ export function AdminPanel({ myId, babok, onClose }: { myId: string; babok: Babo
     { id: 'statuses', label: t('admin.requirementStatuses'), count: null },
     { id: 'ticketTypes', label: t('admin.ticketTypes'), count: null },
     { id: 'pageTemplates', label: t('admin.pageTemplates'), count: null },
+    { id: 'attachments', label: t('admin.attachments'), count: null },
   ];
   const panel = (id: AdminTab) => ({ role: 'tabpanel', id: `admin-${id}`, 'aria-labelledby': `admin-tab-${id}`, hidden: tab !== id });
   return (
@@ -121,6 +124,11 @@ export function AdminPanel({ myId, babok, onClose }: { myId: string; babok: Babo
       </div>
       <div {...panel('pageTemplates')}>
         <PageTemplatesSection babok={babok} />
+      </div>
+      <div {...panel('attachments')}>
+        <RevealFormContext.Provider value={() => setTab('attachments')}>
+          <AttachmentQuotaSection />
+        </RevealFormContext.Provider>
       </div>
     </Panel>
   );

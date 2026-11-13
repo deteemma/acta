@@ -711,6 +711,15 @@ const fr = {
   'ticketType.refusal.statusUsed': 'Ce statut a déjà été porté par un ticket : il ne se supprime pas, mais peut être désactivé.',
   'ticketType.refusal.unknownType': 'Ce type n’existe plus : la liste a été mise à jour.',
   'ticketType.refusal.unknownStatus': 'Ce statut n’existe plus : la liste a été mise à jour.',
+  'admin.attachments': 'Pièces jointes',
+  'admin.attachmentsHint':
+    'Volume total de pièces jointes permis dans chaque initiative, valable pour toute l’application. Baisser la limite ne supprime aucun fichier : une initiative qui la dépasse garde ses fichiers, seuls les ajouts y sont refusés.',
+  'admin.attachmentQuota.label': 'Limite par initiative (Mo)',
+  'admin.attachmentQuota.range': 'Entre {min} et {max} Mo ; {default} Mo par défaut.',
+  'admin.attachmentQuota.fileMax': 'Taille maximale d’un fichier : {max}, non réglable.',
+  'admin.attachmentQuota.save': 'Enregistrer',
+  'admin.attachmentQuota.saved': 'Limite réglée à {quota} Mo par initiative.',
+  'admin.attachmentQuota.invalid': 'Saisissez un nombre entier de Mo, entre {min} et {max}.',
   'admin.pageTemplates': 'Modèles de page',
   'admin.pageTemplatesHint':
     'Modèles proposés par « Nouvelle page », valables pour toute l’application. Un modèle livré ne se modifie pas, mais se désactive. Un modèle ajouté se modifie, se désactive, et ne se supprime que s’il n’a jamais servi. Un modèle désactivé n’est plus proposé ; les pages créées avec lui ne changent pas.',
@@ -1643,6 +1652,15 @@ const en: Record<MessageKey, string> = {
   'ticketType.refusal.statusUsed': 'A ticket has already had this status: it cannot be deleted, but it can be deactivated.',
   'ticketType.refusal.unknownType': 'This type no longer exists: the list has been updated.',
   'ticketType.refusal.unknownStatus': 'This status no longer exists: the list has been updated.',
+  'admin.attachments': 'Attachments',
+  'admin.attachmentsHint':
+    'Total volume of attachments allowed in each initiative, for the whole application. Lowering the limit deletes no file: an initiative above it keeps its files, only additions are refused there.',
+  'admin.attachmentQuota.label': 'Limit per initiative (MB)',
+  'admin.attachmentQuota.range': 'Between {min} and {max} MB; {default} MB by default.',
+  'admin.attachmentQuota.fileMax': 'Maximum size of a file: {max}, not adjustable.',
+  'admin.attachmentQuota.save': 'Save',
+  'admin.attachmentQuota.saved': 'Limit set to {quota} MB per initiative.',
+  'admin.attachmentQuota.invalid': 'Enter a whole number of MB, between {min} and {max}.',
   'admin.pageTemplates': 'Page templates',
   'admin.pageTemplatesHint':
     'Templates offered by “New page”, valid across the whole application. A delivered template cannot be changed, but can be deactivated. An added template can be changed and deactivated, and can be deleted only if it has never been used. A deactivated template is no longer offered; pages created from it do not change.',

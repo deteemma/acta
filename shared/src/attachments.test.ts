@@ -6,6 +6,7 @@ import {
   attachmentFormat,
   attachmentNameSchema,
   attachmentQuotaBytes,
+  attachmentQuotaInputSchema,
   checkAttachmentUpload,
   fileSize,
   sortAttachments,
@@ -64,6 +65,14 @@ test('envoi : refusé s’il ferait dépasser la limite de l’initiative', () =
 
 test('limite par initiative réglée en Mo : 500 par défaut', () => {
   assert.equal(attachmentQuotaBytes(ATTACHMENT_QUOTA_DEFAULT_MB), 500 * MB);
+});
+
+test('réglage de la limite par l’administrateur : nombre entier de Mo, entre 10 et 1 024', () => {
+  for (const quotaMb of [10, 500, 1024]) assert.equal(attachmentQuotaInputSchema.safeParse({ quotaMb }).success, true, `${quotaMb}`);
+  for (const quotaMb of [9, 0, -500, 1025, 2048, 12.5, '500', null, Number.NaN]) {
+    assert.equal(attachmentQuotaInputSchema.safeParse({ quotaMb }).success, false, `${quotaMb}`);
+  }
+  assert.equal(attachmentQuotaInputSchema.safeParse({}).success, false);
 });
 
 test('nom d’un fichier : 255 caractères au plus, sans chemin ni caractère de contrôle', () => {

@@ -176,7 +176,7 @@ export interface CommentTable {
   deleted_at: ColumnType<Date | null, never, never>;
 }
 
-/** Paramètres de l'application, une seule ligne (migration 0024) ; réglés au ticket 31. */
+/** Paramètres de l'application, une seule ligne (migration 0024) ; écrits seulement par admin_set_attachment_quota (migration 0031). */
 export interface AppSettingsTable {
   id: ColumnType<boolean, never, never>;
   attachment_quota_mb: ColumnType<number, never, never>;

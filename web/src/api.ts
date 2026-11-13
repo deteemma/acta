@@ -1,6 +1,8 @@
 import type {
   AccountDto,
   AttachmentDto,
+  AttachmentQuotaDto,
+  AttachmentQuotaInput,
   AttachmentsDto,
   ActionDto,
   CommentDto,
@@ -255,6 +257,10 @@ export const api = {
   updatePageTemplate: (id: string, input: UpdatePageTemplateInput) =>
     request<AdminPageTemplateDto[]>(`/admin/page-templates/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
   deletePageTemplate: (id: string) => request<AdminPageTemplateDto[]>(`/admin/page-templates/${id}`, { method: 'DELETE' }),
+  /** Administration de la limite de pièces jointes par initiative (ticket 31). */
+  getAttachmentQuota: () => request<AttachmentQuotaDto>('/admin/attachment-quota'),
+  setAttachmentQuota: (input: AttachmentQuotaInput) =>
+    request<AttachmentQuotaDto>('/admin/attachment-quota', { method: 'PUT', body: JSON.stringify(input) }),
   // Enregistrements et versions de page (ticket 23).
   listPageRevisions: (id: string, pageId: string) =>
     request<PageRevisionRow[]>(`/initiatives/${id}/pages/${pageId}/revisions`),

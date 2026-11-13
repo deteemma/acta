@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ActionsController } from './actions/actions.controller.js';
 import { ActionsService } from './actions/actions.service.js';
+import { AdminAttachmentQuotaController } from './attachments/admin-attachment-quota.controller.js';
+import { AdminAttachmentQuotaService } from './attachments/admin-attachment-quota.service.js';
 import { AttachmentsController } from './attachments/attachments.controller.js';
 import { AttachmentsService } from './attachments/attachments.service.js';
 import { CommentsController } from './comments/comments.controller.js';
@@ -53,6 +55,7 @@ import { UsersService } from './users/users.service.js';
     LinksController,
     CommentsController,
     AttachmentsController,
+    AdminAttachmentQuotaController,
     TicketsController,
     AdminController,
     AdminRequirementStatusesController,
@@ -86,6 +89,7 @@ import { UsersService } from './users/users.service.js';
     LinksService,
     CommentsService,
     AttachmentsService,
+    AdminAttachmentQuotaService,
     TicketsService,
     StakeholdersService,
     NeedsService,
