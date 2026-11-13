@@ -3,6 +3,7 @@
 // JSON. Règles écrites une seule fois ici, appliquées par l'API et le web, et
 // reproduites par la base (migration 0020).
 import { z } from 'zod';
+import { type InitiativeLinksDto, pageHasLinks } from './links.js';
 import { declarePageVersionSchema, type PageSaveRefusal, type PageVersionStatus } from './page-revisions.js';
 import { pageTemplateChoiceSchema, type PageTemplateMention } from './page-templates.js';
 import type { MemberNameDto } from './schemas.js';
@@ -224,9 +225,10 @@ export type MovePageInput = z.infer<typeof movePageSchema>;
  * - `unknownPage` : la page parente n'est pas une page de l'initiative ;
  * - `pageUnderItself` : une page ne se range pas sous elle-même ni sous l'une de ses sous-pages ;
  * - `pageHasSubpages` : une page qui a des sous-pages ne se supprime pas ;
+ * - `pageLinked` : une page liée à un ticket, un besoin ou une exigence ne se supprime pas (ticket 25) ;
  * - `unknownPageTemplate` : le modèle choisi n'existe pas ou n'est plus proposé (désactivé).
  */
-export const PAGE_REFUSALS = ['unknownPage', 'pageUnderItself', 'pageHasSubpages', 'unknownPageTemplate'] as const;
+export const PAGE_REFUSALS = ['unknownPage', 'pageUnderItself', 'pageHasSubpages', 'pageLinked', 'unknownPageTemplate'] as const;
 export type PageRefusal = (typeof PAGE_REFUSALS)[number];
 export const isPageRefusal = (value: unknown): value is PageRefusal => PAGE_REFUSALS.some((r) => r === value);
 
@@ -265,12 +267,17 @@ export function checkPageMove(pages: readonly PageTreeItem[], pageId: string, pa
   return isInSubtree(pages, pageId, parentId) ? 'pageUnderItself' : null;
 }
 
-/** Rang d'une nouvelle page : en dernier parmi ses sœurs. */
-/** Vérifie la suppression d'une page ; null si elle est permise. Les liens viendront avec le ticket 25. */
-export function checkPageDelete(pages: readonly PageTreeItem[], pageId: string): PageRefusal | null {
-  return pages.some((p) => p.parentId === pageId) ? 'pageHasSubpages' : null;
+/** Vérifie la suppression d'une page ; null si elle est permise : ni sous-pages, ni liens (décision 04, point 7). */
+export function checkPageDelete(
+  pages: readonly PageTreeItem[],
+  pageId: string,
+  links: Pick<InitiativeLinksDto, 'pageLinks'>,
+): PageRefusal | null {
+  if (pages.some((p) => p.parentId === pageId)) return 'pageHasSubpages';
+  return pageHasLinks(links, pageId) ? 'pageLinked' : null;
 }
 
+/** Rang d'une nouvelle page : en dernier parmi ses sœurs. */
 export function nextPagePosition(pages: readonly PageTreeItem[], parentId: string | null): number {
   return Math.max(-1, ...pages.filter((p) => p.parentId === parentId).map((p) => p.position)) + 1;
 }

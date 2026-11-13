@@ -179,6 +179,15 @@ test('un document vide, tel que l’éditeur l’écrit, est enregistré sans co
 });
 
 test('une page qui a des sous-pages ne se supprime pas', () => {
-  assert.equal(checkPageDelete(tree, 'A1'), 'pageHasSubpages');
-  assert.equal(checkPageDelete(tree, 'A1a'), null);
+  assert.equal(checkPageDelete(tree, 'A1', { pageLinks: [] }), 'pageHasSubpages');
+  assert.equal(checkPageDelete(tree, 'A1a', { pageLinks: [] }), null);
+});
+
+test('une page liée à un ticket, un besoin ou une exigence ne se supprime pas', () => {
+  for (const kind of ['ticket', 'need', 'requirement'] as const) {
+    const links = { pageLinks: [{ pageId: 'A1a', object: { kind, id: 'x' } }] };
+    assert.equal(checkPageDelete(tree, 'A1a', links), 'pageLinked');
+  }
+  // Les liens d'une autre page ne comptent pas.
+  assert.equal(checkPageDelete(tree, 'A1a', { pageLinks: [{ pageId: 'A1', object: { kind: 'need', id: 'x' } }] }), null);
 });

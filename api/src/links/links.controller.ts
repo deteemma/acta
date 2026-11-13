@@ -1,19 +1,22 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import {
   createNeedLinkSchema,
   type CreateNeedLinkInput,
+  createPageLinkSchema,
+  type CreatePageLinkInput,
   createRequirementLinkSchema,
   type CreateRequirementLinkInput,
   createTicketLinkSchema,
   type CreateTicketLinkInput,
   type InitiativeLinksDto,
+  PAGE_LINK_OBJECT_KINDS,
 } from '@app/shared';
 import { type AuthenticatedUser, CurrentUser } from '../auth/authenticated-user.js';
 import { RequireInitiativeRole } from '../initiatives/initiative-role.guard.js';
 import { ZodValidationPipe } from '../zod-validation.pipe.js';
 import { LinksService } from './links.service.js';
 
-/** Liens d'une initiative (ticket 19) : tout membre consulte, propriétaires et contributeurs créent et retirent. */
+/** Liens d'une initiative (tickets 19 et 25) : tout membre consulte, propriétaires et contributeurs créent et retirent. */
 @Controller('initiatives/:initiativeId/links')
 export class LinksController {
   constructor(private readonly links: LinksService) {}
@@ -91,5 +94,31 @@ export class LinksController {
     @Param('requirementId', ParseUUIDPipe) requirementId: string,
   ): Promise<void> {
     return this.links.removeRequirementLink(user.id, initiativeId, ticketId, requirementId);
+  }
+
+  @Post('pages')
+  @RequireInitiativeRole('editLinks')
+  createPageLink(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Body(new ZodValidationPipe(createPageLinkSchema)) body: CreatePageLinkInput,
+  ): Promise<InitiativeLinksDto> {
+    return this.links.createPageLink(user.id, initiativeId, body);
+  }
+
+  /** `kind` : ticket, need ou requirement ; une page ne se lie pas à une autre page. */
+  @Delete('pages/:pageId/:kind/:objectId')
+  @HttpCode(204)
+  @RequireInitiativeRole('editLinks')
+  removePageLink(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('pageId', ParseUUIDPipe) pageId: string,
+    @Param('kind') kind: string,
+    @Param('objectId', ParseUUIDPipe) objectId: string,
+  ): Promise<void> {
+    const objectKind = PAGE_LINK_OBJECT_KINDS.find((k) => k === kind);
+    if (!objectKind) throw new NotFoundException();
+    return this.links.removePageLink(user.id, initiativeId, pageId, objectKind, objectId);
   }
 }

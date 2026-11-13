@@ -6,9 +6,11 @@ import type {
   CommentDto,
   CommentInput,
   CreateNeedLinkInput,
+  CreatePageLinkInput,
   CreateRequirementLinkInput,
   CreateTicketLinkInput,
   InitiativeLinksDto,
+  PageLinkObjectKind,
   CreateTicketInput,
   CreatePageInput,
   DeclarePageVersionInput,
@@ -136,6 +138,9 @@ export const api = {
     request<CommentDto[]>(`/initiatives/${id}/tickets/${ticketId}/comments`),
   createTicketComment: (id: string, ticketId: string, input: CommentInput) =>
     request<CommentDto[]>(`/initiatives/${id}/tickets/${ticketId}/comments`, { method: 'POST', body: JSON.stringify(input) }),
+  listPageComments: (id: string, pageId: string) => request<CommentDto[]>(`/initiatives/${id}/pages/${pageId}/comments`),
+  createPageComment: (id: string, pageId: string, input: CommentInput) =>
+    request<CommentDto[]>(`/initiatives/${id}/pages/${pageId}/comments`, { method: 'POST', body: JSON.stringify(input) }),
   updateComment: (id: string, commentId: string, input: CommentInput) =>
     request<CommentDto>(`/initiatives/${id}/comments/${commentId}`, { method: 'PATCH', body: JSON.stringify(input) }),
   deleteComment: (id: string, commentId: string) =>
@@ -165,6 +170,10 @@ export const api = {
     request<InitiativeLinksDto>(`/initiatives/${id}/links/needs`, { method: 'POST', body: JSON.stringify(input) }),
   removeNeedLink: (id: string, ticketId: string, needId: string) =>
     request<void>(`/initiatives/${id}/links/needs/${ticketId}/${needId}`, { method: 'DELETE' }),
+  createPageLink: (id: string, input: CreatePageLinkInput) =>
+    request<InitiativeLinksDto>(`/initiatives/${id}/links/pages`, { method: 'POST', body: JSON.stringify(input) }),
+  removePageLink: (id: string, pageId: string, kind: PageLinkObjectKind, objectId: string) =>
+    request<void>(`/initiatives/${id}/links/pages/${pageId}/${kind}/${objectId}`, { method: 'DELETE' }),
   createRequirementLink: (id: string, input: CreateRequirementLinkInput) =>
     request<InitiativeLinksDto>(`/initiatives/${id}/links/requirements`, { method: 'POST', body: JSON.stringify(input) }),
   removeRequirementLink: (id: string, ticketId: string, requirementId: string) =>

@@ -287,6 +287,25 @@ export interface TicketNeedTable {
   need_id: string;
 }
 
+/** Liens d'une page, sans nature (migration 0027) : vers un ticket, un besoin ou une exigence. */
+export interface PageTicketTable {
+  initiative_id: string;
+  page_id: string;
+  ticket_id: string;
+}
+
+export interface PageNeedTable {
+  initiative_id: string;
+  page_id: string;
+  need_id: string;
+}
+
+export interface PageRequirementTable {
+  initiative_id: string;
+  page_id: string;
+  requirement_id: string;
+}
+
 /** Lien entre deux tickets (migration 0022) : la source « bloque » ou « duplique » la cible. */
 export interface TicketLinkTable {
   initiative_id: string;
@@ -394,6 +413,9 @@ export interface Database {
   need_stakeholder: NeedStakeholderTable;
   owner_designation: OwnerDesignationTable;
   page: PageTable;
+  page_need: PageNeedTable;
+  page_requirement: PageRequirementTable;
+  page_ticket: PageTicketTable;
   page_template: PageTemplateTable;
   page_revision: PageRevisionTable;
   reference_acronym: ReferenceAcronymTable;

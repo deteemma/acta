@@ -271,6 +271,9 @@ function Shell({ user }: { user: User }) {
                     babok={babok}
                     version={pagesVersion}
                     onChanged={pagesChanged}
+                    myId={me?.id ?? null}
+                    linksVersion={actionsVersion}
+                    onLinksChanged={actionsChanged}
                   />
                 </ScreenForms>
               ) : screen.kind === 'tickets' ? (

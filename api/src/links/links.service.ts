@@ -2,11 +2,14 @@ import { BadRequestException, ConflictException, Injectable } from '@nestjs/comm
 import {
   checkTicketLink,
   type CreateNeedLinkInput,
+  type CreatePageLinkInput,
   type CreateRequirementLinkInput,
   type CreateTicketLinkInput,
   type InitiativeLinksDto,
   type LinkRefusal,
   orientTicketLink,
+  type PageLinkDto,
+  type PageLinkObjectKind,
 } from '@app/shared';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isUniqueViolation } from '../db/pg-errors.js';
@@ -21,8 +24,9 @@ export function linkRefusal(refusal: LinkRefusal) {
 
 /**
  * Liens d'une initiative (ticket 19, décision 04) : entre deux tickets, avec une
- * nature, et d'un ticket de tout type vers un besoin ou une exigence. Ni le ticket,
- * ni le besoin, ni l'exigence ne sont modifiés : aucun historique ne les retient.
+ * nature, d'un ticket de tout type vers un besoin ou une exigence, et d'une page
+ * vers un ticket, un besoin ou une exigence (ticket 25), sans nature. Aucun des
+ * objets n'est modifié : aucun historique ni enregistrement de page ne les retient.
  */
 @Injectable()
 export class LinksService {
@@ -132,10 +136,53 @@ export class LinksService {
         .execute();
     });
   }
+
+  /** Depuis la page ou depuis l'autre objet ; jamais vers une autre page (schéma). */
+  createPageLink(userId: string, initiativeId: string, input: CreatePageLinkInput): Promise<InitiativeLinksDto> {
+    return this.database.asUser(userId, async (tx) => {
+      // Première barrière : la page et l'objet appartiennent à cette initiative.
+      const page = await tx
+        .selectFrom('page')
+        .select('id')
+        .where('id', '=', input.pageId)
+        .where('initiative_id', '=', initiativeId)
+        .executeTakeFirst();
+      if (!page) throw linkRefusal('unknownLinkedPage');
+      const { kind, id } = input.object;
+      if (kind === 'ticket') {
+        await checkTickets(tx, initiativeId, [id]);
+      } else {
+        const found = await tx.selectFrom(kind).select('id').where('id', '=', id).where('initiative_id', '=', initiativeId).executeTakeFirst();
+        if (!found) throw kind === 'need' ? needRefusal('unknownNeed') : requirementRefusal('unknownRequirement');
+      }
+      const values = { initiative_id: initiativeId, page_id: input.pageId };
+      await write(() =>
+        kind === 'ticket'
+          ? tx.insertInto('page_ticket').values({ ...values, ticket_id: id }).execute()
+          : kind === 'need'
+            ? tx.insertInto('page_need').values({ ...values, need_id: id }).execute()
+            : tx.insertInto('page_requirement').values({ ...values, requirement_id: id }).execute(),
+      );
+      return loadLinks(tx, initiativeId);
+    });
+  }
+
+  /** Depuis la page ou depuis l'autre objet ; un lien déjà retiré n'est pas une erreur. */
+  removePageLink(userId: string, initiativeId: string, pageId: string, kind: PageLinkObjectKind, objectId: string): Promise<void> {
+    return this.database.asUser(userId, async (tx) => {
+      const remove =
+        kind === 'ticket'
+          ? tx.deleteFrom('page_ticket').where('ticket_id', '=', objectId)
+          : kind === 'need'
+            ? tx.deleteFrom('page_need').where('need_id', '=', objectId)
+            : tx.deleteFrom('page_requirement').where('requirement_id', '=', objectId);
+      await remove.where('initiative_id', '=', initiativeId).where('page_id', '=', pageId).execute();
+    });
+  }
 }
 
 async function loadLinks(tx: Tx, initiativeId: string): Promise<InitiativeLinksDto> {
-  const [ticketLinks, needLinks, requirementLinks] = await Promise.all([
+  const [ticketLinks, needLinks, requirementLinks, pageLinks] = await Promise.all([
     tx
       .selectFrom('ticket_link')
       .select(['source_id as sourceId', 'target_id as targetId', 'kind'])
@@ -151,8 +198,21 @@ async function loadLinks(tx: Tx, initiativeId: string): Promise<InitiativeLinksD
       .select(['ticket_id as ticketId', 'requirement_id as requirementId'])
       .where('initiative_id', '=', initiativeId)
       .execute(),
+    loadPageLinks(tx, initiativeId),
   ]);
-  return { ticketLinks, needLinks, requirementLinks };
+  return { ticketLinks, needLinks, requirementLinks, pageLinks };
+}
+
+/** Liens des pages de l'initiative, vers des tickets, des besoins et des exigences. */
+export async function loadPageLinks(tx: Tx, initiativeId: string): Promise<PageLinkDto[]> {
+  const [tickets, needs, requirements] = await Promise.all([
+    tx.selectFrom('page_ticket').select(['page_id', 'ticket_id as id']).where('initiative_id', '=', initiativeId).execute(),
+    tx.selectFrom('page_need').select(['page_id', 'need_id as id']).where('initiative_id', '=', initiativeId).execute(),
+    tx.selectFrom('page_requirement').select(['page_id', 'requirement_id as id']).where('initiative_id', '=', initiativeId).execute(),
+  ]);
+  const toPageLinks = (kind: PageLinkObjectKind, rows: { page_id: string; id: string }[]): PageLinkDto[] =>
+    rows.map((r) => ({ pageId: r.page_id, object: { kind, id: r.id } }));
+  return [...toPageLinks('ticket', tickets), ...toPageLinks('need', needs), ...toPageLinks('requirement', requirements)];
 }
 
 /** Première barrière : chaque ticket existe dans l'initiative (pas de lien entre initiatives). */
@@ -173,12 +233,22 @@ async function write(run: () => Promise<unknown>): Promise<void> {
   } catch (error) {
     if (isUniqueViolation(error)) throw linkRefusal('alreadyLinked');
     if (isConstraintViolation(error, 'ticket_link_not_self')) throw linkRefusal('selfLink');
-    if (isConstraintViolation(error, 'ticket_need_need_fkey')) throw needRefusal('unknownNeed');
-    if (isConstraintViolation(error, 'ticket_requirement_requirement_fkey')) throw requirementRefusal('unknownRequirement');
+    const violates = (constraints: string[]) => constraints.some((c) => isConstraintViolation(error, c));
+    if (violates(['ticket_need_need_fkey', 'page_need_need_fkey'])) throw needRefusal('unknownNeed');
+    if (violates(['ticket_requirement_requirement_fkey', 'page_requirement_requirement_fkey'])) {
+      throw requirementRefusal('unknownRequirement');
+    }
+    if (violates(['page_ticket_page_fkey', 'page_need_page_fkey', 'page_requirement_page_fkey'])) {
+      throw linkRefusal('unknownLinkedPage');
+    }
     if (
-      ['ticket_link_source_fkey', 'ticket_link_target_fkey', 'ticket_need_ticket_fkey', 'ticket_requirement_ticket_fkey'].some(
-        (constraint) => isConstraintViolation(error, constraint),
-      )
+      violates([
+        'ticket_link_source_fkey',
+        'ticket_link_target_fkey',
+        'ticket_need_ticket_fkey',
+        'ticket_requirement_ticket_fkey',
+        'page_ticket_ticket_fkey',
+      ])
     ) {
       throw linkRefusal('unknownTicket');
     }

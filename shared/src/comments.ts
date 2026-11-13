@@ -1,5 +1,6 @@
-// Commentaires (phase 2, ticket 20, décision 05) : un fil simple sur un ticket, de
-// tout type, et plus tard sur une page (ticket 25). Règles écrites une seule fois
+// Commentaires (phase 2, tickets 20 et 25, décision 05) : un fil simple sur un
+// ticket, de tout type, ou sur une page entière, sans rattachement à un passage ni à
+// un enregistrement. Règles écrites une seule fois
 // ici, appliquées par l'API et reproduites par la base (migration 0023). Un
 // commentaire ne figure dans aucun historique.
 import { z } from 'zod';

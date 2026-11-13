@@ -29,6 +29,7 @@ const SECTIONS = [
   '19-pieces-jointes',
   '20-modeles-de-page',
   '21-modification-simultanee',
+  '22-liens-et-commentaires-des-pages',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);
@@ -51,8 +52,13 @@ const { cmInitiativeId, cmOtherInitiativeId } = run['18-commentaires'];
 const { ajInitiativeId, ajOtherInitiativeId } = run['19-pieces-jointes'];
 const { mpInitiativeId } = run['20-modeles-de-page'];
 const { msInitiativeId } = run['21-modification-simultanee'];
+const { plInitiativeId, plOtherInitiativeId } = run['22-liens-et-commentaires-des-pages'];
 
 console.log('\nNettoyage');
+await check('alice supprime les initiatives des liens et commentaires des pages, avec leurs objets liés : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${plOtherInitiativeId}`)).status, 204);
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${plInitiativeId}`)).status, 204);
+});
 await check('alice supprime l’initiative de la modification simultanée, avec sa page : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${msInitiativeId}`)).status, 204);
 });

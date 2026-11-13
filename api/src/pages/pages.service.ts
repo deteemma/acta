@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  checkPageDelete,
   checkPageMove,
   checkPageRevisionDelete,
   checkPageRevisionRestore,
@@ -34,6 +35,7 @@ import {
 import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js';
+import { loadPageLinks } from '../links/links.service.js';
 
 /** Pages d'une initiative (ticket 22) : la RLS limite aux membres, les guards aux rôles. */
 @Injectable()
@@ -343,17 +345,25 @@ export class PagesService {
     });
   }
 
-  /** Définitive ; refusée tant que la page a des sous-pages. Les liens viendront avec le ticket 25. */
+  /**
+   * Définitive ; refusée tant que la page a des sous-pages ou des liens (ticket 25).
+   * Ses commentaires partent avec elle.
+   */
   remove(userId: string, initiativeId: string, pageId: string): Promise<void> {
     return this.database.asUser(userId, async (tx) => {
       await this.loadPage(tx, initiativeId, pageId);
+      const [tree, pageLinks] = await Promise.all([this.selectTree(tx, initiativeId), loadPageLinks(tx, initiativeId)]);
+      const refusal = checkPageDelete(tree, pageId, { pageLinks });
+      if (refusal) throw pageRefusal(refusal);
       await tx
         .deleteFrom('page')
         .where('id', '=', pageId)
         .where('initiative_id', '=', initiativeId)
         .execute()
         .catch((error: unknown) => {
-          if (isForeignKeyViolation(error)) throw pageRefusal('pageHasSubpages');
+          // Seconde barrière : une sous-page ou un lien ajouté entre-temps.
+          if (isConstraintViolation(error, 'page_parent_fkey')) throw pageRefusal('pageHasSubpages');
+          if (isForeignKeyViolation(error)) throw pageRefusal('pageLinked');
           throw error;
         });
     });
@@ -492,7 +502,7 @@ export const pageSaveRefusal = (refusal: PageSaveRefusal, page: PageDto) =>
 export const revisionRefusal = (refusal: PageRevisionRefusal) => new ConflictException({ statusCode: 409, refusal });
 
 export function pageRefusal(refusal: PageRefusal) {
-  return refusal === 'pageHasSubpages'
+  return refusal === 'pageHasSubpages' || refusal === 'pageLinked'
     ? new ConflictException({ statusCode: 409, refusal })
     : new BadRequestException({ statusCode: 400, refusal });
 }

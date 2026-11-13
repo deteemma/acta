@@ -1,8 +1,9 @@
 // Écran Pages d'une initiative (ticket 22, décisions 07, 08 et 13) : arborescence
 // à gauche (au-dessus sur petit écran), document en pleine page. « Modifier » passe
 // la page en écriture au même endroit ; une nouvelle page n'existe qu'à son premier
-// enregistrement, vide ou depuis un modèle (ticket 27). Règles dans @app/shared
-// (pages.ts, page-templates.ts).
+// enregistrement, vide ou depuis un modèle (ticket 27). Liens et commentaires en
+// bas du document (ticket 25). Règles dans @app/shared (pages.ts, page-templates.ts,
+// links.ts, comments.ts).
 import {
   type BabokDto,
   can,
@@ -35,9 +36,11 @@ import { ArrowDown, ArrowUp, FilePlus, History, IndentDecrease, IndentIncrease, 
 import { type DragEvent, type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { BabokName } from './babok-panels';
+import { PageComments } from './comments';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
+import { PageLinks, useLinkData } from './link-panels';
 import { PageContent } from './page-content';
 import { PageComparison, PageDiff, PageHistory, PageRevisionView, type PageShown, VersionNoteField } from './page-history';
 import { SCREEN_TITLE_ID, usePanels } from './panels';
@@ -76,6 +79,9 @@ export function PagesScreen({
   babok,
   version,
   onChanged,
+  myId,
+  linksVersion,
+  onLinksChanged,
 }: {
   initiativeId: string;
   /** Page ouverte ; null : aucune. */
@@ -87,6 +93,11 @@ export function PagesScreen({
   /** Change à chaque création, modification, déplacement ou suppression d'une page. */
   version: number;
   onChanged: () => void;
+  /** Auteur des commentaires ; null tant que le compte n'est pas chargé. */
+  myId: string | null;
+  /** Change à chaque écriture sur un ticket ou un lien, ici ou dans un panneau. */
+  linksVersion: number;
+  onLinksChanged: () => void;
 }) {
   const { t, locale } = useI18n();
   const { goTo, replaceScreen } = useScreens();
@@ -210,6 +221,10 @@ export function PagesScreen({
               tree={tree ?? []}
               babok={babok}
               canEdit={canEdit}
+              initiative={initiative && { myRole: initiative.myRole, archived: initiative.archivedAt != null }}
+              myId={myId}
+              linksVersion={linksVersion + version}
+              onLinksChanged={onLinksChanged}
               onAddChild={() => startDraft(pageId)}
               onMove={(placement) => void move(pageId, placement)}
               onChanged={onChanged}
@@ -391,6 +406,10 @@ function PageView({
   tree,
   babok,
   canEdit,
+  initiative,
+  myId,
+  linksVersion,
+  onLinksChanged,
   onAddChild,
   onMove,
   onChanged,
@@ -400,6 +419,11 @@ function PageView({
   tree: PageRow[];
   babok: BabokDto | null;
   canEdit: boolean;
+  /** Rôle et archivage, pour les commentaires ; absent tant que la liste des initiatives n'est pas chargée. */
+  initiative: { myRole: InitiativeDto['myRole']; archived: boolean } | undefined;
+  myId: string | null;
+  linksVersion: number;
+  onLinksChanged: () => void;
   onAddChild: () => void;
   onMove: (placement: PagePlacement) => void;
   onChanged: () => void;
@@ -416,6 +440,8 @@ function PageView({
   const [shown, setShown] = useState<PageShown>({ kind: 'page' });
   const [revisions, setRevisions] = useState<PageRevisionRow[] | null>(null);
   const [status, setStatus] = useState('');
+  // Liens de l'initiative : section « Liens » et refus de supprimer une page liée.
+  const { data: linkData, setLinks, error: linksError } = useLinkData(initiativeId, linksVersion, true);
 
   const loadPage = () =>
     api.getPage(initiativeId, pageId).then(setPage, (e: unknown) => {
@@ -593,6 +619,19 @@ function PageView({
           {t('page.updated', { date: formatDateTime(locale, page.updatedAt), name: memberName(page.updatedBy) })}
         </small>
       </p>
+      {linkData ? (
+        <PageLinks
+          initiativeId={initiativeId}
+          pageId={page.id}
+          data={linkData}
+          canEdit={!!initiative && can(initiative.myRole, 'editLinks', { archived: initiative.archived })}
+          onLinks={setLinks}
+          onChanged={onLinksChanged}
+        />
+      ) : (
+        <ErrorMessage error={linksError} />
+      )}
+      {initiative && <PageComments initiativeId={initiativeId} pageId={page.id} initiative={initiative} myId={myId} />}
       {canEdit && (
         <section className="owner-actions page-owner-actions">
           <div role="group" aria-label={t('page.moveGroup')} className="page-move">
@@ -615,7 +654,7 @@ function PageView({
           </div>
           <DeletePage
             page={page}
-            refusal={checkPageDelete(tree, page.id)}
+            refusal={checkPageDelete(tree, page.id, linkData?.links ?? { pageLinks: [] })}
             onDeleted={() => {
               onChanged();
               replaceScreen({ kind: 'pages', initiativeId, pageId: null });
@@ -627,14 +666,14 @@ function PageView({
   );
 }
 
-/** Suppression définitive après confirmation ; refusée tant que la page a des sous-pages. */
+/** Suppression définitive après confirmation ; refusée tant que la page a des sous-pages ou des liens. */
 function DeletePage({
   page,
   refusal,
   onDeleted,
 }: {
   page: PageDto;
-  /** Refus connu d'avance (sous-pages) : affiché sans demander de confirmation. */
+  /** Refus connu d'avance (sous-pages, liens) : affiché sans demander de confirmation. */
   refusal: PageRefusal | null;
   onDeleted: () => void;
 }) {
