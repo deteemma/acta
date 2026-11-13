@@ -28,6 +28,12 @@ import type {
   TicketVersionDto,
   UpdateTicketInput,
   AdminRequirementStatusDto,
+  AdminTicketTypeDto,
+  CreateTicketStatusInput,
+  CreateTicketTypeInput,
+  TicketTypeDto,
+  UpdateTicketStatusInput,
+  UpdateTicketTypeInput,
   CreateActionInput,
   UpdateActionInput,
   AddMemberInput,
@@ -331,9 +337,36 @@ export const api = {
     request<AdminRequirementStatusDto[]>(`/admin/requirement-statuses/${encodeURIComponent(code)}`, {
       method: 'DELETE',
     }),
+  ticketTypes: () => request<TicketTypeDto[]>('/ticket-types'),
+  /** Administration des types de ticket (ticket 29) : chaque appel renvoie toute la liste, à jour. */
+  listTicketTypes: () => request<AdminTicketTypeDto[]>('/admin/ticket-types'),
+  addTicketType: (input: CreateTicketTypeInput) =>
+    request<AdminTicketTypeDto[]>('/admin/ticket-types', { method: 'POST', body: JSON.stringify(input) }),
+  updateTicketType: (type: string, input: UpdateTicketTypeInput) =>
+    request<AdminTicketTypeDto[]>(`/admin/ticket-types/${encodeURIComponent(type)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  deleteTicketType: (type: string) =>
+    request<AdminTicketTypeDto[]>(`/admin/ticket-types/${encodeURIComponent(type)}`, { method: 'DELETE' }),
+  addTicketStatus: (type: string, input: CreateTicketStatusInput) =>
+    request<AdminTicketTypeDto[]>(`/admin/ticket-types/${encodeURIComponent(type)}/statuses`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  updateTicketStatus: (type: string, status: string, input: UpdateTicketStatusInput) =>
+    request<AdminTicketTypeDto[]>(
+      `/admin/ticket-types/${encodeURIComponent(type)}/statuses/${encodeURIComponent(status)}`,
+      { method: 'PATCH', body: JSON.stringify(input) },
+    ),
+  deleteTicketStatus: (type: string, status: string) =>
+    request<AdminTicketTypeDto[]>(
+      `/admin/ticket-types/${encodeURIComponent(type)}/statuses/${encodeURIComponent(status)}`,
+      { method: 'DELETE' },
+    ),
   listReferenceCategories: () => request<ReferenceCategoryDto[]>('/admin/reference-categories'),
   updateReferenceCategory: (category: ReferenceCategory, input: UpdateReferenceCategoryInput) =>
-    request<ReferenceCategoryDto[]>(`/admin/reference-categories/${category}`, {
+    request<ReferenceCategoryDto[]>(`/admin/reference-categories/${encodeURIComponent(category)}`, {
       method: 'PATCH',
       body: JSON.stringify(input),
     }),

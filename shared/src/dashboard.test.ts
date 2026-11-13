@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import type { ActionDto } from './actions.js';
 import type { BabokDto } from './babok.js';
 import { initiativeDashboard } from './dashboard.js';
+import { deliveredTicketTypes } from './ticket-type-catalog.js';
+const types = deliveredTicketTypes();
 
 const text = (en: string, fr: string) => ({ en, fr });
 const summary = text('…', '…');
@@ -49,7 +51,7 @@ function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
 }
 
 test('le tableau de bord présente chaque domaine et ses tâches, dans l’ordre du référentiel', () => {
-  const dashboard = initiativeDashboard(babok, []);
+  const dashboard = initiativeDashboard(types, babok, []);
   assert.deepEqual(
     dashboard.map((area) => [area.knowledgeArea.id, area.tasks.map((t) => t.task.id)]),
     [
@@ -60,7 +62,7 @@ test('le tableau de bord présente chaque domaine et ses tâches, dans l’ordre
 });
 
 test('chaque tâche compte ses actions par statut', () => {
-  const dashboard = initiativeDashboard(babok, [
+  const dashboard = initiativeDashboard(types, babok, [
     action({ id: 'a', status: 'todo' }),
     action({ id: 'b', status: 'todo' }),
     action({ id: 'c', status: 'done' }),
@@ -73,7 +75,7 @@ test('chaque tâche compte ses actions par statut', () => {
 });
 
 test('une tâche sans aucune action n’est pas couverte ; une seule action, de tout statut, la couvre', () => {
-  const dashboard = initiativeDashboard(babok, [action({ id: 'a', taskId: '4.1', status: 'cancelled' })]);
+  const dashboard = initiativeDashboard(types, babok, [action({ id: 'a', taskId: '4.1', status: 'cancelled' })]);
   const covered = dashboard.flatMap((area) => area.tasks.map((t) => [t.task.id, t.covered]));
   assert.deepEqual(covered, [
     ['3.1', false],
@@ -87,7 +89,7 @@ test('une tâche sans aucune action n’est pas couverte ; une seule action, de 
 });
 
 test('les actions d’une tâche sont listées par échéance, sans échéance en dernier', () => {
-  const dashboard = initiativeDashboard(babok, [
+  const dashboard = initiativeDashboard(types, babok, [
     action({ id: 'sans' }),
     action({ id: 'tard', dueDate: '2026-12-01' }),
     action({ id: 'tot', dueDate: '2026-11-01' }),

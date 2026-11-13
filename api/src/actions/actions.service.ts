@@ -4,6 +4,7 @@ import {
   type ActionDto,
   type ActionStatus,
   canBeAssignee,
+  checkTicketFields,
   type CreateActionInput,
   type NeedRefDto,
   type RequirementRefDto,
@@ -20,7 +21,8 @@ import { needRefusal } from '../needs/needs.service.js';
 import { requirementRefusal } from '../requirements/requirements.service.js';
 import { stakeholderRefusal } from '../stakeholders/stakeholders.service.js';
 import { SuggestedActionsService } from '../suggested-actions/suggested-actions.service.js';
-import { actionRefusal, checkAssignee, checkEpic, isEpicViolation, loadTicketVersions, ticketRefusal } from '../tickets/ticket-rules.js';
+import { loadTicketTypes } from '../ticket-types/ticket-types.service.js';
+import { actionRefusal, checkAssignee, checkEpic, isEpicViolation, loadTicketVersions, ticketRefusal, ticketStatusViolation } from '../tickets/ticket-rules.js';
 
 @Injectable()
 export class ActionsService {
@@ -118,6 +120,11 @@ export class ActionsService {
         await checkAssignee(tx, initiativeId, input.assigneeId);
       }
       if (input.epicId && input.epicId !== current.epic?.id) await checkEpic(tx, initiativeId, input.epicId);
+      // Statut du type Action, actif, ou celui que l'action porte déjà (ticket 29).
+      if (input.status !== undefined) {
+        const refusal = checkTicketFields(await loadTicketTypes(tx), 'action', { status: input.status }, current.status);
+        if (refusal) throw ticketRefusal(refusal);
+      }
       if (stakeholdersChange) {
         await this.checkStakeholders(tx, initiativeId, stakeholderIds);
         await tx.deleteFrom('action_stakeholder').where('ticket_id', '=', actionId).execute();
@@ -432,6 +439,8 @@ async function write(run: () => Promise<unknown>): Promise<void> {
   } catch (error) {
     if (isConstraintViolation(error, 'ticket_assignee_eligible')) throw actionRefusal('assigneeNotEligible');
     if (isEpicViolation(error)) throw ticketRefusal('unknownEpic');
+    const statusRefusal = ticketStatusViolation(error);
+    if (statusRefusal) throw ticketRefusal(statusRefusal);
     // Tâche ou technique absente du référentiel.
     if (isConstraintViolation(error, 'ticket_task_id_fkey') || isConstraintViolation(error, 'ticket_technique_id_fkey')) {
       throw actionRefusal('unknownBabokElement');

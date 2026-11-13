@@ -8,6 +8,8 @@ import { CommentsController } from './comments/comments.controller.js';
 import { CommentsService } from './comments/comments.service.js';
 import { LinksController } from './links/links.controller.js';
 import { LinksService } from './links/links.service.js';
+import { AdminTicketTypesController, TicketTypesController } from './ticket-types/ticket-types.controller.js';
+import { TicketTypesService } from './ticket-types/ticket-types.service.js';
 import { TicketsController } from './tickets/tickets.controller.js';
 import { TicketsService } from './tickets/tickets.service.js';
 import { AdminController } from './admin/admin.controller.js';
@@ -53,6 +55,7 @@ import { UsersService } from './users/users.service.js';
     TicketsController,
     AdminController,
     AdminRequirementStatusesController,
+    AdminTicketTypesController,
     BabokController,
     HealthController,
     InitiativesController,
@@ -62,6 +65,7 @@ import { UsersService } from './users/users.service.js';
     PageTemplatesController,
     ReferenceCategoriesController,
     RequirementStatusesController,
+    TicketTypesController,
     RequirementsController,
     StakeholdersController,
     SuggestedActionsController,
@@ -86,6 +90,7 @@ import { UsersService } from './users/users.service.js';
     PagesService,
     ReferenceCategoriesService,
     RequirementStatusesService,
+    TicketTypesService,
     RequirementsService,
     SuggestedActionsService,
     { provide: APP_GUARD, useClass: AuthGuard },

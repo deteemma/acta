@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ActionDto } from './actions.js';
 import { type Alert, alertKey, myAlerts } from './alerts.js';
+import { deliveredTicketTypes } from './ticket-type-catalog.js';
+const types = deliveredTicketTypes();
 
 const alice = { userId: 'alice', email: 'alice@exemple.test', displayName: 'Alice' };
 const bruno = { userId: 'bruno', email: 'bruno@exemple.test', displayName: 'Bruno' };
@@ -37,13 +39,13 @@ const today = '2026-10-31';
 const summary = (alerts: Alert[]) => alerts.map((a) => `${a.kind}:${a.action.id}`);
 
 test('une action attribuée par un autre membre donne une alerte ; aucune si je me l’attribue moi-même', () => {
-  const alerts = myAlerts([action({ id: 'a1' }), action({ id: 'a2', assignedBy: alice })], me, today);
+  const alerts = myAlerts(types, [action({ id: 'a1' }), action({ id: 'a2', assignedBy: alice })], me, today);
   assert.deepEqual(summary(alerts), ['assigned:a1']);
 });
 
 test('une de mes actions dont l’échéance est dépassée donne une alerte, même si je me la suis attribuée', () => {
   const alerts = myAlerts(
-    [
+    types, [
       action({ id: 'hier', assignedBy: alice, dueDate: '2026-10-30' }),
       action({ id: 'aujourdhui', assignedBy: alice, dueDate: '2026-10-31' }),
       action({ id: 'demain', assignedBy: alice, dueDate: '2026-11-01' }),
@@ -56,7 +58,7 @@ test('une de mes actions dont l’échéance est dépassée donne une alerte, m�
 
 test('aucune alerte pour une action Terminée ou Annulée, ni pour une action d’un autre membre', () => {
   const alerts = myAlerts(
-    [
+    types, [
       action({ id: 'terminee', status: 'done', dueDate: '2026-10-01' }),
       action({ id: 'annulee', status: 'cancelled', dueDate: '2026-10-01' }),
       action({ id: 'en-cours', status: 'in_progress', dueDate: '2026-10-01' }),
@@ -69,13 +71,13 @@ test('aucune alerte pour une action Terminée ou Annulée, ni pour une action d�
 });
 
 test('une action En attente garde ses alertes', () => {
-  const alerts = myAlerts([action({ id: 'attente', status: 'on_hold', dueDate: '2026-10-01' })], me, today);
+  const alerts = myAlerts(types, [action({ id: 'attente', status: 'on_hold', dueDate: '2026-10-01' })], me, today);
   assert.deepEqual(summary(alerts), ['overdue:attente', 'assigned:attente']);
 });
 
 test('aucune alerte pour une action d’une initiative archivée', () => {
   const archived = { id: 'crm', code: 'CRM', name: 'CRM', archived: true, myRole: 'contributor' as const };
-  assert.deepEqual(myAlerts([action({ id: 'a1', initiative: archived, dueDate: '2026-10-01' })], me, today), []);
+  assert.deepEqual(myAlerts(types, [action({ id: 'a1', initiative: archived, dueDate: '2026-10-01' })], me, today), []);
 });
 
 test('nouvelle : absente de la liste à la dernière ouverture du panneau, même si elle y avait déjà figuré', () => {
@@ -87,7 +89,7 @@ test('nouvelle : absente de la liste à la dernière ouverture du panneau, même
   ];
   const seen = { alertsSeenAt: '2026-10-25T12:00:00.000Z', alertsSeenKeys: ['assigned:vue', 'overdue:en-retard'] };
   assert.deepEqual(
-    myAlerts(actions, { id: 'alice', ...seen }, today).map((a) => [alertKey(a), a.isNew]),
+    myAlerts(types, actions, { id: 'alice', ...seen }, today).map((a) => [alertKey(a), a.isNew]),
     [
       ['overdue:en-retard', false],
       ['assigned:vue', false],
@@ -107,7 +109,7 @@ test('avant la première ouverture du panneau : nouvelle si apparue depuis la da
     // Reçue déjà en retard après la date de référence.
     action({ id: 'recue-en-retard', dueDate: '2026-10-20', assignedAt: '2026-10-28T12:00:00.000Z' }),
   ];
-  const fresh = myAlerts(actions, { id: 'alice', alertsSeenAt: '2026-10-25T12:00:00.000Z', alertsSeenKeys: null }, today)
+  const fresh = myAlerts(types, actions, { id: 'alice', alertsSeenAt: '2026-10-25T12:00:00.000Z', alertsSeenKeys: null }, today)
     .filter((a) => a.isNew)
     .map(alertKey);
   assert.deepEqual(fresh, ['overdue:recue-en-retard', 'overdue:depassee-apres', 'assigned:attribuee-apres', 'assigned:recue-en-retard']);

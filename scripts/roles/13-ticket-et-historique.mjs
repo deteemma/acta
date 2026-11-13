@@ -119,7 +119,7 @@ await check('la référence, le type et les auteurs ne se falsifient pas (décle
   await assert.rejects(asUserInDb(bruno.sub, `UPDATE ticket SET type = 'risk' WHERE id = $1`, [secondId]), /ne change pas de type/);
 });
 await check('un statut inconnu est refusé (contrainte en base) ; En attente est accepté', async () => {
-  await assert.rejects(asUserInDb(bruno.sub, `UPDATE ticket SET status = 'paused' WHERE id = $1`, [secondId]), /check constraint/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE ticket SET status = 'paused' WHERE id = $1`, [secondId]), /ticket_status_fkey/);
   const r = await asUserInDb(bruno.sub, `UPDATE ticket SET status = 'on_hold' WHERE id = $1 RETURNING status`, [secondId]);
   assert.equal(r.rows[0].status, 'on_hold');
 });

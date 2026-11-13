@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import type { ActionStatus } from './actions.js';
 import { suggestionKeySchema } from './actions.js';
 import type { BabokDto } from './babok.js';
+import { deliveredTicketTypes } from './ticket-type-catalog.js';
+const types = deliveredTicketTypes();
 import {
   currentSituations,
   requirementStatusSince,
@@ -63,6 +65,7 @@ function context(fields: Partial<SuggestionContext> = {}): SuggestionContext {
     needs: [],
     requirements: [],
     dismissedKeys: [],
+    ticketTypes: types,
     ...fields,
   };
 }

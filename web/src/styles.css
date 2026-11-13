@@ -2663,3 +2663,26 @@ button.link.pill:hover {
   margin: 0 0 var(--space-2);
   padding-inline-start: var(--space-4);
 }
+
+/* Administration des types de ticket (ticket 29) : un type se déplie sur ses statuts et ses formulaires. */
+.ticket-type-list > li {
+  display: block;
+  padding: 0;
+}
+details.ticket-type > :not(summary) {
+  margin-inline: var(--space-3);
+}
+details.ticket-type h4,
+details.ticket-type h5 {
+  margin: var(--space-3) 0 var(--space-1);
+}
+.ticket-type-form {
+  margin-inline-start: 0;
+  padding-block: var(--space-1);
+}
+.ticket-type-rows {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-6);
+}

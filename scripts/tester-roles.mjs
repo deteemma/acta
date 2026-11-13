@@ -31,6 +31,7 @@ const SECTIONS = [
   '21-modification-simultanee',
   '22-liens-et-commentaires-des-pages',
   '23-images-des-pages',
+  '24-types-et-statuts-parametrables',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);
@@ -55,8 +56,12 @@ const { mpInitiativeId } = run['20-modeles-de-page'];
 const { msInitiativeId } = run['21-modification-simultanee'];
 const { plInitiativeId, plOtherInitiativeId } = run['22-liens-et-commentaires-des-pages'];
 const { ipInitiativeId, ipOtherInitiativeId } = run['23-images-des-pages'];
+const { tpInitiativeId } = run['24-types-et-statuts-parametrables'];
 
 console.log('\nNettoyage');
+await check('alice supprime l’initiative des types et statuts paramétrables, avec son Risque : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${tpInitiativeId}`)).status, 204);
+});
 await check('alice supprime les initiatives des images des pages, avec leurs fichiers : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${ipOtherInitiativeId}`)).status, 204);
   assert.equal((await call(alice, 'DELETE', `/initiatives/${ipInitiativeId}`)).status, 204);

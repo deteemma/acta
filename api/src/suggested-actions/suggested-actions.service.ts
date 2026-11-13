@@ -13,6 +13,7 @@ import {
 import { sql } from 'kysely';
 import { BabokService } from '../babok/babok.service.js';
 import { DatabaseService, type Tx } from '../db/database.service.js';
+import { loadTicketTypes } from '../ticket-types/ticket-types.service.js';
 
 /** Encart « Actions suggérées » (ticket 14) : règles dans @app/shared (suggested-actions.ts). */
 @Injectable()
@@ -132,6 +133,7 @@ async function loadContext(tx: Tx, initiativeId: string): Promise<SuggestionCont
     now: now.toISOString(),
     // Date du jour dans le fuseau du serveur.
     today: now.toLocaleDateString('sv-SE'),
+    ticketTypes: await loadTicketTypes(tx),
     initiative: {
       archived: initiative.archived_at != null,
       analysisApproach: initiative.analysis_approach,

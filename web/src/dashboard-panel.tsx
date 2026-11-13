@@ -1,7 +1,6 @@
 // Tableau de bord de l'initiative (ticket 12) : les actions par domaine de
 // connaissance puis par tâche du BABOK. Règles dans @app/shared (dashboard.ts).
 import {
-  ACTION_STATUSES,
   type ActionDto,
   type BabokDto,
   type InitiativeDto,
@@ -15,6 +14,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { Panel } from './panels';
 import { SuggestedActions } from './suggested-actions';
+import { useTicketTypes } from './ticket-types';
 
 export function DashboardPanel({
   initiativeId,
@@ -37,6 +37,7 @@ export function DashboardPanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const ticketTypes = useTicketTypes();
   const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [actions, setActions] = useState<ActionDto[] | null>(null);
   const [error, setError] = useState<UiError | null>(null);
@@ -71,7 +72,7 @@ export function DashboardPanel({
       )}
       {actions && <h3 className="group-title">{t('dashboard.coverageGroup')}</h3>}
       {actions &&
-        initiativeDashboard(babok, actions).map(({ knowledgeArea, tasks, coveredTaskCount }) => {
+        initiativeDashboard(ticketTypes, babok, actions).map(({ knowledgeArea, tasks, coveredTaskCount }) => {
           const coverage = t('dashboard.coverage', { covered: coveredTaskCount, total: tasks.length });
           return (
             <section key={knowledgeArea.id} className="dashboard-area">
@@ -95,8 +96,8 @@ export function DashboardPanel({
                       </span>
                       <span className="action-meta">
                         {covered ? (
-                          ACTION_STATUSES.filter((status) => countByStatus[status] > 0).map((status) => (
-                            <StatusLabel key={status} status={status} count={countByStatus[status]} />
+                          Object.entries(countByStatus).filter(([, count]) => count > 0).map(([status, count]) => (
+                            <StatusLabel key={status} status={status} count={count} />
                           ))
                         ) : (
                           <span className="badge tone-negative">{t('dashboard.uncovered')}</span>

@@ -3,11 +3,9 @@
 import {
   memberName,
   ACTION_DESCRIPTION_MAX_LENGTH,
-  ACTION_STATUSES,
   ACTION_TITLE_MAX_LENGTH,
   type ActionDto,
   type ActionStatus,
-  actionStatusTone,
   type BabokDto,
   type BabokElementDto,
   babokEnglishName,
@@ -25,6 +23,7 @@ import {
   analysisObjectLinks,
   type AnalysisObjectRef,
   rankTechniques,
+  selectableTicketStatuses,
   suggestTasks,
   type TechniqueCounts,
   type TechniqueDto,
@@ -33,11 +32,13 @@ import {
   tasksOfKnowledgeArea,
   ticketEpicOptions,
   type TicketRow,
+  ticketStatusTone,
   type TicketVersionDto,
   updateActionSchema,
 } from '@app/shared';
 import { useEffect, useId, useState } from 'react';
 import { api, ApiError } from './api';
+import { useTicketLabels, useTicketTypes } from './ticket-types';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
@@ -84,12 +85,13 @@ export function BabokPreview({ element }: { element: BabokElementDto }) {
   );
 }
 
-/** Statut d'une action ; avec `count`, le nombre d'actions à ce statut (tableau de bord). */
+/** Statut d'une action, livré ou ajouté ; avec `count`, le nombre d'actions à ce statut (tableau de bord). */
 export function StatusLabel({ status, count }: { status: ActionStatus; count?: number }) {
   const { t } = useI18n();
-  const label = t(`actionStatus.${status}`);
+  const types = useTicketTypes();
+  const label = useTicketLabels().statusLabel('action', status);
   return (
-    <span className={`badge status tone-${actionStatusTone(status)}`}>
+    <span className={`badge status tone-${ticketStatusTone(types, 'action', status)}`}>
       {count === undefined ? label : t('dashboard.statusCount', { status: label, count })}
     </span>
   );
@@ -377,6 +379,9 @@ function ActionForm({
   const { t } = useI18n();
   const [title, setTitle] = useState(action.title);
   const [status, setStatus] = useState(action.status);
+  // Liste relue à l'ouverture : un statut ajouté ou désactivé entre-temps est à jour.
+  const ticketTypes = useTicketTypes({ fresh: true });
+  const { statusLabel } = useTicketLabels();
   const [taskId, setTaskId] = useState(action.taskId);
   const [techniqueId, setTechniqueId] = useState(action.techniqueId ?? '');
   const [assigneeId, setAssigneeId] = useState(action.assignee.userId);
@@ -438,9 +443,9 @@ function ActionForm({
       <label>
         {t('action.status')}
         <select value={status} onChange={(e) => setStatus(e.target.value as ActionStatus)}>
-          {ACTION_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {t(`actionStatus.${s}`)}
+          {selectableTicketStatuses(ticketTypes, 'action', action.status).map((s) => (
+            <option key={s.code} value={s.code}>
+              {statusLabel('action', s.code)}
             </option>
           ))}
         </select>

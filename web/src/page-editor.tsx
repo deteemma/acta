@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import type { EditorView } from '@tiptap/pm/view';
 import { type ReactNode, useEffect, useState } from 'react';
+import { useTicketLabels } from './ticket-types';
 import { useI18n } from './i18n';
 import { type ImageResolver, pageExtensions } from './page-editor-extensions';
 
@@ -184,6 +185,7 @@ export default function PageEditor({
   onChange: (doc: PageDoc) => void;
 }) {
   const { t } = useI18n();
+  const { categoryLabel } = useTicketLabels();
   const [suggestion, setSuggestion] = useState<SuggestionState | null>(null);
   // Rappels connus dès la création : Tiptap peut signaler qu'il est prêt avant le premier effet.
   const [bridge] = useState(() => {
@@ -267,7 +269,7 @@ export default function PageEditor({
                 suggestion.select(item);
               }}
             >
-              <strong>{item.reference}</strong> {item.title} <small>· {t(`referenceCategory.${item.category}`)}</small>
+              <strong>{item.reference}</strong> {item.title} <small>· {categoryLabel(item.category)}</small>
             </li>
           ))}
         </ul>

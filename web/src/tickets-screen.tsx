@@ -9,30 +9,25 @@ import {
   createTicketSchema,
   DEFAULT_TICKET_FILTERS,
   DEFAULT_TICKET_SORT,
-  type GenericTicketType,
+  findTicketType,
   groupTicketsByEpic,
   type InitiativeDto,
   isOverdueTicket,
   localDate,
   memberName,
-  QUICK_CREATE_TICKET_TYPES,
+  quickCreateTicketTypes,
   selectTickets,
   sortTickets,
   TICKET_FILTER_NONE,
   TICKET_SORT_KEYS,
   TICKET_STATES,
-  TICKET_STATUSES,
-  TICKET_TYPES,
   ticketAssigneeOptions,
   ticketEpicOptions,
   type TicketEpicGroup,
   type TicketFilters,
   type TicketRow,
-  ticketStatusLabelKey,
-  type TicketStatus,
   type TicketSort,
   type TicketSortKey,
-  type TicketType,
   toggleTicketSort,
 } from '@app/shared';
 import { ArrowDown, ArrowUp, Plus, TriangleAlert } from 'lucide-react';
@@ -41,6 +36,7 @@ import { api, ApiError } from './api';
 import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
+import { useTicketLabels, useTicketTypes } from './ticket-types';
 import { formatDate } from './initiative-panels';
 import { usePanels } from './panels';
 import { TicketStatusLabel, ticketTarget } from './ticket-parts';
@@ -64,6 +60,7 @@ export function TicketsScreen({
   onChanged: () => void;
 }) {
   const { t, locale } = useI18n();
+  const ticketTypes = useTicketTypes({ fresh: true });
   const { open } = usePanels();
   const [grouped, setGrouped] = useState(false);
   const [tickets, setTickets] = useState<TicketRow[] | null>(null);
@@ -96,9 +93,9 @@ export function TicketsScreen({
     );
   }
 
-  const shown = tickets && sortTickets(selectTickets(tickets, filters), sort, locale);
+  const shown = tickets && sortTickets(ticketTypes, selectTickets(ticketTypes, tickets, filters), sort, locale);
   const canCreate = !!initiative && canCreateActionIn(initiative);
-  const groups = grouped && tickets && shown ? groupTicketsByEpic(tickets, shown) : null;
+  const groups = grouped && tickets && shown ? groupTicketsByEpic(ticketTypes, tickets, shown) : null;
   return (
     <section className="tickets">
       {initiative && (
@@ -145,8 +142,12 @@ export function TicketsScreen({
 /** Type et titre, puis Entrée ; la fiche s'ouvre ensuite. Pas pour l'Action, qui a d'autres champs obligatoires. */
 function QuickCreate({ initiativeId, onCreated }: { initiativeId: string; onCreated: () => void }) {
   const { t } = useI18n();
+  const ticketTypes = useTicketTypes({ fresh: true });
+  const { typeLabel } = useTicketLabels();
+  // Types actifs autres que l'Action ; le premier proposé est la Question.
+  const options = quickCreateTicketTypes(ticketTypes).map((option) => option.code);
   const { open } = usePanels();
-  const [type, setType] = useState<GenericTicketType>(QUICK_CREATE_TICKET_TYPES[0]);
+  const [type, setType] = useState('question');
   const [title, setTitle] = useState('');
   const [error, setError] = useState<UiError | null>(null);
   const submit = useUnsavedForm({ type, title }, create);
@@ -172,10 +173,10 @@ function QuickCreate({ initiativeId, onCreated }: { initiativeId: string; onCrea
 
   return (
     <form className="ticket-quick-create" onSubmit={submit}>
-      <select aria-label={t('tickets.quickType')} value={type} onChange={(e) => setType(e.target.value as GenericTicketType)}>
-        {QUICK_CREATE_TICKET_TYPES.map((option) => (
+      <select aria-label={t('tickets.quickType')} value={type} onChange={(e) => setType(e.target.value)}>
+        {options.map((option) => (
           <option key={option} value={option}>
-            {t(`ticketType.${option}`)}
+            {typeLabel(option)}
           </option>
         ))}
       </select>
@@ -205,6 +206,8 @@ function TicketFilterBar({
   onGroupedChange: (grouped: boolean) => void;
 }) {
   const { t, locale } = useI18n();
+  const ticketTypes = useTicketTypes();
+  const { typeLabel, statusLabel } = useTicketLabels();
   const change = (next: Partial<TicketFilters>) => onChange(changeTicketFilters(filters, next));
   return (
     <div className="ticket-filters">
@@ -221,9 +224,10 @@ function TicketFilterBar({
         onChange={(e) => change({ type: e.target.value as TicketFilters['type'] })}
       >
         <option value="">{t('tickets.allTypes')}</option>
-        {TICKET_TYPES.map((type) => (
-          <option key={type} value={type}>
-            {t(`ticketType.${type}`)}
+        {/* Tous les types, désactivés compris : leurs tickets restent dans la liste. */}
+        {ticketTypes.map(({ code }) => (
+          <option key={code} value={code}>
+            {typeLabel(code)}
           </option>
         ))}
       </select>
@@ -245,9 +249,9 @@ function TicketFilterBar({
           onChange={(e) => change({ status: e.target.value as TicketFilters['status'] })}
         >
           <option value="">{t('tickets.allStatuses')}</option>
-          {TICKET_STATUSES[filters.type].map((status: TicketStatus) => (
-            <option key={status} value={status}>
-              {t(ticketStatusLabelKey(filters.type as TicketType, status))}
+          {(findTicketType(ticketTypes, filters.type)?.statuses ?? []).map(({ code }) => (
+            <option key={code} value={code}>
+              {statusLabel(filters.type, code)}
             </option>
           ))}
         </select>
@@ -321,9 +325,10 @@ function TicketAssignee({ ticket }: { ticket: TicketRow }) {
 
 function TicketDueDate({ ticket }: { ticket: TicketRow }) {
   const { t, locale } = useI18n();
+  const ticketTypes = useTicketTypes();
   if (!ticket.dueDate) return <small className="ticket-muted">{t('action.noDueDate')}</small>;
   const date = formatDate(locale, ticket.dueDate);
-  if (!isOverdueTicket(ticket, localDate(new Date().toISOString()))) return <small>{date}</small>;
+  if (!isOverdueTicket(ticketTypes, ticket, localDate(new Date().toISOString()))) return <small>{date}</small>;
   return (
     <small className="ticket-warning" title={t('tickets.overdue')}>
       <TriangleAlert role="img" aria-label={t('tickets.overdue')} />
@@ -412,6 +417,7 @@ function TicketTable({
   onSort: (sort: TicketSort) => void;
 }) {
   const { t } = useI18n();
+  const { typeLabel } = useTicketLabels();
   const openedId = useOpenedTicketId();
   const area = useRef<HTMLDivElement>(null);
   const columnCount = useVisibleColumnCount(area);
@@ -430,7 +436,7 @@ function TicketTable({
           <span className="code">{ticket.reference}</span>
         </td>
         <td className="col-type">
-          <span className="badge ticket-type">{t(`ticketType.${ticket.type}`)}</span>
+          <span className="badge ticket-type">{typeLabel(ticket.type)}</span>
         </td>
         <td className="col-title">
           <TicketTitle ticket={ticket} initiativeId={initiativeId} />
@@ -505,7 +511,7 @@ function TicketCompactList({
   initiativeId: string;
   canCreate: boolean;
 }) {
-  const { t } = useI18n();
+  const { typeLabel } = useTicketLabels();
   const openedId = useOpenedTicketId();
   const items = (list: TicketRow[]) =>
     list.map((ticket) => (
@@ -514,7 +520,7 @@ function TicketCompactList({
           <span className="code">{ticket.reference}</span> <TicketTitle ticket={ticket} initiativeId={initiativeId} />
         </div>
         <div className="ticket-compact-meta">
-          <span className="badge ticket-type">{t(`ticketType.${ticket.type}`)}</span>
+          <span className="badge ticket-type">{typeLabel(ticket.type)}</span>
           <TicketStatusLabel type={ticket.type} status={ticket.status} />
           <TicketAssignee ticket={ticket} />
           <TicketDueDate ticket={ticket} />

@@ -101,7 +101,8 @@ await check('une page créée depuis un modèle ne rend pas la tâche couverte e
   // Couverture du tableau de bord, calculée sur ce que l'API renvoie après la création des pages.
   const babok = (await call(alice, 'GET', '/babok')).body;
   const actions = (await call(alice, 'GET', `/initiatives/${mpInitiativeId}/actions`)).body;
-  const covered = initiativeDashboard(babok, actions).flatMap((area) => area.tasks.filter((t) => t.covered).map((t) => t.task.id));
+  const ticketTypes = (await call(alice, 'GET', '/ticket-types')).body;
+  const covered = initiativeDashboard(ticketTypes, babok, actions).flatMap((area) => area.tasks.filter((t) => t.covered).map((t) => t.task.id));
   assert.deepEqual(covered, []);
   assert.ok(suggestionsBefore.includes('R1'), 'R1 (tâche 3.1) proposée avant les pages');
   assert.deepEqual(await suggestionKeys(), suggestionsBefore);

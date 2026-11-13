@@ -5,6 +5,7 @@ import type {
   CreateInitiativeInput,
   InitiativeDto,
   MeDto,
+  TicketTypeDto,
   UpdateInitiativeInput,
   UpdateMeInput,
 } from '@app/shared';
@@ -38,6 +39,7 @@ export function createApi(getToken: () => string) {
       request<InitiativeDto>(`/initiatives/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
     deleteInitiative: (id: string) => request<void>(`/initiatives/${id}`, { method: 'DELETE' }),
     // Actions (ticket 17) : mode connecté seulement.
+    ticketTypes: () => request<TicketTypeDto[]>('/ticket-types'),
     listMyActions: () => request<ActionDto[]>('/actions/mine'),
     listActions: (id: string) => request<ActionDto[]>(`/initiatives/${id}/actions`),
     getAction: (id: string, actionId: string) => request<ActionDto>(`/initiatives/${id}/actions/${actionId}`),

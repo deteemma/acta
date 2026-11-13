@@ -16,15 +16,14 @@ import {
   memberName,
   newTicketTypes,
   RISK_LEVELS,
+  selectableTicketStatuses,
   type RiskLevel,
   sortByReference,
   type StakeholderDto,
-  TICKET_STATUSES,
   ticketHasField,
   ticketEpicOptions,
   type TicketDto,
   type TicketRow,
-  ticketStatusLabelKey,
   type TicketStatus,
   type TicketType,
   type TicketVersionDto,
@@ -35,6 +34,7 @@ import { TaskOptions, TechniqueOptions, TermLabel } from './action-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
+import { useTicketLabels, useTicketTypes } from './ticket-types';
 import { formatDate } from './initiative-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
@@ -68,6 +68,7 @@ export function TicketPanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const { typeLabel } = useTicketLabels();
   const closeSilently = useCloseSilently();
   const [ticket, setTicket] = useState<TicketDto | null>(null);
   const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
@@ -100,7 +101,7 @@ export function TicketPanel({
       kicker={
         ticket && (
           <>
-            {t(`ticketType.${ticket.type}`)} <span className="code">{ticket.reference}</span>
+            {typeLabel(ticket.type)} <span className="code">{ticket.reference}</span>
           </>
         )
       }
@@ -155,6 +156,7 @@ export function TicketPanel({
 /** Fiche d'un Epic : ses tickets et le nombre de fermés. */
 function EpicTickets({ epicId, initiativeId, rows }: { epicId: string; initiativeId: string; rows: TicketRow[] }) {
   const { t } = useI18n();
+  const ticketTypes = useTicketTypes();
   const { open } = usePanels();
   const own = sortByReference(rows.filter((row) => row.epic?.id === epicId));
   return (
@@ -167,7 +169,7 @@ function EpicTickets({ epicId, initiativeId, rows }: { epicId: string; initiativ
       ) : (
         <>
           <p>
-            <small>{t('ticket.epicClosed', epicProgress(rows, epicId))}</small>
+            <small>{t('ticket.epicClosed', epicProgress(ticketTypes, rows, epicId))}</small>
           </p>
           <ul className="links">
             {own.map((row) => (
@@ -353,6 +355,9 @@ function TicketForm({
   onSaved: (ticket: TicketDto) => void;
 }) {
   const { t } = useI18n();
+  // Liste relue à l'ouverture : un statut ajouté ou désactivé entre-temps est à jour.
+  const ticketTypes = useTicketTypes({ fresh: true });
+  const { statusLabel } = useTicketLabels();
   const [title, setTitle] = useState(ticket.title);
   const [status, setStatus] = useState<TicketStatus>(ticket.status);
   const [assigneeId, setAssigneeId] = useState(ticket.assignee?.userId ?? '');
@@ -407,9 +412,9 @@ function TicketForm({
       <label>
         {t('action.status')}
         <select value={status} onChange={(e) => setStatus(e.target.value as TicketStatus)}>
-          {TICKET_STATUSES[ticket.type].map((s: TicketStatus) => (
-            <option key={s} value={s}>
-              {t(ticketStatusLabelKey(ticket.type, s))}
+          {selectableTicketStatuses(ticketTypes, ticket.type, ticket.status).map((s) => (
+            <option key={s.code} value={s.code}>
+              {statusLabel(ticket.type, s.code)}
             </option>
           ))}
         </select>
@@ -511,8 +516,11 @@ export function CreateTicketPanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const ticketTypes = useTicketTypes({ fresh: true });
+  const { typeLabel } = useTicketLabels();
   const { replaceSaved } = usePanels();
-  const types = newTicketTypes(!!proposedEpicId);
+  // Types actifs seulement : un type désactivé n'est plus proposé à la création.
+  const types = newTicketTypes(ticketTypes, !!proposedEpicId).map((option) => option.code);
   const [type, setType] = useState<TicketType>(types[0]!);
   const [title, setTitle] = useState('');
   const [chosenAssignee, setChosenAssignee] = useState('');
@@ -605,7 +613,7 @@ export function CreateTicketPanel({
           <select data-autofocus value={type} onChange={(e) => setType(e.target.value as TicketType)}>
             {types.map((option) => (
               <option key={option} value={option}>
-                {t(`ticketType.${option}`)}
+                {typeLabel(option)}
               </option>
             ))}
           </select>

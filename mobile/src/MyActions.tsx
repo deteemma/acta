@@ -2,15 +2,16 @@
 // filtrage et tri par @app/shared (selectMyActions). Mode connecté seulement.
 // Présentation : refonte du design, ticket 06.
 import {
-  ACTION_STATUSES,
   type ActionDto,
   type ActionStatus,
-  actionStatusTone,
+  actionStatuses,
   type BabokDto,
-  DEFAULT_MY_ACTIONS_STATUSES,
+  defaultMyActionsStatuses,
   findBabokElement,
   type InitiativeDto,
   selectMyActions,
+  ticketStatusLabel,
+  ticketStatusTone,
   toggleActionStatus,
 } from '@app/shared';
 import { ListChecks } from 'lucide-react-native';
@@ -18,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { Api } from './api';
 import { describeError, useI18n } from './i18n';
+import { useTicketTypes } from './ticket-types';
 import { type AppTheme, useStyles } from './theme';
 import { babokLabel, Chip, EmptyState, formatDate, StatusBadge, Text, useUiStyles } from './ui';
 
@@ -39,7 +41,12 @@ export function MyActions({
   const ui = useUiStyles();
   const styles = useStyles(makeStyles);
   const [actions, setActions] = useState<ActionDto[]>([]);
-  const [statuses, setStatuses] = useState<readonly ActionStatus[]>(DEFAULT_MY_ACTIONS_STATUSES);
+  const ticketTypes = useTicketTypes(api);
+  // null : statuts par défaut (non fermés), y compris ceux qu'ajoute l'administration.
+  const [chosen, setChosen] = useState<readonly ActionStatus[] | null>(null);
+  const statuses = chosen ?? defaultMyActionsStatuses(ticketTypes);
+  const statusLabel = (status: ActionStatus) => ticketStatusLabel(ticketTypes, 'action', status, locale);
+  const statusTone = (status: ActionStatus) => ticketStatusTone(ticketTypes, 'action', status);
   const [initiativeId, setInitiativeId] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
 
@@ -47,7 +54,7 @@ export function MyActions({
     api.listMyActions().then(setActions, setError);
   }, [api, version]);
 
-  const shown = selectMyActions(actions, { statuses, initiativeId });
+  const shown = selectMyActions(ticketTypes, actions, { statuses, initiativeId });
 
   return (
     <FlatList
@@ -57,12 +64,12 @@ export function MyActions({
         <View style={styles.filters}>
           <Text style={ui.label}>{t('actions.filterStatuses')}</Text>
           <View style={ui.chips}>
-            {ACTION_STATUSES.map((s) => (
+            {actionStatuses(ticketTypes).map((s) => (
               <Chip
                 key={s}
-                label={t(`actionStatus.${s}`)}
+                label={statusLabel(s)}
                 selected={statuses.includes(s)}
-                onPress={() => setStatuses((current) => toggleActionStatus(current, s))}
+                onPress={() => setChosen(toggleActionStatus(ticketTypes, statuses, s))}
               />
             ))}
           </View>
@@ -95,7 +102,7 @@ export function MyActions({
             <View style={styles.meta}>
               <Text style={ui.code}>{item.initiative.code}</Text>
               <Text style={ui.code}>{item.dueDate ? formatDate(locale, item.dueDate) : t('action.noDueDate')}</Text>
-              <StatusBadge tone={actionStatusTone(item.status)} label={t(`actionStatus.${item.status}`)} />
+              <StatusBadge tone={statusTone(item.status)} label={statusLabel(item.status)} />
               {item.initiative.archived && <Text style={ui.muted}>{t('initiative.archived')}</Text>}
             </View>
             {task && <Text style={ui.muted}>{babokLabel(task, locale)}</Text>}

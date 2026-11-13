@@ -35,10 +35,11 @@ await check('admin consulte les acronymes ; bruno, chloé (non administrateurs) 
   assert.equal((await call(bruno, 'GET', categories)).status, 403);
   assert.equal((await call(chloe, 'PATCH', `${categories}/need`, { acronym: 'BS' })).status, 403);
 });
-await check('acronyme invalide (400), acronyme d’une autre catégorie (409 acronymTaken)', async () => {
+await check('acronyme invalide (400), catégorie inconnue (404), acronyme d’une autre catégorie (409 acronymTaken)', async () => {
   assert.equal((await call(admin, 'PATCH', `${categories}/need`, { acronym: 'B1' })).status, 400);
   assert.equal((await call(admin, 'PATCH', `${categories}/need`, { acronym: 'BESOIN' })).status, 400);
-  assert.equal((await call(admin, 'PATCH', `${categories}/nothing`, { acronym: 'NO' })).status, 400);
+  // Catégorie inconnue (ni livrée, ni type de ticket ajouté) : 404.
+  assert.equal((await call(admin, 'PATCH', `${categories}/nothing`, { acronym: 'NO' })).status, 404);
   const r = await call(admin, 'PATCH', `${categories}/requirement`, { acronym: needAcronym });
   assert.equal(r.status, 409);
   assert.equal(r.body.refusal, 'acronymTaken');

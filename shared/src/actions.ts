@@ -8,12 +8,23 @@ import { needIdsSchema, type NeedRefDto } from './needs.js';
 import { requirementIdsSchema, type RequirementRefDto } from './requirements.js';
 import type { InitiativeDto, MemberNameDto } from './schemas.js';
 import { stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
+import {
+  CLOSED_TICKET_STATUSES,
+  findTicketType,
+  isClosedTicketStatus,
+  TICKET_STATUSES,
+  type TicketTypeDto,
+} from './ticket-type-catalog.js';
 import type { TicketEpicRef } from './tickets.js';
 
-/** Statuts d'une action, dans l'ordre affiché ; tout statut peut passer à tout autre. */
-export const ACTION_STATUSES = ['todo', 'in_progress', 'on_hold', 'done', 'cancelled'] as const;
-export type ActionStatus = (typeof ACTION_STATUSES)[number];
-export const actionStatusSchema = z.enum(ACTION_STATUSES);
+/**
+ * Statuts livrés d'une action, dans l'ordre affiché, avant ceux qu'ajoute
+ * l'administration (ticket 29) ; tout statut peut passer à tout autre.
+ */
+export const ACTION_STATUSES = TICKET_STATUSES.action;
+/** Code d'un statut : livré, ou identifiant d'un statut ajouté (ticket-type-catalog.ts). */
+export type ActionStatus = string;
+export const actionStatusSchema = z.string().min(1);
 
 export const ACTION_TITLE_MAX_LENGTH = 200;
 export const actionTitleSchema = z.string().trim().min(1).max(ACTION_TITLE_MAX_LENGTH);
@@ -109,16 +120,20 @@ export interface ActionDto {
   updatedBy: MemberNameDto;
 }
 
-/** Statuts fermés : l'action est terminée. En attente n'en fait pas partie. */
-export const CLOSED_ACTION_STATUSES: readonly ActionStatus[] = ['done', 'cancelled'];
+/** Statuts livrés fermés : l'action est terminée. En attente n'en fait pas partie. */
+export const CLOSED_ACTION_STATUSES: readonly ActionStatus[] = CLOSED_TICKET_STATUSES.action;
 
-/** Action ouverte : son statut n'est pas fermé (ni Terminée ni Annulée). */
-export const isOpenAction = (action: Pick<ActionDto, 'status'>) => !CLOSED_ACTION_STATUSES.includes(action.status);
+/** Action ouverte : son statut n'est pas fermé (ni Terminée, ni Annulée, ni un statut fermé ajouté). */
+export const isOpenAction = (types: readonly TicketTypeDto[], action: Pick<ActionDto, 'status'>) =>
+  !isClosedTicketStatus(types, 'action', action.status);
+
+/** Tous les statuts de l'Action, dans l'ordre : livrés, puis ajoutés. */
+export const actionStatuses = (types: readonly TicketTypeDto[]): ActionStatus[] =>
+  findTicketType(types, 'action')?.statuses.map((s) => s.code) ?? [...ACTION_STATUSES];
 
 /** Statuts montrés par défaut dans « Mes actions » : ceux qui ne sont pas fermés. */
-export const DEFAULT_MY_ACTIONS_STATUSES: readonly ActionStatus[] = ACTION_STATUSES.filter((status) =>
-  isOpenAction({ status }),
-);
+export const defaultMyActionsStatuses = (types: readonly TicketTypeDto[]): ActionStatus[] =>
+  actionStatuses(types).filter((status) => isOpenAction(types, { status }));
 
 export interface MyActionsFilter {
   statuses?: readonly ActionStatus[];
@@ -127,18 +142,26 @@ export interface MyActionsFilter {
 }
 
 /** Filtre de « Mes actions » : coche ou décoche un statut, dans l'ordre des statuts. */
-export function toggleActionStatus(current: readonly ActionStatus[], status: ActionStatus): ActionStatus[] {
+export function toggleActionStatus(
+  types: readonly TicketTypeDto[],
+  current: readonly ActionStatus[],
+  status: ActionStatus,
+): ActionStatus[] {
   return current.includes(status)
     ? current.filter((s) => s !== status)
-    : ACTION_STATUSES.filter((s) => s === status || current.includes(s));
+    : actionStatuses(types).filter((s) => s === status || current.includes(s));
 }
 
 /**
  * Actions de l'écran « Mes actions », filtrées. Celles d'une initiative archivée
  * n'apparaissent que si l'on filtre sur cette initiative.
  */
-export function selectMyActions(actions: readonly ActionDto[], filter: MyActionsFilter = {}): ActionDto[] {
-  const statuses = filter.statuses ?? DEFAULT_MY_ACTIONS_STATUSES;
+export function selectMyActions(
+  types: readonly TicketTypeDto[],
+  actions: readonly ActionDto[],
+  filter: MyActionsFilter = {},
+): ActionDto[] {
+  const statuses = filter.statuses ?? defaultMyActionsStatuses(types);
   return sortByDueDate(
     actions.filter(
       (a) =>

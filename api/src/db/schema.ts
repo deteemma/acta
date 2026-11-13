@@ -18,6 +18,7 @@ import type {
   StakeholderRole,
   RiskLevel,
   TicketSnapshot,
+  StatusTone,
   TicketStatus,
   TicketType,
 } from '@app/shared';
@@ -250,6 +251,29 @@ export interface ReferenceAcronymTable {
 }
 
 /** Statut d'exigence (migration 0017) : écrit seulement par les fonctions admin_*. */
+export interface TicketTypeTable {
+  code: string;
+  delivered: boolean;
+  label_fr: string | null;
+  label_en: string | null;
+  active: boolean;
+  created_at: Date | null;
+  used: boolean;
+}
+
+export interface TicketStatusTable {
+  type: string;
+  code: string;
+  position: number;
+  delivered: boolean;
+  label_fr: string | null;
+  label_en: string | null;
+  tone: StatusTone;
+  closed: boolean;
+  active: boolean;
+  used: boolean;
+}
+
 export interface RequirementStatusTable {
   code: RequirementStatus;
   babok: boolean;
@@ -429,6 +453,8 @@ export interface Database {
   suggestion_dismissal: SuggestionDismissalTable;
   question_stakeholder: QuestionStakeholderTable;
   ticket: TicketTable;
+  ticket_status: TicketStatusTable;
+  ticket_type: TicketTypeTable;
   ticket_link: TicketLinkTable;
   ticket_need: TicketNeedTable;
   ticket_requirement: TicketRequirementTable;
