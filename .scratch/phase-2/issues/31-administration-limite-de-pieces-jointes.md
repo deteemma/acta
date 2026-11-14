@@ -4,7 +4,7 @@
 
 **Blocked by:** 21 — Pièces jointes des tickets
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 14.11.2026)
 
 Règles : décision [14](14-ecrans-d-administration.md) (points 1 et 4).
 
@@ -24,3 +24,5 @@ Règles : décision [14](14-ecrans-d-administration.md) (points 1 et 4).
 **Vérifié.** Test de `shared/src/attachments.test.ts` (bornes, entier) ; `scripts/roles/26-limite-de-pieces-jointes.mjs` (API et base : non-administrateurs refusés, 500 Mo par défaut, valeurs hors bornes refusées sans rien changer, bornes 10 et 1 024 acceptées et vues dans deux initiatives, 10 Mo par fichier inchangés, limite baissée sous l'occupation sans fichier supprimé puis remontée, écriture en base réservée à la fonction de l'administrateur ; limite remise à 500 Mo à la fin) et l'ensemble de `scripts/tester-roles.sh` passent. Écran non vérifié dans le navigateur par l'agent : l'extension Chrome n'était pas disponible.
 
 **Technique.** Migration `0031` : fonction `admin_set_attachment_quota` (administrateur seulement) ; la contrainte de la migration `0024` borne la valeur (seconde barrière), la RLS de `app_settings` est inchangée (aucune écriture directe). Règle `attachmentQuotaInputSchema` dans `shared/`. Routes `GET`/`PUT /admin/attachment-quota`, réservées à l'administrateur, qui ne renvoient que la limite, jamais l'occupation d'une initiative. Onglet web `admin-attachment-quota.tsx`, formulaire suivi par l'alerte de modification non enregistrée.
+
+- Ticket validé par la responsable fonctionnelle le 14.11.2026, avec les choix 1 à 3 tels que réalisés.
