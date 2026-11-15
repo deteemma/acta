@@ -127,6 +127,22 @@ export interface PageTable {
   task_id: ColumnType<string | null, never, never>;
 }
 
+/** Scénario Gherkin d'une exigence (migration 0032, phase 3) : référence, place, auteurs et état posés par la base. */
+export interface GherkinScenarioTable {
+  id: string;
+  initiative_id: string;
+  requirement_id: string;
+  reference: ColumnType<string, never, never>;
+  title: string;
+  text: string;
+  position: ColumnType<number, never, number>;
+  row_version: ColumnType<number, never, never>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  updated_by: ColumnType<string, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
 /** Modèle de page (migrations 0025 et 0030) : écrit seulement par les fonctions admin_* (ticket 30). */
 export interface PageTemplateTable {
   id: ColumnType<string, never, never>;
@@ -439,6 +455,7 @@ export interface Database {
   need_stakeholder: NeedStakeholderTable;
   owner_designation: OwnerDesignationTable;
   page: PageTable;
+  gherkin_scenario: GherkinScenarioTable;
   page_need: PageNeedTable;
   page_requirement: PageRequirementTable;
   page_ticket: PageTicketTable;

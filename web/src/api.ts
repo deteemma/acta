@@ -59,6 +59,10 @@ import type {
   RequirementDto,
   RequirementStatusDto,
   RequirementVersionDto,
+  CreateScenarioInput,
+  ReorderScenariosInput,
+  ScenarioDto,
+  UpdateScenarioInput,
   UpdateRequirementInput,
   UpdateRequirementStatusInput,
   ReferenceCategory,
@@ -339,6 +343,26 @@ export const api = {
     }),
   deleteRequirement: (id: string, requirementId: string) =>
     request<void>(`/initiatives/${id}/requirements/${requirementId}`, { method: 'DELETE' }),
+  // Scénarios Gherkin d'une exigence (phase 3, ticket 01).
+  listScenarios: (id: string, requirementId: string) =>
+    request<ScenarioDto[]>(`/initiatives/${id}/requirements/${requirementId}/scenarios`),
+  createScenario: (id: string, requirementId: string, input: CreateScenarioInput) =>
+    request<ScenarioDto>(`/initiatives/${id}/requirements/${requirementId}/scenarios`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  updateScenario: (id: string, requirementId: string, scenarioId: string, input: UpdateScenarioInput) =>
+    request<ScenarioDto>(`/initiatives/${id}/requirements/${requirementId}/scenarios/${scenarioId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  reorderScenarios: (id: string, requirementId: string, input: ReorderScenariosInput) =>
+    request<ScenarioDto[]>(`/initiatives/${id}/requirements/${requirementId}/scenarios/order`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
+  deleteScenario: (id: string, requirementId: string, scenarioId: string) =>
+    request<void>(`/initiatives/${id}/requirements/${requirementId}/scenarios/${scenarioId}`, { method: 'DELETE' }),
   requirementStatuses: () => request<RequirementStatusDto[]>('/requirement-statuses'),
   // Administration (rôle administrateur, tickets 05, 09 et 11).
   listRequirementStatuses: () => request<AdminRequirementStatusDto[]>('/admin/requirement-statuses'),

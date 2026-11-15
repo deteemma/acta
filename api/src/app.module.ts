@@ -42,6 +42,8 @@ import {
 import { RequirementStatusesService } from './requirement-statuses/requirement-statuses.service.js';
 import { RequirementsController } from './requirements/requirements.controller.js';
 import { RequirementsService } from './requirements/requirements.service.js';
+import { ScenariosController } from './scenarios/scenarios.controller.js';
+import { ScenariosService } from './scenarios/scenarios.service.js';
 import { StakeholdersController } from './stakeholders/stakeholders.controller.js';
 import { StakeholdersService } from './stakeholders/stakeholders.service.js';
 import { SuggestedActionsController } from './suggested-actions/suggested-actions.controller.js';
@@ -72,6 +74,7 @@ import { UsersService } from './users/users.service.js';
     RequirementStatusesController,
     TicketTypesController,
     RequirementsController,
+    ScenariosController,
     StakeholdersController,
     SuggestedActionsController,
   ],
@@ -99,6 +102,7 @@ import { UsersService } from './users/users.service.js';
     RequirementStatusesService,
     TicketTypesService,
     RequirementsService,
+    ScenariosService,
     SuggestedActionsService,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

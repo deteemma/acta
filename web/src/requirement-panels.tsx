@@ -2,6 +2,7 @@
 // panneau latéral, avec son historique. Règles dans @app/shared
 // (requirements.ts, requirement-statuses.ts, references.ts, roles.ts).
 import {
+  acceptsScenarios,
   memberName,
   can,
   createRequirementSchema,
@@ -26,6 +27,7 @@ import {
   type RequirementSubtype,
   type RequirementType,
   type RequirementVersionDto,
+  type ScenarioDto,
   selectableStatuses,
   type StakeholderDto,
   subtypeForType,
@@ -41,6 +43,7 @@ import { NeedLink } from './need-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { setRequirementStatuses, StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
+import { ScenariosSection } from './scenario-panels';
 import { StakeholderLink } from './stakeholder-panels';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
@@ -174,6 +177,8 @@ export function RequirementPanel({
   // Toutes les exigences de l'initiative : choix de la parente, exigences enfants.
   const [requirements, setRequirements] = useState<RequirementDto[] | null>(null);
   const [versions, setVersions] = useState<RequirementVersionDto[]>([]);
+  // Scénarios Gherkin (phase 3), seulement pour une exigence de solution fonctionnelle (D1, D18).
+  const [loadedScenarios, setScenarios] = useState<ScenarioDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
@@ -200,6 +205,13 @@ export function RequirementPanel({
     if (!requirementId) return;
     api.requirementHistory(initiativeId, requirementId).then(setVersions, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, requirementId, requirement?.updatedAt]);
+
+  const hasScenarios = requirement != null && acceptsScenarios(requirement);
+  const scenarios = hasScenarios ? loadedScenarios : [];
+  useEffect(() => {
+    if (!requirementId || !hasScenarios) return;
+    api.listScenarios(initiativeId, requirementId).then(setScenarios, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, requirementId, hasScenarios]);
 
   const children = (requirements ?? []).filter((r) => r.parent?.id === requirementId);
   const ready = initiative && stakeholders && needs && requirements && (!requirementId || requirement);
@@ -239,6 +251,7 @@ export function RequirementPanel({
               stakeholders={stakeholders}
               needs={needs}
               requirements={requirements}
+              typeLocked={scenarios.length > 0}
               onSaved={(next) => {
                 setRequirement(next);
                 onChanged();
@@ -247,6 +260,15 @@ export function RequirementPanel({
             />
           ) : (
             requirement && <RequirementDetails requirement={requirement} />
+          )}
+          {requirement && hasScenarios && (
+            <ScenariosSection
+              initiativeId={initiativeId}
+              requirementId={requirement.id}
+              scenarios={scenarios}
+              canEdit={can(initiative.myRole, 'editScenarios', { archived: initiative.archivedAt != null })}
+              onChange={setScenarios}
+            />
           )}
           {requirement && (
             <>
@@ -268,6 +290,7 @@ export function RequirementPanel({
               {canEditRequirements(initiative) && (
                 <DeleteRequirement
                   requirement={requirement}
+                  scenarioCount={scenarios.length}
                   onDeleted={() => {
                     onChanged();
                     closeSilently();
@@ -348,11 +371,14 @@ function RequirementForm({
   stakeholders,
   needs,
   requirements,
+  typeLocked,
   onSaved,
 }: {
   initiativeId: string;
   /** Absent à la création. */
   requirement?: RequirementDto;
+  /** L'exigence a des scénarios : type et sous-type ne changent pas (phase 3, D2). */
+  typeLocked: boolean;
   /** Parties prenantes de l'initiative, que l'on peut désigner comme sources. */
   stakeholders: StakeholderDto[];
   /** Besoins de l'initiative, par référence. */
@@ -450,7 +476,7 @@ function RequirementForm({
       <div className="field-row">
       <label>
         {t('requirement.type')}
-        <select value={type} onChange={(e) => setType(e.target.value as RequirementType)}>
+        <select value={type} disabled={typeLocked} onChange={(e) => setType(e.target.value as RequirementType)}>
           {REQUIREMENT_TYPES.map((v) => (
             <option key={v} value={v}>
               {t(`requirementType.${v}`)}
@@ -461,7 +487,7 @@ function RequirementForm({
       {type === 'solution' && (
         <label>
           {t('requirement.subtype')}
-          <select value={subtype} onChange={(e) => setSubtype(e.target.value as RequirementSubtype)}>
+          <select value={subtype} disabled={typeLocked} onChange={(e) => setSubtype(e.target.value as RequirementSubtype)}>
             {REQUIREMENT_SUBTYPES.map((v) => (
               <option key={v} value={v}>
                 {t(`requirementSubtype.${v}`)}
@@ -485,6 +511,7 @@ function RequirementForm({
         </label>
       )}
       </div>
+      {typeLocked && <small>{t('requirement.typeLockedHint')}</small>}
       <fieldset>
         <legend>{t('requirement.needs')}</legend>
         <small>{t('requirement.originHint')}</small>
@@ -651,8 +678,19 @@ function ChangeLine({ change }: { change: RequirementChange }) {
   );
 }
 
-/** Suppression après confirmation ; refusée si l'exigence est liée à une action ou a des enfants. */
-function DeleteRequirement({ requirement, onDeleted }: { requirement: RequirementDto; onDeleted: () => void }) {
+/**
+ * Suppression après confirmation ; refusée si l'exigence est liée à une action ou a
+ * des enfants. Ses scénarios partent avec elle : la confirmation en donne le nombre (D3).
+ */
+function DeleteRequirement({
+  requirement,
+  scenarioCount,
+  onDeleted,
+}: {
+  requirement: RequirementDto;
+  scenarioCount: number;
+  onDeleted: () => void;
+}) {
   const { t } = useI18n();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
@@ -672,7 +710,13 @@ function DeleteRequirement({ requirement, onDeleted }: { requirement: Requiremen
       {confirming ? (
         <div role="alertdialog" aria-labelledby="requirement-delete-confirm" className="confirm">
           <p id="requirement-delete-confirm">
-            {t('requirement.deleteConfirm', { reference: requirement.reference, title: requirement.title })}
+            {scenarioCount > 0
+              ? t('requirement.deleteConfirmScenarios', {
+                  reference: requirement.reference,
+                  title: requirement.title,
+                  count: scenarioCount,
+                })
+              : t('requirement.deleteConfirm', { reference: requirement.reference, title: requirement.title })}
           </p>
           <button type="button" autoFocus onClick={() => setConfirming(false)}>
             {t('common.cancel')}

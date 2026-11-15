@@ -11,6 +11,7 @@ import {
   isReferenceRefusal,
   isRequirementRefusal,
   isRequirementStatusRefusal,
+  isScenarioRefusal,
   isStakeholderRefusal,
   isTeamRefusal,
   isTicketRefusal,
@@ -37,6 +38,7 @@ export function toUiError(error: unknown): UiError {
     if (isPageRevisionRefusal(error.refusal)) return { key: `pageRevision.refusal.${error.refusal}` };
     if (isReferenceRefusal(error.refusal)) return { key: `reference.refusal.${error.refusal}` };
     if (isRequirementRefusal(error.refusal)) return { key: `requirement.refusal.${error.refusal}` };
+    if (isScenarioRefusal(error.refusal)) return { key: `scenario.refusal.${error.refusal}` };
     if (isRequirementStatusRefusal(error.refusal)) return { key: `requirementStatus.refusal.${error.refusal}` };
     return error.status === 409 ? { key: 'initiatives.codeTaken' } : { key: 'error.http', params: { status: error.status } };
   }

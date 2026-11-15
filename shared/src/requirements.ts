@@ -63,6 +63,19 @@ export function checkRequirementShape(shape: RequirementShape): RequirementRefus
 }
 
 /**
+ * D2 (phase 3) : le type et le sous-type d'une exigence ne changent pas tant
+ * qu'elle a au moins un scénario Gherkin ; null si le changement est permis.
+ */
+export function checkRequirementTypeChange(
+  current: { type: RequirementType; subtype: RequirementSubtype | null },
+  next: { type: RequirementType; subtype: RequirementSubtype | null },
+  scenarioCount: number,
+): RequirementRefusal | null {
+  const changes = current.type !== next.type || current.subtype !== next.subtype;
+  return changes && scenarioCount > 0 ? 'typeLockedByScenarios' : null;
+}
+
+/**
  * Vrai si donner `parentId` pour parente à l'exigence `id` créerait une boucle :
  * la parente serait l'exigence elle-même ou l'une de ses descendantes.
  */
@@ -221,7 +234,8 @@ export function requirementHistory(versions: readonly RequirementVersionDto[]): 
  * - `originRequired` : ni besoin lié ni exigence parente ;
  * - `parentCycle` : l'exigence parente descend de l'exigence elle-même ;
  * - `unknownRequirement` : un objet est lié à une exigence absente de l'initiative ;
- * - `requirementLinked` : l'exigence est liée à une action ou a des exigences enfants.
+ * - `requirementLinked` : l'exigence est liée à une action ou a des exigences enfants ;
+ * - `typeLockedByScenarios` : le type ou le sous-type change alors que l'exigence a des scénarios (D2).
  */
 export const REQUIREMENT_REFUSALS = [
   'subtypeMismatch',
@@ -229,6 +243,7 @@ export const REQUIREMENT_REFUSALS = [
   'parentCycle',
   'unknownRequirement',
   'requirementLinked',
+  'typeLockedByScenarios',
 ] as const;
 export type RequirementRefusal = (typeof REQUIREMENT_REFUSALS)[number];
 export const isRequirementRefusal = (value: unknown): value is RequirementRefusal =>

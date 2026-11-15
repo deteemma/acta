@@ -119,3 +119,12 @@ test('pages : propriétaire et contributeur écrivent ; lecteur et initiative ar
   assert.equal(can('owner', 'editPages', { archived: true }), false);
   assert.equal(can('reader', 'view', { archived: true }), true);
 });
+
+test('propriétaires et contributeurs écrivent les scénarios, tout membre les lit ; archivée : lecture seule (phase 3, D17)', () => {
+  assert.equal(can('owner', 'editScenarios'), true);
+  assert.equal(can('contributor', 'editScenarios'), true);
+  assert.equal(can('reader', 'editScenarios'), false);
+  assert.equal(can(null, 'editScenarios'), false);
+  assert.equal(can('owner', 'editScenarios', { archived: true }), false);
+  assert.equal(can('reader', 'view', { archived: true }), true);
+});

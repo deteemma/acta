@@ -14,6 +14,7 @@ export * from './page-revisions.js';
 export * from './page-images.js';
 export * from './references.js';
 export * from './requirement-statuses.js';
+export * from './scenarios.js';
 export * from './requirements-export.js';
 export * from './requirements.js';
 export * from './rich-text.js';

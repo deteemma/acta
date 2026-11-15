@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRequirementSchema, createsParentCycle, requirementHistory, subtypeForType } from './requirements.js';
+import { checkRequirementTypeChange, createRequirementSchema, createsParentCycle, requirementHistory, subtypeForType } from './requirements.js';
 
 const needId = '4d3c2b1a-0000-4000-8000-000000000001';
 const valid = {
@@ -126,4 +126,13 @@ test('historique : un lien n’est modifié que si l’ensemble change, pas son 
 test("le sous-type n'est retenu que pour une exigence de solution", () => {
   assert.equal(subtypeForType('solution', 'functional'), 'functional');
   assert.equal(subtypeForType('business', 'functional'), null);
+});
+
+test('le type et le sous-type d’une exigence ne changent pas tant qu’elle a un scénario', () => {
+  const functional = { type: 'solution', subtype: 'functional' } as const;
+  assert.equal(checkRequirementTypeChange(functional, { type: 'solution', subtype: 'non_functional' }, 1), 'typeLockedByScenarios');
+  assert.equal(checkRequirementTypeChange(functional, { type: 'business', subtype: null }, 2), 'typeLockedByScenarios');
+  // Même type : rien ne change ; sans scénario, le type change librement.
+  assert.equal(checkRequirementTypeChange(functional, functional, 3), null);
+  assert.equal(checkRequirementTypeChange(functional, { type: 'business', subtype: null }, 0), null);
 });

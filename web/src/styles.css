@@ -2686,3 +2686,42 @@ details.ticket-type h5 {
   margin: 0;
   padding-inline-start: var(--space-6);
 }
+
+/* Scénarios Gherkin (phase 3, ticket 01) : texte en chasse fixe, retraits conservés. */
+.scenario-list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+.scenario {
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) 0;
+}
+.scenario-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.scenario-title {
+  margin: 0;
+  font-size: var(--text-section-title);
+  font-weight: 600;
+}
+.scenario-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.gherkin-text,
+.gherkin-input {
+  font-family: var(--font-mono);
+  font-size: var(--text-code);
+  tab-size: 2;
+}
+.gherkin-text {
+  margin: var(--space-2) 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
