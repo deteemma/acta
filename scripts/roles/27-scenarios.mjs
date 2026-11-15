@@ -131,6 +131,7 @@ await check('initiative archivée : tout membre lit, personne n’écrit (403)',
     assert.equal((await call(alice, 'POST', scenarios(), { title: 'Non', text: '' })).status, 403);
     assert.equal((await call(bruno, 'PATCH', scenario(ids.a), { baseRowVersion: 0, title: 'Non' })).status, 403);
     assert.equal((await call(alice, 'DELETE', scenario(ids.a))).status, 403);
+    assert.equal((await call(alice, 'PUT', `${scenarios()}/order`, { scenarioIds: (await list()).map((s) => s.id) })).status, 403);
   } finally {
     assert.equal((await call(alice, 'DELETE', `${base()}/archive`)).status, 200);
   }
@@ -197,6 +198,7 @@ await check('initiative archivée : la base refuse toute écriture, même au pro
     await assert.rejects(insert(alice.sub), /row-level security/);
     assert.equal((await asUserInDb(alice.sub, `UPDATE gherkin_scenario SET title = 'Non' WHERE id = $1`, [ids.a])).rowCount, 0);
     assert.equal((await asUserInDb(alice.sub, 'DELETE FROM gherkin_scenario WHERE id = $1', [ids.a])).rowCount, 0);
+    assert.equal((await asUserInDb(alice.sub, 'UPDATE gherkin_scenario SET position = 9 WHERE id = $1', [ids.a])).rowCount, 0);
   } finally {
     assert.equal((await call(alice, 'DELETE', `${base()}/archive`)).status, 200);
   }

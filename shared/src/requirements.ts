@@ -62,17 +62,17 @@ export function checkRequirementShape(shape: RequirementShape): RequirementRefus
   return null;
 }
 
-/**
- * D2 (phase 3) : le type et le sous-type d'une exigence ne changent pas tant
- * qu'elle a au moins un scénario Gherkin ; null si le changement est permis.
- */
+/** D2 (phase 3) : le type et le sous-type d'une exigence sont figés tant qu'elle a au moins un scénario Gherkin. */
+export const isRequirementTypeLocked = (scenarioCount: number) => scenarioCount > 0;
+
+/** Refus d'un changement de type ou de sous-type figé (isRequirementTypeLocked) ; null s'il est permis. */
 export function checkRequirementTypeChange(
   current: { type: RequirementType; subtype: RequirementSubtype | null },
   next: { type: RequirementType; subtype: RequirementSubtype | null },
   scenarioCount: number,
 ): RequirementRefusal | null {
   const changes = current.type !== next.type || current.subtype !== next.subtype;
-  return changes && scenarioCount > 0 ? 'typeLockedByScenarios' : null;
+  return changes && isRequirementTypeLocked(scenarioCount) ? 'typeLockedByScenarios' : null;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkRequirementTypeChange, createRequirementSchema, createsParentCycle, requirementHistory, subtypeForType } from './requirements.js';
+import { checkRequirementTypeChange, isRequirementTypeLocked, createRequirementSchema, createsParentCycle, requirementHistory, subtypeForType } from './requirements.js';
 
 const needId = '4d3c2b1a-0000-4000-8000-000000000001';
 const valid = {
@@ -135,4 +135,9 @@ test('le type et le sous-type d’une exigence ne changent pas tant qu’elle a 
   // Même type : rien ne change ; sans scénario, le type change librement.
   assert.equal(checkRequirementTypeChange(functional, functional, 3), null);
   assert.equal(checkRequirementTypeChange(functional, { type: 'business', subtype: null }, 0), null);
+});
+
+test('le type est figé dès le premier scénario', () => {
+  assert.equal(isRequirementTypeLocked(0), false);
+  assert.equal(isRequirementTypeLocked(1), true);
 });

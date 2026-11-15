@@ -8,6 +8,7 @@ import {
   createRequirementSchema,
   createsParentCycle,
   englishTermTooltip,
+  isRequirementTypeLocked,
   type InitiativeDto,
   INITIAL_REQUIREMENT_STATUS,
   localDate,
@@ -251,7 +252,7 @@ export function RequirementPanel({
               stakeholders={stakeholders}
               needs={needs}
               requirements={requirements}
-              typeLocked={scenarios.length > 0}
+              typeLocked={isRequirementTypeLocked(scenarios.length)}
               onSaved={(next) => {
                 setRequirement(next);
                 onChanged();
