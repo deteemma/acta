@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { actionStatusTone, requirementStatusTone } from './status-tones.js';
+import { requirementStatusTone } from './status-tones.js';
+import { deliveredTicketTypes } from './ticket-type-catalog.js';
+const types = deliveredTicketTypes();
+import { ticketStatusTone } from './ticket-type-catalog.js';
+const actionStatusTone = (status: string) => ticketStatusTone(types, 'action', status);
 
 test("famille de statut d'une action", () => {
   assert.equal(actionStatusTone('todo'), 'neutral');

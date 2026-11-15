@@ -3,6 +3,7 @@
 // par la responsable fonctionnelle le 31.10.2026.
 import { type ActionDto, isOpenAction } from './actions.js';
 import type { MeDto } from './schemas.js';
+import type { TicketTypeDto } from './ticket-type-catalog.js';
 import { isOverdueTicket } from './tickets.js';
 
 export type AlertKind = 'assigned' | 'overdue';
@@ -35,7 +36,7 @@ function appearedSince(kind: AlertKind, action: ActionDto, since: string): boole
 }
 
 /**
- * Mes alertes, parmi mes actions ni Terminées ni Annulées, hors initiative
+ * Mes alertes, parmi mes actions ouvertes (statut non fermé), hors initiative
  * archivée ; échéances dépassées d'abord (la plus ancienne en tête), puis
  * attributions (la plus récente en tête) :
  * - `overdue` : échéance antérieure à aujourd'hui (AAAA-MM-JJ) ;
@@ -43,13 +44,14 @@ function appearedSince(kind: AlertKind, action: ActionDto, since: string): boole
  * Nouvelle : absente de la liste à la dernière ouverture du panneau.
  */
 export function myAlerts(
+  types: readonly TicketTypeDto[],
   actions: readonly ActionDto[],
   me: Pick<MeDto, 'id' | 'alertsSeenAt' | 'alertsSeenKeys'>,
   today: string,
 ): Alert[] {
-  const mine = actions.filter((a) => a.assignee.userId === me.id && isOpenAction(a) && !a.initiative.archived);
+  const mine = actions.filter((a) => a.assignee.userId === me.id && isOpenAction(types, a) && !a.initiative.archived);
   const overdue = mine
-    .filter((a) => isOverdueTicket({ ...a, type: 'action' }, today))
+    .filter((a) => isOverdueTicket(types, { ...a, type: 'action' }, today))
     .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!))
     .map((action) => ({ kind: 'overdue' as const, action }));
   const assigned = mine

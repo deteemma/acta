@@ -1,6 +1,7 @@
-// Commentaires (ticket 20, décision 05) : fil simple sur la fiche d'un ticket, de
-// tout type, du plus ancien au plus récent. Règles dans @app/shared (comments.ts,
-// roles.ts). Le fil ne touche pas l'historique du ticket.
+// Commentaires (tickets 20 et 25, décision 05) : fil simple sur la fiche d'un
+// ticket, de tout type, ou en bas d'une page, du plus ancien au plus récent. Règles
+// dans @app/shared (comments.ts, roles.ts). Le fil ne touche pas l'historique de
+// l'objet commenté, ni les enregistrements d'une page.
 import {
   canDeleteComment,
   canEditComment,
@@ -11,6 +12,7 @@ import {
   COMMENT_MAX_LENGTH,
   type InitiativeRole,
   memberName,
+  type MessageKey,
   sortThread,
 } from '@app/shared';
 import { useEffect, useState } from 'react';
@@ -24,17 +26,62 @@ import { useUnsavedForm } from './unsaved-changes';
 const toError = (e: unknown): UiError =>
   e instanceof ApiError && e.status === 400 && !e.refusal ? { key: 'comment.invalid' } : toUiError(e);
 
-/** Section « Commentaires » de la fiche d'un ticket : tout membre lit ; propriétaires et contributeurs écrivent. */
-export function TicketComments({
-  initiativeId,
-  ticketId,
-  initiative,
-  myId,
-}: {
+/** Section « Commentaires » de la fiche d'un ticket. */
+export function TicketComments(props: {
   initiativeId: string;
   ticketId: string;
   initiative: { myRole: InitiativeRole | null; archived: boolean };
   myId: string | null;
+}) {
+  const { initiativeId, ticketId } = props;
+  return (
+    <Comments
+      {...props}
+      subjectId={ticketId}
+      hint="comment.hint"
+      load={() => api.listTicketComments(initiativeId, ticketId)}
+      create={(body) => api.createTicketComment(initiativeId, ticketId, { body })}
+    />
+  );
+}
+
+/** Section « Commentaires » en bas d'une page : sur la page entière, quel que soit l'enregistrement affiché. */
+export function PageComments(props: {
+  initiativeId: string;
+  pageId: string;
+  initiative: { myRole: InitiativeRole | null; archived: boolean };
+  myId: string | null;
+}) {
+  const { initiativeId, pageId } = props;
+  return (
+    <Comments
+      {...props}
+      subjectId={pageId}
+      hint="comment.pageHint"
+      load={() => api.listPageComments(initiativeId, pageId)}
+      create={(body) => api.createPageComment(initiativeId, pageId, { body })}
+    />
+  );
+}
+
+/** Fil d'un objet commenté : tout membre lit ; propriétaires et contributeurs écrivent. */
+function Comments({
+  initiativeId,
+  initiative,
+  myId,
+  subjectId,
+  hint,
+  load,
+  create,
+}: {
+  initiativeId: string;
+  initiative: { myRole: InitiativeRole | null; archived: boolean };
+  myId: string | null;
+  /** Ticket ou page commenté : le fil se relit quand il change. */
+  subjectId: string;
+  hint: MessageKey;
+  load: () => Promise<CommentDto[]>;
+  create: (body: string) => Promise<CommentDto[]>;
 }) {
   const { t } = useI18n();
   const [comments, setComments] = useState<CommentDto[] | null>(null);
@@ -42,8 +89,9 @@ export function TicketComments({
   const actor: CommentActor | null = myId ? { userId: myId, role: initiative.myRole, archived: initiative.archived } : null;
 
   useEffect(() => {
-    api.listTicketComments(initiativeId, ticketId).then(setComments, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, ticketId]);
+    load().then(setComments, (e: unknown) => setError(toUiError(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `load` change à chaque rendu ; le fil se relit quand l'objet commenté change
+  }, [initiativeId, subjectId]);
 
   // Les lignes de trace des commentaires supprimés ne comptent pas.
   const count = comments?.filter((c) => c.body !== null).length ?? 0;
@@ -69,8 +117,9 @@ export function TicketComments({
       )}
       {actor && canWriteComment(actor) && comments && (
         <NewComment
+          hint={hint}
           onCreate={async (body) => {
-            setComments(await api.createTicketComment(initiativeId, ticketId, { body }));
+            setComments(await create(body));
           }}
         />
       )}
@@ -169,7 +218,7 @@ function CommentItem({
 }
 
 /** Ajout : le formulaire se vide une fois le commentaire enregistré. */
-function NewComment({ onCreate }: { onCreate: (body: string) => Promise<void> }) {
+function NewComment({ hint, onCreate }: { hint: MessageKey; onCreate: (body: string) => Promise<void> }) {
   const { t } = useI18n();
   const [body, setBody] = useState('');
   const [error, setError] = useState<UiError | null>(null);
@@ -199,7 +248,7 @@ function NewComment({ onCreate }: { onCreate: (body: string) => Promise<void> })
       <button type="submit">{t('comment.add')}</button>
       <ErrorMessage error={error} />
       <p>
-        <small>{t('comment.hint')}</small>
+        <small>{t(hint)}</small>
       </p>
     </form>
   );

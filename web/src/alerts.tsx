@@ -9,6 +9,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { Panel, usePanels } from './panels';
+import { useTicketTypes } from './ticket-types';
 
 const ALERT_GROUPS: { kind: Alert['kind']; title: MessageKey; Icon: LucideIcon }[] = [
   { kind: 'overdue', title: 'alerts.groupOverdue', Icon: Clock },
@@ -21,6 +22,7 @@ const REFRESH_MS = 60_000;
 /** Mes alertes, relues après chaque écriture sur une action et chaque minute. */
 export function useMyAlerts(me: MeDto | null, actionsVersion: number): Alert[] {
   const [actions, setActions] = useState<ActionDto[]>([]);
+  const ticketTypes = useTicketTypes();
   const [today, setToday] = useState(() => localDate(new Date().toISOString()));
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export function useMyAlerts(me: MeDto | null, actionsVersion: number): Alert[] {
     return () => clearInterval(timer);
   }, [actionsVersion]);
 
-  return me ? myAlerts(actions, me, today) : [];
+  return me ? myAlerts(ticketTypes, actions, me, today) : [];
 }
 
 /** Bouton d'en-tête : le badge compte les nouvelles alertes. */

@@ -6,13 +6,21 @@ import type { RequirementStatus } from './requirement-statuses.js';
 import type { RequirementSubtype, RequirementType } from './requirements.js';
 import { matchesEveryWord } from './search.js';
 
-/** Catégories d'objets qui portent une référence ; chacune a son acronyme. */
+/**
+ * Catégories livrées d'objets qui portent une référence, chacune avec son
+ * acronyme ; chaque type de ticket ajouté par l'administration en est une de
+ * plus, qui porte son code (ticket 29).
+ */
 export const REFERENCE_CATEGORIES = ['need', 'requirement', 'action', 'question', 'decision', 'risk', 'change_request', 'epic', 'page'] as const;
-export type ReferenceCategory = (typeof REFERENCE_CATEGORIES)[number];
-export const referenceCategorySchema = z.enum(REFERENCE_CATEGORIES);
+export type DeliveredReferenceCategory = (typeof REFERENCE_CATEGORIES)[number];
+/** Catégorie livrée, ou code d'un type de ticket ajouté. */
+export type ReferenceCategory = string;
+export const isReferenceCategory = (category: string): category is DeliveredReferenceCategory =>
+  REFERENCE_CATEGORIES.some((c) => c === category);
+export const referenceCategorySchema = z.string().min(1);
 
 /** Acronymes d'origine, paramétrables ensuite par l'administration. */
-export const DEFAULT_ACRONYMS: Record<ReferenceCategory, string> = {
+export const DEFAULT_ACRONYMS: Record<DeliveredReferenceCategory, string> = {
   need: 'BE',
   requirement: 'EX',
   action: 'AC',
@@ -25,6 +33,7 @@ export const DEFAULT_ACRONYMS: Record<ReferenceCategory, string> = {
 };
 
 /** Acronyme : 2 à 4 lettres majuscules. */
+export const ACRONYM_MAX_LENGTH = 4;
 export const ACRONYM_PATTERN = /^[A-Z]{2,4}$/;
 
 export const updateReferenceCategorySchema = z.object({ acronym: z.string().trim().regex(ACRONYM_PATTERN) });

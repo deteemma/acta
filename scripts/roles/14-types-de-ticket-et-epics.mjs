@@ -251,7 +251,7 @@ await check('lectrice et non-membre n’écrivent pas ; non-membre ne lit rien',
 });
 await check('le type ne change pas ; un statut d’un autre type est refusé', async () => {
   await assert.rejects(asUserInDb(bruno.sub, `UPDATE ticket SET type = 'question' WHERE id = $1`, [riskId]), /ne change pas de type/);
-  await assert.rejects(asUserInDb(bruno.sub, `UPDATE ticket SET status = 'open' WHERE id = $1`, [riskId]), /ticket_status_check/);
+  await assert.rejects(asUserInDb(bruno.sub, `UPDATE ticket SET status = 'open' WHERE id = $1`, [riskId]), /ticket_status_fkey/);
 });
 await check('une Action exige sa tâche et son responsable ; les autres types n’ont pas de tâche', async () => {
   await assert.rejects(insertTicket(bruno.sub, 'action'), /ticket_action_fields/);

@@ -12,6 +12,7 @@ import {
 import { type KeyboardEvent, useEffect, useState } from 'react';
 import { api } from './api';
 import { BabokName } from './babok-panels';
+import { useTicketLabels } from './ticket-types';
 import { useI18n } from './i18n';
 import { Panel, usePanels } from './panels';
 import { useOpenReference } from './references';
@@ -52,6 +53,7 @@ export function Palette({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const { categoryLabel } = useTicketLabels();
   const { replace } = usePanels();
   const { showInitiative } = useScreens();
   const openReference = useOpenReference();
@@ -129,7 +131,7 @@ export function Palette({
             ) : result.kind === 'reference' ? (
               <>
                 <strong>{result.item.reference}</strong> {result.item.title}{' '}
-                <small>· {t(`referenceCategory.${result.item.category}`)}</small>
+                <small>· {categoryLabel(result.item.category)}</small>
                 {result.item.initiativeArchived && <small> · {t('initiative.archived')}</small>}
               </>
             ) : (

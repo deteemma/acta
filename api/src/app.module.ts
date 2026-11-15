@@ -2,12 +2,16 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ActionsController } from './actions/actions.controller.js';
 import { ActionsService } from './actions/actions.service.js';
+import { AdminAttachmentQuotaController } from './attachments/admin-attachment-quota.controller.js';
+import { AdminAttachmentQuotaService } from './attachments/admin-attachment-quota.service.js';
 import { AttachmentsController } from './attachments/attachments.controller.js';
 import { AttachmentsService } from './attachments/attachments.service.js';
 import { CommentsController } from './comments/comments.controller.js';
 import { CommentsService } from './comments/comments.service.js';
 import { LinksController } from './links/links.controller.js';
 import { LinksService } from './links/links.service.js';
+import { AdminTicketTypesController, TicketTypesController } from './ticket-types/ticket-types.controller.js';
+import { TicketTypesService } from './ticket-types/ticket-types.service.js';
 import { TicketsController } from './tickets/tickets.controller.js';
 import { TicketsService } from './tickets/tickets.service.js';
 import { AdminController } from './admin/admin.controller.js';
@@ -27,6 +31,8 @@ import { InitiativeRoleGuard } from './initiatives/initiative-role.guard.js';
 import { InitiativesService } from './initiatives/initiatives.service.js';
 import { NeedsController } from './needs/needs.controller.js';
 import { NeedsService } from './needs/needs.service.js';
+import { AdminPageTemplatesService } from './pages/admin-page-templates.service.js';
+import { AdminPageTemplatesController, PageTemplatesController } from './pages/page-templates.controller.js';
 import { PagesController } from './pages/pages.controller.js';
 import { PagesService } from './pages/pages.service.js';
 import {
@@ -49,17 +55,22 @@ import { UsersService } from './users/users.service.js';
     LinksController,
     CommentsController,
     AttachmentsController,
+    AdminAttachmentQuotaController,
     TicketsController,
     AdminController,
     AdminRequirementStatusesController,
+    AdminTicketTypesController,
     BabokController,
     HealthController,
     InitiativesController,
     MeController,
     NeedsController,
     PagesController,
+    PageTemplatesController,
+    AdminPageTemplatesController,
     ReferenceCategoriesController,
     RequirementStatusesController,
+    TicketTypesController,
     RequirementsController,
     StakeholdersController,
     SuggestedActionsController,
@@ -78,12 +89,15 @@ import { UsersService } from './users/users.service.js';
     LinksService,
     CommentsService,
     AttachmentsService,
+    AdminAttachmentQuotaService,
     TicketsService,
     StakeholdersService,
     NeedsService,
     PagesService,
+    AdminPageTemplatesService,
     ReferenceCategoriesService,
     RequirementStatusesService,
+    TicketTypesService,
     RequirementsService,
     SuggestedActionsService,
     { provide: APP_GUARD, useClass: AuthGuard },

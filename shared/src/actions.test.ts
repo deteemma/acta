@@ -13,6 +13,9 @@ import {
   updateActionSchema,
 } from './actions.js';
 import type { BabokDto } from './babok.js';
+import { checkTicketFields } from './tickets.js';
+import { deliveredTicketTypes } from './ticket-type-catalog.js';
+const types = deliveredTicketTypes();
 
 const person = (userId: string) => ({ userId, email: `${userId}@exemple.test`, displayName: userId });
 
@@ -52,15 +55,15 @@ test('« Mes actions » par défaut : les statuts non fermés (À faire, En cour
     action({ id: 'd', status: 'cancelled' }),
     action({ id: 'e', status: 'on_hold' }),
   ];
-  assert.deepEqual(ids(selectMyActions(actions)), ['a', 'b', 'e']);
+  assert.deepEqual(ids(selectMyActions(types, actions)), ['a', 'b', 'e']);
 });
 
 const archivedInitiative = { id: 'old', code: 'OLD', name: 'Ancienne', archived: true, myRole: 'contributor' as const };
 
 test('« Mes actions » : initiative archivée masquée, sauf filtre sur cette initiative', () => {
   const actions = [action({ id: 'a' }), action({ id: 'b', initiative: archivedInitiative })];
-  assert.deepEqual(ids(selectMyActions(actions)), ['a']);
-  assert.deepEqual(ids(selectMyActions(actions, { initiativeId: 'old' })), ['b']);
+  assert.deepEqual(ids(selectMyActions(types, actions)), ['a']);
+  assert.deepEqual(ids(selectMyActions(types, actions, { initiativeId: 'old' })), ['b']);
 });
 
 test('« Mes actions » : filtre par initiative et par statuts choisis', () => {
@@ -70,7 +73,7 @@ test('« Mes actions » : filtre par initiative et par statuts choisis', () => {
     action({ id: 'b', status: 'done', initiative: other }),
     action({ id: 'c', status: 'todo' }),
   ];
-  assert.deepEqual(ids(selectMyActions(actions, { initiativeId: 'crm', statuses: ['done'] })), ['a']);
+  assert.deepEqual(ids(selectMyActions(types, actions, { initiativeId: 'crm', statuses: ['done'] })), ['a']);
 });
 
 test('« Mes actions » : triées par échéance la plus proche, sans échéance en dernier', () => {
@@ -80,7 +83,7 @@ test('« Mes actions » : triées par échéance la plus proche, sans échéance
     action({ id: 'novembre', dueDate: '2026-11-15' }),
     action({ id: 'passee', dueDate: '2026-09-30' }),
   ];
-  assert.deepEqual(ids(selectMyActions(actions)), ['passee', 'novembre', 'decembre', 'sans']);
+  assert.deepEqual(ids(selectMyActions(types, actions)), ['passee', 'novembre', 'decembre', 'sans']);
 });
 
 test('« Mes actions » : même échéance, la plus ancienne créée d’abord', () => {
@@ -88,7 +91,7 @@ test('« Mes actions » : même échéance, la plus ancienne créée d’abord',
     action({ id: 'recente', dueDate: '2026-11-15', createdAt: '2026-10-20T08:00:00.000Z' }),
     action({ id: 'ancienne', dueDate: '2026-11-15', createdAt: '2026-10-02T08:00:00.000Z' }),
   ];
-  assert.deepEqual(ids(selectMyActions(actions)), ['ancienne', 'recente']);
+  assert.deepEqual(ids(selectMyActions(types, actions)), ['ancienne', 'recente']);
 });
 
 test('responsable : propriétaire ou contributeur, jamais lecteur', () => {
@@ -131,9 +134,10 @@ test('création : la tâche BABOK est obligatoire, le titre non vide', () => {
   assert.equal(createActionSchema.safeParse({ title: 'x'.repeat(201), taskId: '4.1' }).success, false);
 });
 
-test('modification : seuls les champs fournis, statuts connus seulement', () => {
+test('modification : seuls les champs fournis, statuts connus seulement (lus dans la liste des types)', () => {
   assert.deepEqual(updateActionSchema.parse({ status: 'in_progress' }), { status: 'in_progress' });
-  assert.equal(updateActionSchema.safeParse({ status: 'blocked' }).success, false);
+  assert.equal(updateActionSchema.safeParse({ status: '' }).success, false);
+  assert.equal(checkTicketFields(types, 'action', { status: 'blocked' }, 'todo'), 'statusNotOfType');
   assert.equal(updateActionSchema.safeParse({ taskId: null }).success, false);
 });
 
@@ -159,11 +163,11 @@ test('parties prenantes liées : une liste d’identifiants, chacun une seule fo
 });
 
 test('En attente n’est pas fermé ; Terminée et Annulée le sont', () => {
-  assert.equal(isOpenAction({ status: 'todo' }), true);
-  assert.equal(isOpenAction({ status: 'in_progress' }), true);
-  assert.equal(isOpenAction({ status: 'on_hold' }), true);
-  assert.equal(isOpenAction({ status: 'done' }), false);
-  assert.equal(isOpenAction({ status: 'cancelled' }), false);
+  assert.equal(isOpenAction(types, { status: 'todo' }), true);
+  assert.equal(isOpenAction(types, { status: 'in_progress' }), true);
+  assert.equal(isOpenAction(types, { status: 'on_hold' }), true);
+  assert.equal(isOpenAction(types, { status: 'done' }), false);
+  assert.equal(isOpenAction(types, { status: 'cancelled' }), false);
 });
 
 test('une action peut passer En attente', () => {
@@ -171,10 +175,10 @@ test('une action peut passer En attente', () => {
 });
 
 test('filtre de « Mes actions » : cocher ou décocher un statut garde l’ordre des statuts', () => {
-  assert.deepEqual(toggleActionStatus(['todo', 'in_progress'], 'in_progress'), ['todo']);
-  assert.deepEqual(toggleActionStatus(['cancelled'], 'todo'), ['todo', 'cancelled']);
-  assert.deepEqual(toggleActionStatus(['todo', 'cancelled'], 'done'), ['todo', 'done', 'cancelled']);
-  assert.deepEqual(toggleActionStatus(['todo', 'done'], 'on_hold'), ['todo', 'on_hold', 'done']);
+  assert.deepEqual(toggleActionStatus(types, ['todo', 'in_progress'], 'in_progress'), ['todo']);
+  assert.deepEqual(toggleActionStatus(types, ['cancelled'], 'todo'), ['todo', 'cancelled']);
+  assert.deepEqual(toggleActionStatus(types, ['todo', 'cancelled'], 'done'), ['todo', 'done', 'cancelled']);
+  assert.deepEqual(toggleActionStatus(types, ['todo', 'done'], 'on_hold'), ['todo', 'on_hold', 'done']);
 });
 
 test('création rapide : initiatives où l’on peut créer une action (propriétaire ou contributeur, non archivée)', () => {

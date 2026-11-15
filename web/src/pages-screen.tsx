@@ -1,18 +1,23 @@
 // Écran Pages d'une initiative (ticket 22, décisions 07, 08 et 13) : arborescence
 // à gauche (au-dessus sur petit écran), document en pleine page. « Modifier » passe
 // la page en écriture au même endroit ; une nouvelle page n'existe qu'à son premier
-// enregistrement. Règles dans @app/shared (pages.ts).
+// enregistrement, vide ou depuis un modèle (ticket 27). Liens et commentaires en
+// bas du document (ticket 25). Règles dans @app/shared (pages.ts, page-templates.ts,
+// links.ts, comments.ts).
 import {
+  type BabokDto,
   can,
   checkPageDelete,
-  createPageSchema,
+  createPageWithImagesSchema,
   dropPlacement,
   flattenPageTree,
+  findBabokElement,
   type InitiativeDto,
   keyboardPlacement,
   memberName,
   PAGE_TEXT_MAX_LENGTH,
   PAGE_TITLE_MAX_LENGTH,
+  type PageChangedSinceBody,
   type PageDoc,
   type PageDto,
   type PageKeyboardMove,
@@ -20,18 +25,26 @@ import {
   type PageRefusal,
   type PageRevisionRow,
   type PageRow,
+  type PageTemplateDto,
+  pageTemplateGroups,
+  isPageSaveRefusal,
   pageTextLength,
   type ReferenceDto,
   sortByReference,
 } from '@app/shared';
-import { ArrowDown, ArrowUp, History, IndentDecrease, IndentIncrease, Pencil, Plus } from 'lucide-react';
-import { type DragEvent, type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, FilePlus, History, IndentDecrease, IndentIncrease, Pencil, Plus } from 'lucide-react';
+import { type DragEvent, type KeyboardEvent, lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from './api';
+import { BabokName } from './babok-panels';
+import { PageComments } from './comments';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
+import { PageLinks, useLinkData } from './link-panels';
+import { FileError, PageAttachments } from './attachments';
 import { PageContent } from './page-content';
-import { PageComparison, PageHistory, PageRevisionView, type PageShown, VersionNoteField } from './page-history';
+import { forgetAttachmentImages, PageImageSource, PendingImages } from './page-images';
+import { PageComparison, PageDiff, PageHistory, PageRevisionView, type PageShown, VersionNoteField } from './page-history';
 import { SCREEN_TITLE_ID, usePanels } from './panels';
 import { useReferences } from './references';
 import { useScreens } from './screens';
@@ -57,23 +70,36 @@ interface Draft {
   parentId: string | null;
   /** Page ouverte au moment de la demande : changer de page abandonne le brouillon. */
   at: string | null;
+  /** Absent tant que l'on choisit ; null : page vide ; sinon le modèle choisi. */
+  template?: PageTemplateDto | null;
 }
 
 export function PagesScreen({
   initiativeId,
   pageId,
   initiative,
+  babok,
   version,
   onChanged,
+  myId,
+  linksVersion,
+  onLinksChanged,
 }: {
   initiativeId: string;
   /** Page ouverte ; null : aucune. */
   pageId: string | null;
+  /** Référentiel : regroupe les modèles et nomme la tâche d'une page ; null tant qu'il n'est pas chargé. */
+  babok: BabokDto | null;
   /** Absente tant que la liste des initiatives n'est pas chargée. */
   initiative: InitiativeDto | undefined;
   /** Change à chaque création, modification, déplacement ou suppression d'une page. */
   version: number;
   onChanged: () => void;
+  /** Auteur des commentaires ; null tant que le compte n'est pas chargé. */
+  myId: string | null;
+  /** Change à chaque écriture sur un ticket ou un lien, ici ou dans un panneau. */
+  linksVersion: number;
+  onLinksChanged: () => void;
 }) {
   const { t, locale } = useI18n();
   const { goTo, replaceScreen } = useScreens();
@@ -127,7 +153,9 @@ export function PagesScreen({
   }
 
   const shownDraft = draft && draft.at === pageId ? draft : null;
+  const draftParentTitle = tree?.find((p) => p.id === shownDraft?.parentId)?.title ?? null;
   return (
+    <PageImageSource.Provider value={initiativeId}>
     <section className="pages">
       {initiative && (
         <div className="panel-kicker">
@@ -166,12 +194,20 @@ export function PagesScreen({
           )}
         </nav>
         <div className="pages-document">
-          {shownDraft ? (
+          {shownDraft && shownDraft.template === undefined ? (
+            <PageTemplateChooser
+              babok={babok}
+              parentTitle={draftParentTitle}
+              onChoose={(template) => setDraft({ ...shownDraft, template })}
+              onCancel={() => setDraft(null)}
+            />
+          ) : shownDraft ? (
             <PageEditForm
               initiativeId={initiativeId}
               page={null}
+              template={shownDraft.template ?? null}
               parentId={shownDraft.parentId}
-              parentTitle={tree?.find((p) => p.id === shownDraft.parentId)?.title ?? null}
+              parentTitle={draftParentTitle}
               onSaved={(created) => {
                 setDraft(null);
                 onChanged();
@@ -186,7 +222,12 @@ export function PagesScreen({
               initiativeId={initiativeId}
               pageId={pageId}
               tree={tree ?? []}
+              babok={babok}
               canEdit={canEdit}
+              initiative={initiative && { myRole: initiative.myRole, archived: initiative.archivedAt != null }}
+              myId={myId}
+              linksVersion={linksVersion + version}
+              onLinksChanged={onLinksChanged}
               onAddChild={() => startDraft(pageId)}
               onMove={(placement) => void move(pageId, placement)}
               onChanged={onChanged}
@@ -197,6 +238,7 @@ export function PagesScreen({
         </div>
       </div>
     </section>
+    </PageImageSource.Provider>
   );
 }
 
@@ -366,7 +408,12 @@ function PageView({
   initiativeId,
   pageId,
   tree,
+  babok,
   canEdit,
+  initiative,
+  myId,
+  linksVersion,
+  onLinksChanged,
   onAddChild,
   onMove,
   onChanged,
@@ -374,13 +421,20 @@ function PageView({
   initiativeId: string;
   pageId: string;
   tree: PageRow[];
+  babok: BabokDto | null;
   canEdit: boolean;
+  /** Rôle et archivage, pour les commentaires ; absent tant que la liste des initiatives n'est pas chargée. */
+  initiative: { myRole: InitiativeDto['myRole']; archived: boolean } | undefined;
+  myId: string | null;
+  linksVersion: number;
+  onLinksChanged: () => void;
   onAddChild: () => void;
   onMove: (placement: PagePlacement) => void;
   onChanged: () => void;
 }) {
   const { t, locale } = useI18n();
   const { replaceScreen } = useScreens();
+  const { open } = usePanels();
   const [page, setPage] = useState<PageDto | null>(null);
   const [missing, setMissing] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -390,6 +444,8 @@ function PageView({
   const [shown, setShown] = useState<PageShown>({ kind: 'page' });
   const [revisions, setRevisions] = useState<PageRevisionRow[] | null>(null);
   const [status, setStatus] = useState('');
+  // Liens de l'initiative : section « Liens » et refus de supprimer une page liée.
+  const { data: linkData, setLinks, error: linksError } = useLinkData(initiativeId, linksVersion, true);
 
   const loadPage = () =>
     api.getPage(initiativeId, pageId).then(setPage, (e: unknown) => {
@@ -397,6 +453,8 @@ function PageView({
       else setError(toUiError(e));
     });
   useEffect(() => {
+    // Images relues à l'ouverture : une image supprimée entre-temps n'est plus montrée.
+    forgetAttachmentImages();
     void loadPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- la page se relit quand elle change d'identifiant
   }, [initiativeId, pageId]);
@@ -481,6 +539,7 @@ function PageView({
       <PageEditForm
         initiativeId={initiativeId}
         page={page}
+        template={null}
         parentId={page.parentId}
         parentTitle={null}
         onSaved={(saved) => {
@@ -489,11 +548,18 @@ function PageView({
           onChanged();
         }}
         onCancel={() => setEditing(false)}
+        onTakeTheirs={(latest) => {
+          setPage(latest);
+          setEditing(false);
+          // Son titre a pu changer : l'arborescence se relit.
+          onChanged();
+        }}
       />
     );
   }
 
   const moveTo = (move: PageKeyboardMove) => keyboardPlacement(tree, page.id, move);
+  const task = page.taskId && babok ? findBabokElement(babok, page.taskId) : undefined;
   const { lastVersion, modifiedSinceLastVersion } = page.versions;
   return withHistory(
     <article className="page-view">
@@ -528,6 +594,23 @@ function PageView({
           {t('page.history')}
         </button>
       </div>
+      {page.template && (
+        // Modèle d'origine, sous le nom qu'il portait, et sa tâche : figés (décision 09, points 7 et 8).
+        <p className="page-origin">
+          <small>
+            {t('page.template', { name: page.template.name })}
+            {task && (
+              <>
+                {' · '}
+                {t('page.task')}{' '}
+                <button type="button" className="link" onClick={() => open({ kind: 'babokElement', elementId: task.id })}>
+                  <span className="code">{task.section}</span> <BabokName element={task} />
+                </button>
+              </>
+            )}
+          </small>
+        </p>
+      )}
       <ErrorMessage error={error} />
       {/* Un document vide est enregistré sans contenu (pageContentSchema). */}
       {page.content ? (
@@ -542,6 +625,23 @@ function PageView({
           {t('page.updated', { date: formatDateTime(locale, page.updatedAt), name: memberName(page.updatedBy) })}
         </small>
       </p>
+      {linkData ? (
+        <PageLinks
+          initiativeId={initiativeId}
+          pageId={page.id}
+          data={linkData}
+          canEdit={!!initiative && can(initiative.myRole, 'editLinks', { archived: initiative.archived })}
+          onLinks={setLinks}
+          onChanged={onLinksChanged}
+        />
+      ) : (
+        <ErrorMessage error={linksError} />
+      )}
+      {initiative && <PageComments initiativeId={initiativeId} pageId={page.id} initiative={initiative} myId={myId} />}
+      {initiative && (
+        // Rechargée à chaque enregistrement : nouvelles images et mention « affichée dans le texte » (ticket 26).
+        <PageAttachments key={page.revisionId} initiativeId={initiativeId} pageId={page.id} initiative={initiative} />
+      )}
       {canEdit && (
         <section className="owner-actions page-owner-actions">
           <div role="group" aria-label={t('page.moveGroup')} className="page-move">
@@ -564,7 +664,7 @@ function PageView({
           </div>
           <DeletePage
             page={page}
-            refusal={checkPageDelete(tree, page.id)}
+            refusal={checkPageDelete(tree, page.id, linkData?.links ?? { pageLinks: [] })}
             onDeleted={() => {
               onChanged();
               replaceScreen({ kind: 'pages', initiativeId, pageId: null });
@@ -576,14 +676,14 @@ function PageView({
   );
 }
 
-/** Suppression définitive après confirmation ; refusée tant que la page a des sous-pages. */
+/** Suppression définitive après confirmation ; refusée tant que la page a des sous-pages ou des liens. */
 function DeletePage({
   page,
   refusal,
   onDeleted,
 }: {
   page: PageDto;
-  /** Refus connu d'avance (sous-pages) : affiché sans demander de confirmation. */
+  /** Refus connu d'avance (sous-pages, liens) : affiché sans demander de confirmation. */
   refusal: PageRefusal | null;
   onDeleted: () => void;
 }) {
@@ -637,24 +737,36 @@ function DeletePage({
 function PageEditForm({
   initiativeId,
   page,
+  template,
   parentId,
   parentTitle,
   onSaved,
   onCancel,
+  onTakeTheirs,
 }: {
   initiativeId: string;
   /** Null : nouvelle page, créée au premier enregistrement. */
   page: PageDto | null;
+  /** Nouvelle page depuis un modèle : titre et contenu préremplis dans la langue de l'interface. */
+  template: PageTemplateDto | null;
   parentId: string | null;
   /** Nouvelle sous-page : titre de sa parente. */
   parentTitle: string | null;
   onSaved: (page: PageDto) => void;
   onCancel: () => void;
+  /** « Abandonner ma saisie et prendre la sienne » : la page dans son état actuel (ticket 24). */
+  onTakeTheirs?: (latest: PageDto) => void;
 }) {
   const { t, locale } = useI18n();
   const { settleScreen } = usePanels();
+  // Modification simultanée (ticket 24) : la page telle qu'enregistrée entre-temps,
+  // quand l'API a refusé l'enregistrement ; null tant qu'il n'y a pas eu de refus.
+  const [latest, setLatest] = useState<PageDto | null>(null);
+  const [comparing, setComparing] = useState(false);
   const references = useReferences();
-  const [title, setTitle] = useState(page?.title ?? '');
+  // La langue de la page est celle de l'interface à l'ouverture du brouillon (décision 09, point 4).
+  const [templateLocale] = useState(locale);
+  const [title, setTitle] = useState(page?.title ?? template?.name[templateLocale] ?? '');
   const [doc, setDoc] = useState<PageDoc | null>(page?.content ?? null);
   // Contenu tel que l'éditeur l'a lu à l'ouverture : y revenir (Annuler, Ctrl+Z) n'est pas une modification.
   const [baseline, setBaseline] = useState<string | null>(null);
@@ -663,6 +775,19 @@ function PageEditForm({
   // Pas de version à la création (décision 07, point 5).
   const [asVersion, setAsVersion] = useState(false);
   const [versionNote, setVersionNote] = useState('');
+
+  // Images insérées pendant la saisie : gardées dans le navigateur jusqu'à « Enregistrer » (ticket 26).
+  const [pendingImages] = useState(() => new PendingImages(initiativeId));
+  const [imageErrors, setImageErrors] = useState<{ name: string; error: UiError }[]>([]);
+  useEffect(() => () => pendingImages.release(), [pendingImages]);
+  const onImageFiles = useCallback(
+    (files: File[]) => {
+      const { refs, refused } = pendingImages.add(files);
+      setImageErrors(refused);
+      return refs;
+    },
+    [pendingImages],
+  );
 
   const serialized = doc && JSON.stringify(doc);
   const contentChanged = baseline !== null && serialized !== baseline;
@@ -676,29 +801,63 @@ function PageEditForm({
     return [...all.filter(own), ...all.filter((r) => !own(r))].filter((r) => r.id !== page?.id);
   }, [references, initiativeId, page?.id]);
 
-  async function save(): Promise<boolean> {
+  /**
+   * Enregistre la saisie, basée sur l'état de la page à son ouverture. `onTopOf` :
+   * « Enregistrer ma saisie à la suite » de cet état ; la saisie entière, titre et
+   * contenu, le remplace (décision 08, point 9).
+   */
+  async function save(onTopOf?: PageDto): Promise<boolean> {
+    // Images insérées depuis l'ouverture et encore dans le texte : leurs fichiers partent avec l'enregistrement.
+    const sent = pendingImages.sendable(doc);
     // Un document vide devient null (pageContentSchema).
-    const parsed = createPageSchema.safeParse({ title, content: doc, parentId });
+    const parsed = createPageWithImagesSchema.safeParse({
+      title,
+      content: doc,
+      parentId,
+      template: template && { id: template.id, locale: templateLocale },
+      uploads: sent.uploads,
+    });
     if (!parsed.success) {
       setTitleMissing(!title.trim());
       setError(tooLong ? { key: 'page.tooLong', params: { max: PAGE_TEXT_MAX_LENGTH.toLocaleString(locale) } } : { key: 'page.titleRequired' });
       return false;
     }
+    const { uploads, ...created } = parsed.data;
+    const changes = page && {
+      baseRevisionId: (onTopOf ?? page).revisionId,
+      title: created.title,
+      ...((contentChanged || onTopOf) && { content: created.content }),
+      ...(asVersion && { version: { note: versionNote.trim() || null } }),
+    };
     try {
-      const saved = page
-        ? await api.updatePage(initiativeId, page.id, {
-            title: parsed.data.title,
-            ...(contentChanged && { content: parsed.data.content }),
-            ...(asVersion && { version: { note: versionNote.trim() || null } }),
-          })
-        : await api.createPage(initiativeId, parsed.data);
+      const saved =
+        uploads.length > 0
+          ? await api.savePageWithImages(initiativeId, page?.id ?? null, { ...(changes ?? created), uploads }, sent.files)
+          : changes
+            ? await api.updatePage(initiativeId, page.id, changes)
+            : await api.createPage(initiativeId, created);
       setError(null);
       onSaved(saved);
       return true;
     } catch (e) {
-      setError(toUiError(e));
+      if (e instanceof ApiError && isPageSaveRefusal(e.refusal)) {
+        // La page a été enregistrée entre-temps : le bandeau le dit, la saisie reste.
+        setLatest((e.body as PageChangedSinceBody).page);
+        setComparing(false);
+        setError(null);
+      } else {
+        setError(fileError(e));
+      }
       return false;
     }
+  }
+
+  /** Refus visant l'un des fichiers envoyés : le message nomme le fichier. */
+  function fileError(e: unknown): UiError {
+    const error = toUiError(e);
+    const name = e instanceof ApiError ? (e.body as { name?: unknown } | undefined)?.name : undefined;
+    if (typeof name !== 'string') return error;
+    return { raw: t('attachment.fileError', { name, message: 'raw' in error ? error.raw : t(error.key, error.params) }) };
   }
 
   const onSubmit = useUnsavedForm(
@@ -727,12 +886,43 @@ function PageEditForm({
         <div className="page-save-version">
           <label className="checkbox">
             <input type="checkbox" checked={asVersion} onChange={(e) => setAsVersion(e.target.checked)} />
-            {t('page.saveAsVersion', { number: page.versions.nextVersion })}
+            {t('page.saveAsVersion', { number: (latest ?? page).versions.nextVersion })}
           </label>
           {asVersion && <VersionNoteField note={versionNote} onChange={setVersionNote} />}
         </div>
       )}
       <ErrorMessage error={error} />
+      {latest && (
+        // Bandeau du refus (décision 08, point 9) : reste affiché au-dessus de la saisie.
+        <div className="page-conflict" role="alert">
+          <p>
+            {t('pageConflict.message', {
+              name: memberName(latest.updatedBy),
+              date: formatDateTime(locale, latest.updatedAt),
+            })}
+          </p>
+          <div className="page-conflict-buttons">
+            <button type="button" aria-expanded={comparing} onClick={() => setComparing(!comparing)}>
+              {t(comparing ? 'pageConflict.hideComparison' : 'pageConflict.compare')}
+            </button>
+            <button type="button" className="primary" onClick={() => void save(latest)}>
+              {t('pageConflict.saveAnyway')}
+            </button>
+            <button type="button" className="danger" onClick={() => onTakeTheirs?.(latest)}>
+              {t('pageConflict.takeTheirs')}
+            </button>
+          </div>
+          <small>{t('pageConflict.saveAnywayHint')}</small>
+          {comparing && (
+            <div className="page-conflict-comparison">
+              <p>
+                <small>{t('pageConflict.legend')}</small>
+              </p>
+              <PageDiff from={latest} to={{ title, content: doc }} />
+            </div>
+          )}
+        </div>
+      )}
       <label className="page-title-field">
         <span className="visually-hidden">{t('page.titleLabel')}</span>
         <input
@@ -747,11 +937,16 @@ function PageEditForm({
           }}
         />
       </label>
+      {imageErrors.map(({ name, error }, i) => (
+        <FileError key={i} name={name} error={error} />
+      ))}
       <Suspense fallback={<p>{t('common.loading')}</p>}>
         <PageEditor
-          initialContent={page?.content ?? null}
+          initialContent={page?.content ?? template?.content[templateLocale] ?? null}
           references={suggestions}
           label={t('page.contentLabel')}
+          resolveImage={pendingImages.resolve}
+          onImageFiles={onImageFiles}
           onReady={(initial) => {
             setDoc(initial);
             setBaseline(JSON.stringify(initial));
@@ -760,5 +955,79 @@ function PageEditForm({
         />
       </Suspense>
     </form>
+  );
+}
+
+/**
+ * Premier pas de « Nouvelle page » (décision 09, point 9) : une page vide, ou l'un
+ * des modèles actifs, par domaine de connaissance. Rien n'est créé avant le premier
+ * enregistrement ; un même modèle sert autant de fois qu'on veut.
+ */
+function PageTemplateChooser({
+  babok,
+  parentTitle,
+  onChoose,
+  onCancel,
+}: {
+  babok: BabokDto | null;
+  parentTitle: string | null;
+  onChoose: (template: PageTemplateDto | null) => void;
+  onCancel: () => void;
+}) {
+  const { t, locale } = useI18n();
+  const [templates, setTemplates] = useState<PageTemplateDto[] | null>(null);
+  const [error, setError] = useState<UiError | null>(null);
+
+  useEffect(() => {
+    api.listPageTemplates().then(setTemplates, (e: unknown) => setError(toUiError(e)));
+  }, []);
+
+  const groups = babok && templates ? pageTemplateGroups(babok, templates, locale) : [];
+  return (
+    <section className="page-template-chooser" aria-labelledby={SCREEN_TITLE_ID}>
+      <div className="page-save-bar">
+        <span id={SCREEN_TITLE_ID} className="page-save-bar-title">
+          {parentTitle ? t('pages.newChildOf', { title: parentTitle }) : t('pages.new')}
+        </span>
+        <button type="button" onClick={onCancel}>
+          {t('common.cancel')}
+        </button>
+      </div>
+      <h2 className="page-template-heading">{t('pages.chooseTemplate')}</h2>
+      <ErrorMessage error={error} />
+      <ul className="page-template-list">
+        <li>
+          <button type="button" autoFocus onClick={() => onChoose(null)}>
+            <FilePlus />
+            <span>{t('pages.blankPage')}</span>
+          </button>
+        </li>
+      </ul>
+      {!templates && !error && <p>{t('common.loading')}</p>}
+      {groups.map(({ knowledgeArea, templates: ofGroup }) => (
+        <section key={knowledgeArea?.id ?? 'other'}>
+          <h3 className="group-title">
+            {knowledgeArea ? <BabokName element={knowledgeArea} /> : t('pages.otherTemplates')}
+          </h3>
+          <ul className="page-template-list">
+            {ofGroup.map((template) => {
+              const task = template.taskId && babok ? findBabokElement(babok, template.taskId) : undefined;
+              return (
+                <li key={template.id}>
+                  <button type="button" onClick={() => onChoose(template)}>
+                    <span>{template.name[locale]}</span>
+                    {task && (
+                      <small>
+                        <span className="code">{task.section}</span> <BabokName element={task} />
+                      </small>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </section>
   );
 }

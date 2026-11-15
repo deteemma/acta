@@ -43,6 +43,13 @@ export async function checkEpic(tx: Tx, initiativeId: string, epicId: string): P
 export const isEpicViolation = (error: unknown) =>
   isConstraintViolation(error, 'ticket_epic_valid') || isConstraintViolation(error, 'ticket_epic_fkey');
 
+/** Seconde barrière : la base refuse le statut donné à un ticket, tous types ; null sinon. */
+export function ticketStatusViolation(error: unknown): TicketRefusal | null {
+  if (isConstraintViolation(error, 'ticket_status_fkey')) return 'statusNotOfType';
+  if (isConstraintViolation(error, 'ticket_status_inactive')) return 'inactiveStatus';
+  return null;
+}
+
 /** Historique d'un ticket, tous types ; l'appelant a vérifié que le ticket existe et est visible. */
 export async function loadTicketVersions(tx: Tx, ticketId: string): Promise<TicketVersionDto[]> {
   const rows = await tx

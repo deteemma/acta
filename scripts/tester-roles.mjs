@@ -27,6 +27,13 @@ const SECTIONS = [
   '17-liens',
   '18-commentaires',
   '19-pieces-jointes',
+  '20-modeles-de-page',
+  '21-modification-simultanee',
+  '22-liens-et-commentaires-des-pages',
+  '23-images-des-pages',
+  '24-types-et-statuts-parametrables',
+  '25-administration-des-modeles-de-page',
+  '26-limite-de-pieces-jointes',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);
@@ -47,8 +54,39 @@ const { rvInitiativeId } = run['16-enregistrements-de-page'];
 const { lkInitiativeId, lkOtherInitiativeId } = run['17-liens'];
 const { cmInitiativeId, cmOtherInitiativeId } = run['18-commentaires'];
 const { ajInitiativeId, ajOtherInitiativeId } = run['19-pieces-jointes'];
+const { mpInitiativeId } = run['20-modeles-de-page'];
+const { msInitiativeId } = run['21-modification-simultanee'];
+const { plInitiativeId, plOtherInitiativeId } = run['22-liens-et-commentaires-des-pages'];
+const { ipInitiativeId, ipOtherInitiativeId } = run['23-images-des-pages'];
+const { tpInitiativeId } = run['24-types-et-statuts-parametrables'];
+const { amInitiativeId } = run['25-administration-des-modeles-de-page'];
+const { lpInitiativeId, lpOtherInitiativeId } = run['26-limite-de-pieces-jointes'];
 
 console.log('\nNettoyage');
+await check('alice supprime les initiatives de la limite de pièces jointes, avec leurs fichiers : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${lpOtherInitiativeId}`)).status, 204);
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${lpInitiativeId}`)).status, 204);
+});
+await check('alice supprime l’initiative de l’administration des modèles, avec sa page : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${amInitiativeId}`)).status, 204);
+});
+await check('alice supprime l’initiative des types et statuts paramétrables, avec son Risque : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${tpInitiativeId}`)).status, 204);
+});
+await check('alice supprime les initiatives des images des pages, avec leurs fichiers : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${ipOtherInitiativeId}`)).status, 204);
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${ipInitiativeId}`)).status, 204);
+});
+await check('alice supprime les initiatives des liens et commentaires des pages, avec leurs objets liés : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${plOtherInitiativeId}`)).status, 204);
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${plInitiativeId}`)).status, 204);
+});
+await check('alice supprime l’initiative de la modification simultanée, avec sa page : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${msInitiativeId}`)).status, 204);
+});
+await check('alice supprime l’initiative des modèles de page, avec ses pages : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${mpInitiativeId}`)).status, 204);
+});
 await check('alice supprime les initiatives des pièces jointes, avec leurs fichiers : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${ajOtherInitiativeId}`)).status, 204);
   assert.equal((await call(alice, 'DELETE', `/initiatives/${ajInitiativeId}`)).status, 204);

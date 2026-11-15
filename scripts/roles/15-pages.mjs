@@ -1,4 +1,4 @@
-import { assert, check, call, asUserInDb, alice, bruno, chloe, admin, code } from './commun.mjs';
+import { assert, check, call, asUserInDb, alice, bruno, chloe, admin, code, savePage } from './commun.mjs';
 
 // Pages : arborescence et écriture (phase 2, ticket 22). alice propriétaire, bruno
 // contributeur, chloé lectrice ; admin n'est pas membre.
@@ -47,10 +47,10 @@ await check('alice (propriétaire) crée des sous-pages, chacune en dernier parm
 await check('titre obligatoire, 200 000 caractères de texte au plus, mise en forme prévue seulement : 400', async () => {
   assert.equal((await call(bruno, 'POST', pages(), { title: ' ' })).status, 400);
   const long = 'x'.repeat(100_000);
-  assert.equal((await call(bruno, 'PATCH', page(rootId), { content: doc(long, long) })).status, 200);
-  assert.equal((await call(bruno, 'PATCH', page(rootId), { content: doc(long, `${long}x`) })).status, 400);
+  assert.equal((await savePage(bruno, page(rootId), { content: doc(long, long) })).status, 200);
+  assert.equal((await savePage(bruno, page(rootId), { content: doc(long, `${long}x`) })).status, 400);
   const code = { type: 'doc', content: [{ type: 'codeBlock', content: [{ type: 'text', text: 'x' }] }] };
-  assert.equal((await call(bruno, 'PATCH', page(rootId), { content: code })).status, 400);
+  assert.equal((await savePage(bruno, page(rootId), { content: code })).status, 400);
 });
 await check('liste et palette : chloé (lectrice) voit l’arborescence et trouve la page ; admin (non-membre) : 404', async () => {
   const r = await call(chloe, 'GET', pages());

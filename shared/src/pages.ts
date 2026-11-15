@@ -3,7 +3,10 @@
 // JSON. Règles écrites une seule fois ici, appliquées par l'API et le web, et
 // reproduites par la base (migration 0020).
 import { z } from 'zod';
-import { declarePageVersionSchema, type PageVersionStatus } from './page-revisions.js';
+import { type InitiativeLinksDto, pageHasLinks } from './links.js';
+import { declarePageVersionSchema, type PageSaveRefusal, type PageVersionStatus } from './page-revisions.js';
+import { pageTemplateChoiceSchema, type PageTemplateMention } from './page-templates.js';
+import { isPageUploadRef, pageUploadSchema } from './page-images.js';
 import type { MemberNameDto } from './schemas.js';
 
 export const PAGE_TITLE_MAX_LENGTH = 200;
@@ -14,8 +17,9 @@ export const PAGE_TEXT_MAX_LENGTH = 200_000;
 
 /**
  * Nœuds et marques admis : la mise en forme de la décision 08 (point 2). Retirer
- * ou renommer l'un d'eux demande de migrer les pages enregistrées (ADR-0019). Les
- * images viennent avec le ticket 26.
+ * ou renommer l'un d'eux demande de migrer les pages enregistrées (ADR-0019).
+ * `image` : pièce jointe de la page affichée dans le texte (ticket 26), désignée
+ * par son seul identifiant (`attrs.attachmentId`).
  */
 export const PAGE_NODE_TYPES = [
   'doc',
@@ -30,6 +34,7 @@ export const PAGE_NODE_TYPES = [
   'tableRow',
   'tableHeader',
   'tableCell',
+  'image',
 ] as const;
 export type PageNodeType = (typeof PAGE_NODE_TYPES)[number];
 export const PAGE_MARK_TYPES = ['bold', 'italic', 'link'] as const;
@@ -57,6 +62,8 @@ export type PageDoc = PageNode & { type: 'doc' };
 export const isSafePageHref = (href: unknown): href is string =>
   typeof href === 'string' && /^(https?:\/\/|mailto:)/i.test(href);
 
+const isUuid = (value: unknown): value is string => z.uuid().safeParse(value).success;
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -69,11 +76,24 @@ function isValidMark(mark: unknown): boolean {
   return mark.type !== 'link' || isSafePageHref(mark.attrs?.href);
 }
 
-function isValidNode(node: unknown, root: boolean): boolean {
+/**
+ * Image du texte : l'identifiant de la pièce jointe, et rien d'autre (ni adresse,
+ * ni contenu). `uploads` : à l'enregistrement d'une saisie, une image insérée
+ * depuis l'ouverture désigne encore le fichier envoyé avec elle (isPageUploadRef).
+ */
+function isValidImage(node: Record<string, unknown>, uploads: boolean): boolean {
+  if (!isRecord(node.attrs) || Object.keys(node.attrs).some((key) => key !== 'attachmentId')) return false;
+  if (node.content !== undefined || node.text !== undefined || node.marks !== undefined) return false;
+  const id = node.attrs.attachmentId;
+  return isUuid(id) || (uploads && isPageUploadRef(id));
+}
+
+function isValidNode(node: unknown, root: boolean, uploads = false): boolean {
   if (!isRecord(node) || !includes(PAGE_NODE_TYPES, node.type)) return false;
   if ((node.type === 'doc') !== root) return false;
   if (node.attrs !== undefined && !isRecord(node.attrs)) return false;
   const attrs = node.attrs as Record<string, unknown> | undefined;
+  if (node.type === 'image') return isValidImage(node, uploads);
   if (node.type === 'heading' && !PAGE_HEADING_LEVELS.some((level) => level === attrs?.level)) return false;
   if (node.type === 'text') {
     // Tiptap n'écrit jamais de texte vide.
@@ -81,7 +101,10 @@ function isValidNode(node: unknown, root: boolean): boolean {
     return node.marks === undefined || (Array.isArray(node.marks) && node.marks.every(isValidMark));
   }
   if (node.text !== undefined || node.marks !== undefined) return false;
-  return node.content === undefined || (Array.isArray(node.content) && node.content.every((child) => isValidNode(child, false)));
+  return (
+    node.content === undefined ||
+    (Array.isArray(node.content) && node.content.every((child) => isValidNode(child, false, uploads)))
+  );
 }
 
 /** Nœud lu sans présumer de sa validité : le JSON de l'éditeur, avant envoi. */
@@ -116,6 +139,15 @@ export const pageContentSchema = z
   .refine((doc) => pageTextLength(doc) <= PAGE_TEXT_MAX_LENGTH, { message: 'texte trop long' })
   .transform((doc) => (isEmptyPageDoc(doc) ? null : doc));
 
+/**
+ * Contenu d'une saisie enregistrée avec ses images insérées (ticket 26) : elles
+ * désignent encore le fichier envoyé avec elle (`upload:<clé>`, page-images.ts).
+ */
+export const pageContentWithUploadsSchema = z
+  .custom<PageDoc>((value) => isValidNode(value, true, true), { message: 'contenu de page invalide' })
+  .refine((doc) => pageTextLength(doc) <= PAGE_TEXT_MAX_LENGTH, { message: 'texte trop long' })
+  .transform((doc) => (isEmptyPageDoc(doc) ? null : doc));
+
 // ── Création, modification, déplacement ─────────────────────────────────────
 
 const pageTitle = z.string().trim().min(1).max(PAGE_TITLE_MAX_LENGTH);
@@ -129,6 +161,11 @@ export const createPageSchema = z.object({
   content: pageContentSchema.nullable().default(null),
   /** Page parente de la même initiative ; null pour une page de premier niveau. */
   parentId: z.uuid().nullable().default(null),
+  /**
+   * Modèle d'origine (ticket 27) ; null pour une page vide. Le contenu envoyé est
+   * celui du modèle, copié par le web puis éventuellement déjà modifié.
+   */
+  template: pageTemplateChoiceSchema.nullable().default(null),
 });
 export type CreatePageInput = z.infer<typeof createPageSchema>;
 
@@ -139,8 +176,45 @@ export type CreatePageInput = z.infer<typeof createPageSchema>;
  */
 export const updatePageSchema = z
   .object({ title: pageTitle, content: pageContentSchema.nullable(), version: declarePageVersionSchema })
-  .partial();
+  .partial()
+  .extend({
+    /**
+     * Enregistrement sur lequel la saisie est basée, l'état de la page à son
+     * ouverture : s'il n'est plus l'état actuel, l'enregistrement est refusé
+     * (checkPageSaveBase, ticket 24).
+     */
+    baseRevisionId: z.uuid(),
+  });
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
+
+/**
+ * Enregistrement d'une saisie avec les fichiers de ses images insérées (ticket 26),
+ * en une seule requête de ce type, pour que rien ne soit rattaché à la page avant
+ * l'enregistrement : la longueur de l'en-tête sur 4 octets (gros-boutiste), l'en-tête
+ * en JSON (UTF-8), puis le contenu de chaque fichier, dans l'ordre de `uploads`.
+ */
+export const PAGE_SAVE_WITH_IMAGES_TYPE = 'application/x-acta-page-save';
+
+/** En-tête d'une création avec images : la création, et les fichiers envoyés à sa suite. */
+export const createPageWithImagesSchema = createPageSchema.extend({
+  content: pageContentWithUploadsSchema.nullable().default(null),
+  uploads: z.array(pageUploadSchema),
+});
+export type CreatePageWithImagesInput = z.infer<typeof createPageWithImagesSchema>;
+
+/** En-tête d'une modification avec images : la modification, et les fichiers envoyés à sa suite. */
+export const updatePageWithImagesSchema = updatePageSchema.extend({
+  content: pageContentWithUploadsSchema.nullable().optional(),
+  uploads: z.array(pageUploadSchema),
+});
+export type UpdatePageWithImagesInput = z.infer<typeof updatePageWithImagesSchema>;
+
+/** Corps de la réponse 409 `pageChangedSince` : la page dans son état actuel, avec qui l'a enregistrée et quand. */
+export interface PageChangedSinceBody {
+  statusCode: 409;
+  refusal: PageSaveRefusal;
+  page: PageDto;
+}
 
 /** Page telle que renvoyée par l'API. */
 export interface PageDto {
@@ -161,6 +235,10 @@ export interface PageDto {
   revisionId: string;
   /** Dernière version et modifications depuis (pageVersionStatus). */
   versions: PageVersionStatus;
+  /** Modèle d'origine, sous le nom qu'il portait à la création ; null pour une page vide. Figé. */
+  template: PageTemplateMention | null;
+  /** Tâche BABOK du modèle d'origine, figée à la création ; elle ne rend pas la tâche couverte. */
+  taskId: string | null;
 }
 
 /** Ligne de l'arborescence : sans le contenu. */
@@ -198,9 +276,11 @@ export type MovePageInput = z.infer<typeof movePageSchema>;
  * Refus d'une écriture sur une page, renvoyés par l'API (`refusal`) :
  * - `unknownPage` : la page parente n'est pas une page de l'initiative ;
  * - `pageUnderItself` : une page ne se range pas sous elle-même ni sous l'une de ses sous-pages ;
- * - `pageHasSubpages` : une page qui a des sous-pages ne se supprime pas.
+ * - `pageHasSubpages` : une page qui a des sous-pages ne se supprime pas ;
+ * - `pageLinked` : une page liée à un ticket, un besoin ou une exigence ne se supprime pas (ticket 25) ;
+ * - `unknownPageTemplate` : le modèle choisi n'existe pas ou n'est plus proposé (désactivé).
  */
-export const PAGE_REFUSALS = ['unknownPage', 'pageUnderItself', 'pageHasSubpages'] as const;
+export const PAGE_REFUSALS = ['unknownPage', 'pageUnderItself', 'pageHasSubpages', 'pageLinked', 'unknownPageTemplate'] as const;
 export type PageRefusal = (typeof PAGE_REFUSALS)[number];
 export const isPageRefusal = (value: unknown): value is PageRefusal => PAGE_REFUSALS.some((r) => r === value);
 
@@ -239,12 +319,17 @@ export function checkPageMove(pages: readonly PageTreeItem[], pageId: string, pa
   return isInSubtree(pages, pageId, parentId) ? 'pageUnderItself' : null;
 }
 
-/** Rang d'une nouvelle page : en dernier parmi ses sœurs. */
-/** Vérifie la suppression d'une page ; null si elle est permise. Les liens viendront avec le ticket 25. */
-export function checkPageDelete(pages: readonly PageTreeItem[], pageId: string): PageRefusal | null {
-  return pages.some((p) => p.parentId === pageId) ? 'pageHasSubpages' : null;
+/** Vérifie la suppression d'une page ; null si elle est permise : ni sous-pages, ni liens (décision 04, point 7). */
+export function checkPageDelete(
+  pages: readonly PageTreeItem[],
+  pageId: string,
+  links: Pick<InitiativeLinksDto, 'pageLinks'>,
+): PageRefusal | null {
+  if (pages.some((p) => p.parentId === pageId)) return 'pageHasSubpages';
+  return pageHasLinks(links, pageId) ? 'pageLinked' : null;
 }
 
+/** Rang d'une nouvelle page : en dernier parmi ses sœurs. */
 export function nextPagePosition(pages: readonly PageTreeItem[], parentId: string | null): number {
   return Math.max(-1, ...pages.filter((p) => p.parentId === parentId).map((p) => p.position)) + 1;
 }

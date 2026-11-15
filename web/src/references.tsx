@@ -5,6 +5,7 @@
 import type { ReferenceCategory, ReferenceDto } from '@app/shared';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useId, useState } from 'react';
 import { api } from './api';
+import { useTicketLabels } from './ticket-types';
 import { useI18n } from './i18n';
 import { type PanelContent, usePanels } from './panels';
 import { StatusLabel } from './requirement-statuses';
@@ -61,6 +62,7 @@ function referenceTarget(item: ReferenceDto & { category: Exclude<ReferenceCateg
 /** Référence citée : lien vers sa fiche et aperçu au survol ou au focus ; texte seul si elle est inconnue. */
 export function ReferenceMention({ reference }: { reference: string }) {
   const { t } = useI18n();
+  const { categoryLabel } = useTicketLabels();
   const openReference = useOpenReference();
   const item = useContext(ReferencesContext).get(reference);
   const [previewing, setPreviewing] = useState(false);
@@ -87,7 +89,7 @@ export function ReferenceMention({ reference }: { reference: string }) {
         <span id={previewId} role="tooltip" className="reference-preview">
           <strong>{item.reference}</strong> {item.title}
           <small>
-            {t(`referenceCategory.${item.category}`)}
+            {categoryLabel(item.category)}
             {item.requirement && (
               <>
                 {' · '}

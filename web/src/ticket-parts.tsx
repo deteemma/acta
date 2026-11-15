@@ -8,8 +8,6 @@ import {
   type MemberNameDto,
   type MessageKey,
   ticketHistory,
-  ticketStatusLabelKey,
-  ticketStatusTone,
   type TicketChange,
   type TicketEpicRef,
   type TicketRow,
@@ -19,6 +17,7 @@ import {
 } from '@app/shared';
 import type { ReactNode } from 'react';
 import { useI18n } from './i18n';
+import { TicketStatusBadge, useTicketLabels } from './ticket-types';
 import { formatDate } from './initiative-panels';
 import { type PanelContent, usePanels } from './panels';
 import { RichText } from './rich-text';
@@ -31,9 +30,9 @@ export function ticketTarget(initiativeId: string, ticket: Pick<TicketRow, 'id' 
     : { kind: 'ticket', initiativeId, ticketId: ticket.id };
 }
 
+/** Statut d'un ticket, livré ou ajouté, coloré selon sa famille. */
 export function TicketStatusLabel({ type, status }: { type: TicketType; status: TicketStatus }) {
-  const { t } = useI18n();
-  return <span className={`badge status tone-${ticketStatusTone(status)}`}>{t(ticketStatusLabelKey(type, status))}</span>;
+  return <TicketStatusBadge type={type} status={status} />;
 }
 
 /** Liste de choix de l'Epic d'un ticket, « Sans Epic » en tête. */
@@ -154,6 +153,7 @@ const TICKET_FIELD_LABELS = {
 
 function TicketChangeLine({ type, babok, change }: { type: TicketType; babok: BabokDto | null; change: TicketChange }) {
   const { t, locale } = useI18n();
+  const { statusLabel } = useTicketLabels();
   const empty = <em>{t('action.historyNoValue')}</em>;
   const label = t(TICKET_FIELD_LABELS[change.field]);
   // La description, souvent longue, s'affiche en entier à la demande.
@@ -183,7 +183,7 @@ function TicketChangeLine({ type, babok, change }: { type: TicketType; babok: Ba
       case 'title':
         return [change.from, change.to];
       case 'status':
-        return [t(ticketStatusLabelKey(type, change.from)), t(ticketStatusLabelKey(type, change.to))];
+        return [statusLabel(type, change.from), statusLabel(type, change.to)];
       case 'taskId':
       case 'techniqueId':
         return [babokName(change.from), babokName(change.to)];

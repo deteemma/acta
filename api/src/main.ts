@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { existsSync } from 'node:fs';
-import { ATTACHMENT_MAX_BYTES } from '@app/shared';
+import { ATTACHMENT_MAX_BYTES, PAGE_SAVE_WITH_IMAGES_TYPE } from '@app/shared';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
@@ -17,12 +17,13 @@ async function bootstrap(): Promise<void> {
   const config = app.get(AppConfig);
   // Pièces jointes (ticket 21) : contenu brut, 10 Mo au plus ; au-delà, 413 avant
   // toute lecture complète.
-  app
-    .getHttpAdapter()
-    .getInstance()
-    .addContentTypeParser('application/octet-stream', { parseAs: 'buffer', bodyLimit: ATTACHMENT_MAX_BYTES }, (_request, body, done) =>
-      done(null, body),
-    );
+  const fastify = app.getHttpAdapter().getInstance();
+  fastify.addContentTypeParser('application/octet-stream', { parseAs: 'buffer', bodyLimit: ATTACHMENT_MAX_BYTES }, (_request, body, done) =>
+    done(null, body),
+  );
+  // Page enregistrée avec ses images (ticket 26) : le flux lui-même, lu fichier par
+  // fichier par l'API (PageSaveStream), qui en vérifie chaque taille.
+  fastify.addContentTypeParser(PAGE_SAVE_WITH_IMAGES_TYPE, (_request, payload, done) => done(null, payload));
 
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();

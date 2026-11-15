@@ -1,32 +1,49 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  checkPageDelete,
+  checkPageImages,
   checkPageMove,
+  checkPageUploads,
+  createPageWithImagesSchema,
+  type PageDoc,
+  resolvePageUploads,
+  updatePageWithImagesSchema,
   checkPageRevisionDelete,
   checkPageRevisionRestore,
+  checkPageSaveBase,
   checkPageVersionDeclare,
   checkPageVersionNote,
   type CreatePageInput,
   currentPageRevision,
   type DeclarePageVersionInput,
+  isOfferedPageTemplate,
   type MovePageInput,
   movePage,
   nextPagePosition,
   nextPageVersionNumber,
+  type PageChangedSinceBody,
   type PageDto,
   type PageRefusal,
   type PageRevisionDto,
   type PageRevisionItem,
   type PageRevisionRefusal,
+  type PageSaveRefusal,
   type PageRevisionRow,
   type PageRow,
+  type PageTemplateDto,
   pageVersionStatus,
+  type TaskPageDto,
   type UpdatePageInput,
   type UpdatePageVersionNoteInput,
+  sortByReference,
 } from '@app/shared';
 import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js';
+import { attachmentRefusal, loadUsage, transfers, write as writeAttachment } from '../attachments/attachments.service.js';
+import { loadPageLinks } from '../links/links.service.js';
+import type { PageSaveStream } from './page-save-stream.js';
 
 /** Pages d'une initiative (ticket 22) : la RLS limite aux membres, les guards aux rôles. */
 @Injectable()
@@ -42,27 +59,106 @@ export class PagesService {
     return this.database.asUser(userId, (tx) => this.loadPage(tx, initiativeId, pageId));
   }
 
-  /** Premier enregistrement : la référence est attribuée par la base, la page se place en dernier. */
+  /**
+   * Premier enregistrement : la référence est attribuée par la base, la page se place
+   * en dernier. Depuis un modèle actif, la page en garde la mention, sous son nom dans
+   * la langue de l'auteur ; la base y ajoute la tâche du modèle.
+   */
   create(userId: string, initiativeId: string, input: CreatePageInput): Promise<PageDto> {
     const id = randomUUID();
     return this.database.asUser(userId, async (tx) => {
-      const tree = await this.lockTree(tx, initiativeId);
-      const refusal = input.parentId === null ? null : checkPageMove(tree, id, input.parentId);
-      if (refusal) throw pageRefusal(refusal);
-      await tx
-        .insertInto('page')
-        .values({
-          id,
-          initiative_id: initiativeId,
-          title: input.title,
-          content: input.content === null ? null : JSON.stringify(input.content),
-          parent_id: input.parentId,
-          position: nextPagePosition(tree, input.parentId),
-        })
-        .execute()
-        .catch(translateTreeError);
+      await this.insertPage(tx, initiativeId, id, input);
+      await this.checkImages(tx, initiativeId, id, input.content);
       return this.loadPage(tx, initiativeId, id);
     });
+  }
+
+  /**
+   * Enregistrement d'une saisie avec les fichiers de ses images insérées (ticket 26,
+   * décision 10, point 7) : la page, puis chaque fichier lu à son tour, dans une
+   * seule transaction. Abandonner la saisie n'envoie rien ; une requête
+   * interrompue, ou un refus, n'écrit rien : aucun fichier n'est rattaché à la page
+   * hors d'un enregistrement. `pageId` null : création.
+   */
+  async saveWithImages(userId: string, initiativeId: string, pageId: string | null, body: PageSaveStream): Promise<PageDto> {
+    const header = await body.header();
+    const parsed = pageId ? updatePageWithImagesSchema.safeParse(header) : createPageWithImagesSchema.safeParse(header);
+    if (!parsed.success) throw new BadRequestException();
+    const { uploads, ...input } = parsed.data;
+    return transfers.run(() =>
+      this.database.asUser(userId, async (tx) => {
+        const refusal = checkPageUploads(input.content ?? null, uploads, await loadUsage(tx, initiativeId));
+        if (refusal) throw attachmentRefusal(refusal.refusal, refusal.name);
+        const ids = Object.fromEntries(uploads.map((u) => [u.key, randomUUID()]));
+        const content = input.content && resolvePageUploads(input.content, ids);
+        const id = pageId ?? randomUUID();
+        // La page d'abord : les fichiers lui sont rattachés ; la base vérifie ses images en fin de transaction.
+        if (pageId) await this.applyUpdate(tx, initiativeId, pageId, { ...(input as UpdatePageInput), content });
+        else await this.insertPage(tx, initiativeId, id, { ...(input as CreatePageInput), content: content ?? null });
+        for (const upload of uploads) {
+          const bytes = await body.read(upload.sizeBytes);
+          await writeAttachment(
+            () =>
+              tx
+                .insertInto('attachment')
+                .values({ id: ids[upload.key]!, initiative_id: initiativeId, page_id: id, name: upload.name, content: bytes })
+                .execute(),
+            upload.name,
+          );
+        }
+        await body.end();
+        await this.checkImages(tx, initiativeId, id, content);
+        return this.loadPage(tx, initiativeId, id);
+      }),
+    );
+  }
+
+  /**
+   * Le texte n'affiche que des images de la page (checkPageImages), puis la même
+   * vérification par la base, sans attendre la fin de la transaction.
+   */
+  private async checkImages(tx: Tx, initiativeId: string, pageId: string, content: PageDoc | null | undefined) {
+    if (content === undefined) return;
+    const files = await tx
+      .selectFrom('attachment')
+      .select(['id', 'name'])
+      .where('initiative_id', '=', initiativeId)
+      .where('page_id', '=', pageId)
+      .execute();
+    const refusal = checkPageImages(content, files);
+    if (refusal) throw attachmentRefusal(refusal);
+    await sql`SET CONSTRAINTS page_images_on_page IMMEDIATE`.execute(tx).catch((error: unknown) => {
+      if (isConstraintViolation(error, 'page_image_not_on_page')) throw attachmentRefusal('imageNotOnPage');
+      throw error;
+    });
+  }
+
+  private async insertPage(tx: Tx, initiativeId: string, id: string, input: CreatePageInput): Promise<void> {
+    const tree = await this.lockTree(tx, initiativeId);
+    const refusal = input.parentId === null ? null : checkPageMove(tree, id, input.parentId);
+    if (refusal) throw pageRefusal(refusal);
+    const template = input.template
+      ? await tx
+          .selectFrom('page_template')
+          .select(['id', 'name_fr', 'name_en', 'active'])
+          .where('id', '=', input.template.id)
+          .executeTakeFirst()
+      : null;
+    if (input.template && !(template && isOfferedPageTemplate(template))) throw pageRefusal('unknownPageTemplate');
+    await tx
+      .insertInto('page')
+      .values({
+        id,
+        initiative_id: initiativeId,
+        title: input.title,
+        content: input.content === null ? null : JSON.stringify(input.content),
+        parent_id: input.parentId,
+        position: nextPagePosition(tree, input.parentId),
+        template_id: template?.id ?? null,
+        template_name: template && input.template ? template[`name_${input.template.locale}`] : null,
+      })
+      .execute()
+      .catch(translateTreeError);
   }
 
   /**
@@ -72,26 +168,36 @@ export class PagesService {
    */
   update(userId: string, initiativeId: string, pageId: string, input: UpdatePageInput): Promise<PageDto> {
     return this.database.asUser(userId, async (tx) => {
-      const current = await this.loadPage(tx, initiativeId, pageId);
-      const changes = input.title !== undefined || input.content !== undefined;
-      if (!changes && !input.version) return current;
-      if (changes) {
-        await tx
-          .updateTable('page')
-          .set({
-            title: input.title,
-            content: input.content === undefined ? undefined : input.content && JSON.stringify(input.content),
-          })
-          .where('id', '=', pageId)
-          .where('initiative_id', '=', initiativeId)
-          .execute();
-      }
-      if (input.version) {
-        const revisions = await this.lockRevisions(tx, pageId);
-        await this.declare(tx, revisions, currentPageRevision(revisions)!.id, input.version);
-      }
+      await this.applyUpdate(tx, initiativeId, pageId, input);
+      await this.checkImages(tx, initiativeId, pageId, input.content);
       return this.loadPage(tx, initiativeId, pageId);
     });
+  }
+
+  private async applyUpdate(tx: Tx, initiativeId: string, pageId: string, input: UpdatePageInput): Promise<void> {
+    await this.loadPage(tx, initiativeId, pageId);
+    const changes = input.title !== undefined || input.content !== undefined;
+    if (!changes && !input.version) return;
+    // Modification simultanée (ticket 24) : pas de verrou d'écriture pour l'utilisateur,
+    // mais deux enregistrements arrivés en même temps passent l'un après l'autre ; le
+    // second lit alors l'enregistrement du premier, et il est refusé.
+    const refusal = checkPageSaveBase(await this.lockRevisions(tx, pageId), input.baseRevisionId);
+    if (refusal) throw pageSaveRefusal(refusal, await this.loadPage(tx, initiativeId, pageId));
+    if (changes) {
+      await tx
+        .updateTable('page')
+        .set({
+          title: input.title,
+          content: input.content === undefined ? undefined : input.content && JSON.stringify(input.content),
+        })
+        .where('id', '=', pageId)
+        .where('initiative_id', '=', initiativeId)
+        .execute();
+    }
+    if (input.version) {
+      const revisions = await this.lockRevisions(tx, pageId);
+      await this.declare(tx, revisions, currentPageRevision(revisions)!.id, input.version);
+    }
   }
 
   // ── Enregistrements et versions (ticket 23) ────────────────────────────────
@@ -317,17 +423,25 @@ export class PagesService {
     });
   }
 
-  /** Définitive ; refusée tant que la page a des sous-pages. Les liens viendront avec le ticket 25. */
+  /**
+   * Définitive ; refusée tant que la page a des sous-pages ou des liens (ticket 25).
+   * Ses commentaires partent avec elle.
+   */
   remove(userId: string, initiativeId: string, pageId: string): Promise<void> {
     return this.database.asUser(userId, async (tx) => {
       await this.loadPage(tx, initiativeId, pageId);
+      const [tree, pageLinks] = await Promise.all([this.selectTree(tx, initiativeId), loadPageLinks(tx, initiativeId)]);
+      const refusal = checkPageDelete(tree, pageId, { pageLinks });
+      if (refusal) throw pageRefusal(refusal);
       await tx
         .deleteFrom('page')
         .where('id', '=', pageId)
         .where('initiative_id', '=', initiativeId)
         .execute()
         .catch((error: unknown) => {
-          if (isForeignKeyViolation(error)) throw pageRefusal('pageHasSubpages');
+          // Seconde barrière : une sous-page ou un lien ajouté entre-temps.
+          if (isConstraintViolation(error, 'page_parent_fkey')) throw pageRefusal('pageHasSubpages');
+          if (isForeignKeyViolation(error)) throw pageRefusal('pageLinked');
           throw error;
         });
     });
@@ -370,6 +484,9 @@ export class PagesService {
         'p.updated_by',
         'uu.email as updated_by_email',
         'uu.display_name as updated_by_display_name',
+        'p.template_id',
+        'p.template_name',
+        'p.task_id',
       ])
       .where('p.id', '=', pageId)
       .where('p.initiative_id', '=', initiativeId)
@@ -390,7 +507,44 @@ export class PagesService {
       updatedBy: { userId: r.updated_by, email: r.updated_by_email, displayName: r.updated_by_display_name },
       revisionId: currentPageRevision(revisions)!.id,
       versions: pageVersionStatus(revisions),
+      template: r.template_id && r.template_name ? { id: r.template_id, name: r.template_name } : null,
+      taskId: r.task_id,
     };
+  }
+
+  // ── Modèles de page (ticket 27) ────────────────────────────────────────────
+
+  /** Tous les modèles, actifs ou non : le web ne propose que les actifs (pageTemplateGroups). */
+  listTemplates(userId: string): Promise<PageTemplateDto[]> {
+    return this.database.asUser(userId, async (tx) => {
+      const rows = await tx
+        .selectFrom('page_template')
+        .select(['id', 'name_fr', 'name_en', 'content_fr', 'content_en', 'task_id', 'origin', 'active'])
+        .orderBy('name_fr')
+        .execute();
+      return rows.map((r) => ({
+        id: r.id,
+        name: { fr: r.name_fr, en: r.name_en },
+        content: { fr: r.content_fr, en: r.content_en },
+        taskId: r.task_id,
+        origin: r.origin,
+        active: r.active,
+      }));
+    });
+  }
+
+  /** Pages créées depuis un modèle de la tâche, dans mes initiatives (la RLS limite aux membres). */
+  listTaskPages(userId: string, taskId: string): Promise<TaskPageDto[]> {
+    return this.database.asUser(userId, async (tx) => {
+      const rows = await tx
+        .selectFrom('page')
+        .select(['id', 'initiative_id', 'reference', 'title'])
+        .where('task_id', '=', taskId)
+        .execute();
+      return sortByReference(
+        rows.map((r) => ({ id: r.id, initiativeId: r.initiative_id, reference: r.reference, title: r.title })),
+      );
+    });
   }
 }
 
@@ -398,6 +552,8 @@ export class PagesService {
 function translateTreeError(error: unknown): never {
   if (isConstraintViolation(error, 'page_parent_fkey')) throw pageRefusal('unknownPage');
   if (isConstraintViolation(error, 'page_under_itself')) throw pageRefusal('pageUnderItself');
+  // Modèle désactivé entre la lecture et l'écriture.
+  if (isConstraintViolation(error, 'page_template_active')) throw pageRefusal('unknownPageTemplate');
   throw error;
 }
 
@@ -417,10 +573,14 @@ function translateRevisionError(error: unknown): never {
   throw error;
 }
 
+/** Refus d'un enregistrement de la page, avec la page dans son état actuel (ticket 24). */
+export const pageSaveRefusal = (refusal: PageSaveRefusal, page: PageDto) =>
+  new ConflictException({ statusCode: 409, refusal, page } satisfies PageChangedSinceBody);
+
 export const revisionRefusal = (refusal: PageRevisionRefusal) => new ConflictException({ statusCode: 409, refusal });
 
 export function pageRefusal(refusal: PageRefusal) {
-  return refusal === 'pageHasSubpages'
+  return refusal === 'pageHasSubpages' || refusal === 'pageLinked'
     ? new ConflictException({ statusCode: 409, refusal })
     : new BadRequestException({ statusCode: 400, refusal });
 }

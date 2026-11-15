@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   canBeAssignee,
+  checkTicketCreation,
   checkTicketFields,
   type CreateTicketInput,
   sortByName,
@@ -9,6 +10,7 @@ import {
   type TicketDto,
   type TicketRow,
   type TicketType,
+  type TicketTypeDto,
   type TicketVersionDto,
   type UpdateTicketInput,
 } from '@app/shared';
@@ -16,7 +18,8 @@ import { sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js';
 import { stakeholderRefusal } from '../stakeholders/stakeholders.service.js';
-import { actionRefusal, checkAssignee, checkEpic, isEpicViolation, loadTicketVersions, ticketRefusal } from './ticket-rules.js';
+import { loadTicketTypes } from '../ticket-types/ticket-types.service.js';
+import { actionRefusal, checkAssignee, checkEpic, isEpicViolation, loadTicketVersions, ticketRefusal, ticketStatusViolation } from './ticket-rules.js';
 
 /**
  * Tickets d'une initiative (ticket 18). La liste montre tous les types ; le reste
@@ -87,11 +90,14 @@ export class TicketsService {
     });
   }
 
-  /** Dans le statut initial du type, posé par la base. */
+  /** Type actif seulement ; dans le statut initial du type, posé par la base. */
   create(userId: string, initiativeId: string, input: CreateTicketInput): Promise<TicketDto> {
     const id = randomUUID();
     return this.database.asUser(userId, async (tx) => {
-      throwIfRefused(input.type, input);
+      const types = await loadTicketTypes(tx);
+      const typeRefusal = checkTicketCreation(types, input.type);
+      if (typeRefusal) throw ticketRefusal(typeRefusal);
+      throwIfRefused(types, input.type, input, null);
       if (input.assigneeId) await checkAssignee(tx, initiativeId, input.assigneeId);
       if (input.epicId) await checkEpic(tx, initiativeId, input.epicId);
       if (input.questionedStakeholderIds) await this.checkStakeholders(tx, initiativeId, input.questionedStakeholderIds);
@@ -117,11 +123,14 @@ export class TicketsService {
     });
   }
 
-  /** Seuls les champs fournis changent ; tout statut du type peut passer à tout autre. */
+  /**
+   * Seuls les champs fournis changent ; tout statut actif du type peut passer à
+   * tout autre, et le ticket garde un statut désactivé qu'il porte.
+   */
   update(userId: string, initiativeId: string, ticketId: string, input: UpdateTicketInput): Promise<TicketDto> {
     return this.database.asUser(userId, async (tx) => {
       const current = await this.loadTicket(tx, userId, initiativeId, ticketId);
-      throwIfRefused(current.type, input);
+      throwIfRefused(await loadTicketTypes(tx), current.type, input, current.status);
       const { questionedStakeholderIds, status, ...others } = input;
       const fieldsChange = status !== undefined || Object.values(others).some((value) => value !== undefined);
       const stakeholdersChange =
@@ -299,8 +308,13 @@ export class TicketsService {
   }
 }
 
-function throwIfRefused(type: TicketType, input: Parameters<typeof checkTicketFields>[1]): void {
-  const refusal = checkTicketFields(type, input);
+function throwIfRefused(
+  types: readonly TicketTypeDto[],
+  type: TicketType,
+  input: Parameters<typeof checkTicketFields>[2],
+  current: string | null,
+): void {
+  const refusal = checkTicketFields(types, type, input, current);
   if (refusal) throw ticketRefusal(refusal);
 }
 
@@ -315,7 +329,10 @@ async function write(run: () => Promise<unknown>): Promise<void> {
     if (isConstraintViolation(error, 'ticket_assignee_eligible')) throw actionRefusal('assigneeNotEligible');
     if (isEpicViolation(error)) throw ticketRefusal('unknownEpic');
     if (isConstraintViolation(error, 'ticket_no_epic_in_epic')) throw ticketRefusal('epicInEpic');
-    if (isConstraintViolation(error, 'ticket_status_check')) throw ticketRefusal('statusNotOfType');
+    const statusRefusal = ticketStatusViolation(error);
+    if (statusRefusal) throw ticketRefusal(statusRefusal);
+    if (isConstraintViolation(error, 'ticket_type_inactive')) throw ticketRefusal('inactiveType');
+    if (isConstraintViolation(error, 'ticket_type_fkey')) throw ticketRefusal('unknownType');
     throw error;
   }
 }

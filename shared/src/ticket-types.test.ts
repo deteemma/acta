@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_ACRONYMS, REFERENCE_CATEGORIES } from './references.js';
-import { ticketStatusTone } from './status-tones.js';
+import { deliveredTicketTypes } from './ticket-type-catalog.js';
 import { translate } from './i18n.js';
 import {
   checkTicketFields,
@@ -10,8 +10,7 @@ import {
   epicProgress,
   groupTicketsByEpic,
   isOpenTicket,
-  isTicketStatusOf,
-  QUICK_CREATE_TICKET_TYPES,
+  quickCreateTicketTypes,
   selectTickets,
   DEFAULT_TICKET_FILTERS,
   newTicketTypes,
@@ -24,8 +23,10 @@ import {
   type TicketRow,
   type TicketSnapshot,
   type TicketStatus,
-  type TicketType,
+  type DeliveredTicketType,
 } from './tickets.js';
+
+const types = deliveredTicketTypes();
 
 const row = (reference: string, fields: Partial<TicketRow> = {}): TicketRow => ({
   id: reference,
@@ -52,7 +53,7 @@ test('six types livrés, chacun avec son acronyme de référence (décision 01, 
 });
 
 // Listes de la décision 03, point 2, écrites ici à la main.
-const LABELS: Record<TicketType, { fr: string[]; en: string[] }> = {
+const LABELS: Record<DeliveredTicketType, { fr: string[]; en: string[] }> = {
   action: {
     fr: ['À faire', 'En cours', 'En attente', 'Terminée', 'Annulée'],
     en: ['To do', 'In progress', 'On hold', 'Done', 'Cancelled'],
@@ -98,7 +99,8 @@ test('le statut initial est le premier de la liste du type (décision 03, point 
 });
 
 test('statuts fermés de chaque type ; En attente n’est jamais fermé (décision 03, point 6)', () => {
-  const closed = (type: TicketType) => TICKET_STATUSES[type].filter((status: TicketStatus) => !isOpenTicket({ type, status }));
+  const closed = (type: DeliveredTicketType) =>
+    TICKET_STATUSES[type].filter((status: TicketStatus) => !isOpenTicket(types, { type, status }));
   assert.deepEqual(closed('action'), ['done', 'cancelled']);
   assert.deepEqual(closed('question'), ['closed', 'rejected']);
   assert.deepEqual(closed('decision'), ['agreed', 'rejected']);
@@ -116,25 +118,23 @@ test('familles des statuts livrés (décision 03, point 3)', () => {
     negative: ['rejected'],
     muted: ['cancelled'],
   };
+  // Un même identifiant de statut a la même famille pour tous les types.
   for (const [tone, statuses] of Object.entries(tones)) {
-    for (const status of statuses) assert.equal(ticketStatusTone(status), tone, status);
+    for (const type of types) {
+      for (const status of type.statuses.filter((s) => statuses.includes(s.code))) assert.equal(status.tone, tone, status.code);
+    }
   }
 });
 
-test('un statut n’est valable que pour son type', () => {
-  assert.equal(isTicketStatusOf('risk', 'identified'), true);
-  assert.equal(isTicketStatusOf('risk', 'open'), false);
-  assert.equal(isTicketStatusOf('question', 'done'), false);
-});
-
 test('création rapide : pour tous les types sans autre champ obligatoire, donc pas l’Action (décision 11, point 7)', () => {
-  assert.deepEqual(QUICK_CREATE_TICKET_TYPES, ['question', 'decision', 'risk', 'change_request', 'epic']);
+  assert.deepEqual(quickCreateTicketTypes(types).map((t) => t.code), ['question', 'decision', 'risk', 'change_request', 'epic']);
 });
 
 test('« Nouveau ticket » propose tous les types ; dans un Epic, pas l’Epic', () => {
-  assert.deepEqual(newTicketTypes(false), TICKET_TYPES);
-  assert.ok(!newTicketTypes(true).includes('epic'));
-  assert.ok(newTicketTypes(true).includes('action'));
+  const codes = (inEpic: boolean) => newTicketTypes(types, inEpic).map((t) => t.code);
+  assert.deepEqual(codes(false), TICKET_TYPES);
+  assert.ok(!codes(true).includes('epic'));
+  assert.ok(codes(true).includes('action'));
 });
 
 test('création par la route générique : l’Action garde sa route, type et titre suffisent aux autres', () => {
@@ -153,26 +153,26 @@ test('champs selon le type (décision 01, point 2) : l’Epic seul n’a pas d�
 });
 
 test('champs propres : parties prenantes interrogées pour la Question, probabilité et impact pour le Risque', () => {
-  assert.equal(checkTicketFields('question', { questionedStakeholderIds: ['s1'] }), null);
-  assert.equal(checkTicketFields('risk', { probability: 'high', impact: 'low' }), null);
-  assert.equal(checkTicketFields('decision', { questionedStakeholderIds: ['s1'] }), 'fieldNotOfType');
-  assert.equal(checkTicketFields('question', { probability: 'high' }), 'fieldNotOfType');
-  assert.equal(checkTicketFields('epic', { impact: 'low' }), 'fieldNotOfType');
+  assert.equal(checkTicketFields(types, 'question', { questionedStakeholderIds: ['s1'] }, null), null);
+  assert.equal(checkTicketFields(types, 'risk', { probability: 'high', impact: 'low' }, null), null);
+  assert.equal(checkTicketFields(types, 'decision', { questionedStakeholderIds: ['s1'] }, null), 'fieldNotOfType');
+  assert.equal(checkTicketFields(types, 'question', { probability: 'high' }, null), 'fieldNotOfType');
+  assert.equal(checkTicketFields(types, 'epic', { impact: 'low' }, null), 'fieldNotOfType');
 });
 
 test('un champ propre vide ne gêne pas : le formulaire commun l’envoie pour tous les types', () => {
-  assert.equal(checkTicketFields('decision', { questionedStakeholderIds: [], probability: null, impact: null }), null);
+  assert.equal(checkTicketFields(types, 'decision', { questionedStakeholderIds: [], probability: null, impact: null }, null), null);
 });
 
 test('pas d’Epic dans un Epic ; retirer l’Epic reste possible', () => {
-  assert.equal(checkTicketFields('epic', { epicId: 'e1' }), 'epicInEpic');
-  assert.equal(checkTicketFields('epic', { epicId: null }), null);
-  assert.equal(checkTicketFields('question', { epicId: 'e1' }), null);
+  assert.equal(checkTicketFields(types, 'epic', { epicId: 'e1' }, null), 'epicInEpic');
+  assert.equal(checkTicketFields(types, 'epic', { epicId: null }, null), null);
+  assert.equal(checkTicketFields(types, 'question', { epicId: 'e1' }, null), null);
 });
 
 test('un statut d’un autre type est refusé', () => {
-  assert.equal(checkTicketFields('risk', { status: 'identified' }), null);
-  assert.equal(checkTicketFields('risk', { status: 'open' }), 'statusNotOfType');
+  assert.equal(checkTicketFields(types, 'risk', { status: 'identified' }, 'on_hold'), null);
+  assert.equal(checkTicketFields(types, 'risk', { status: 'open' }, 'identified'), 'statusNotOfType');
 });
 
 test('progression d’un Epic : ses tickets fermés sur le total ; lui-même n’y compte pas', () => {
@@ -185,8 +185,8 @@ test('progression d’un Epic : ses tickets fermés sur le total ; lui-même n�
     row('RI-1', { epic: epicOf(epic), type: 'risk', status: 'on_hold' }),
     row('QU-3', { status: 'closed' }),
   ];
-  assert.deepEqual(epicProgress(tickets, epic.id), { closed: 2, total: 4 });
-  assert.deepEqual(epicProgress(tickets, 'autre'), { closed: 0, total: 0 });
+  assert.deepEqual(epicProgress(types, tickets, epic.id), { closed: 2, total: 4 });
+  assert.deepEqual(epicProgress(types, tickets, 'autre'), { closed: 0, total: 0 });
 });
 
 test('regroupement : Epics par référence, leurs tickets dans l’ordre reçu, puis « Sans Epic »', () => {
@@ -200,7 +200,7 @@ test('regroupement : Epics par référence, leurs tickets dans l’ordre reçu, 
     lot1,
     row('QU-4', { epic: epicOf(lot1) }),
   ];
-  const { epics, withoutEpic } = groupTicketsByEpic(tickets, tickets);
+  const { epics, withoutEpic } = groupTicketsByEpic(types, tickets, tickets);
   assert.deepEqual(epics.map((g) => [g.epic.reference, g.tickets.map((t) => t.reference)]), [
     ['EP-001', ['QU-2', 'QU-4']],
     ['EP-002', ['QU-3']],
@@ -210,7 +210,7 @@ test('regroupement : Epics par référence, leurs tickets dans l’ordre reçu, 
 
 test('regroupement : un Epic vide reste visible, pour pouvoir y ajouter un ticket', () => {
   const lot = epicRow('EP-001');
-  const { epics, withoutEpic } = groupTicketsByEpic([lot], [lot]);
+  const { epics, withoutEpic } = groupTicketsByEpic(types, [lot], [lot]);
   assert.deepEqual(epics.map((g) => [g.epic.reference, g.tickets.length, g.total]), [['EP-001', 0, 0]]);
   assert.deepEqual(withoutEpic, []);
 });
@@ -218,8 +218,8 @@ test('regroupement : un Epic vide reste visible, pour pouvoir y ajouter un ticke
 test('regroupement : les filtres s’appliquent aux lignes, la progression compte tous les tickets de l’Epic', () => {
   const lot = epicRow('EP-001');
   const tickets = [lot, row('QU-1', { epic: epicOf(lot) }), row('QU-2', { epic: epicOf(lot), status: 'closed' })];
-  const shown = selectTickets(tickets, DEFAULT_TICKET_FILTERS);
-  const [group] = groupTicketsByEpic(tickets, shown).epics;
+  const shown = selectTickets(types, tickets, DEFAULT_TICKET_FILTERS);
+  const [group] = groupTicketsByEpic(types, tickets, shown).epics;
   assert.deepEqual(group!.tickets.map((t) => t.reference), ['QU-1']);
   assert.deepEqual([group!.closed, group!.total], [1, 2]);
 });
@@ -228,15 +228,15 @@ test('regroupement : un Epic écarté par les filtres reste en-tête tant qu’u
   const closed = epicRow('EP-001', { status: 'done' });
   const empty = epicRow('EP-002', { status: 'cancelled' });
   const tickets = [closed, empty, row('QU-1', { epic: epicOf(closed) })];
-  const shown = selectTickets(tickets, DEFAULT_TICKET_FILTERS);
-  assert.deepEqual(groupTicketsByEpic(tickets, shown).epics.map((g) => g.epic.reference), ['EP-001']);
+  const shown = selectTickets(types, tickets, DEFAULT_TICKET_FILTERS);
+  assert.deepEqual(groupTicketsByEpic(types, tickets, shown).epics.map((g) => g.epic.reference), ['EP-001']);
 });
 
 test('le filtre « sans Epic » ne montre pas les Epics, qui ne peuvent pas en avoir', () => {
   const lot = epicRow('EP-001');
   const tickets = [lot, row('QU-1'), row('QU-2', { epic: epicOf(lot) })];
   assert.deepEqual(
-    selectTickets(tickets, { ...DEFAULT_TICKET_FILTERS, epic: 'none' }).map((t) => t.reference),
+    selectTickets(types, tickets, { ...DEFAULT_TICKET_FILTERS, epic: 'none' }).map((t) => t.reference),
     ['QU-1'],
   );
 });

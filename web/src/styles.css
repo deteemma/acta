@@ -2160,6 +2160,38 @@ button.link.pill:hover {
   color: var(--danger);
   font-weight: 600;
 }
+/* Modèles de page (ticket 27) : choix à la création, mention sur la page. */
+.page-origin {
+  margin: var(--space-1) 0 var(--space-3);
+  color: var(--muted);
+}
+.page-template-heading {
+  font-size: var(--text-section-title);
+  margin: var(--space-3) 0;
+}
+.page-template-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+.page-template-list button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  text-align: start;
+}
+.page-template-list button > svg {
+  margin-bottom: var(--space-1);
+}
+.page-template-list small {
+  color: var(--muted);
+}
 .page-title-field input {
   width: 100%;
   font-size: var(--text-section-title);
@@ -2555,4 +2587,102 @@ button.link.pill:hover {
   min-height: 0;
   max-width: 100%;
   object-fit: contain;
+}
+
+/* Film du logo : affiché sous le logotype pendant qu'on pointe dessus. */
+.logo-film {
+  position: fixed;
+  z-index: 1000;
+  width: min(40rem, calc(100vw - var(--space-8)));
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+  pointer-events: none;
+}
+.logo-film[hidden] {
+  display: none;
+}
+
+/* Modification simultanée (ticket 24) : bandeau du refus, au-dessus de la saisie. */
+.page-conflict {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--tone-attention-bg);
+  color: var(--tone-attention-fg);
+}
+.page-conflict p {
+  margin: 0;
+}
+.page-conflict-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.page-conflict-comparison {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Images du texte d'une page (ticket 26) : pièces jointes, jamais plus larges que le texte. */
+.page-image {
+  margin: var(--space-3) 0;
+}
+.page-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}
+.page-image-missing {
+  padding: var(--space-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  font-style: italic;
+}
+.page-content .ProseMirror-selectednode.page-image img,
+.page-content .page-image.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.page-toolbar-file {
+  gap: var(--space-1);
+}
+.page-toolbar-file svg {
+  width: 1rem;
+  height: 1rem;
+}
+.attachment-revisions {
+  margin: 0 0 var(--space-2);
+  padding-inline-start: var(--space-4);
+}
+
+/* Administration des types de ticket (ticket 29) : un type se déplie sur ses statuts et ses formulaires. */
+.ticket-type-list > li {
+  display: block;
+  padding: 0;
+}
+details.ticket-type > :not(summary) {
+  margin-inline: var(--space-3);
+}
+details.ticket-type h4,
+details.ticket-type h5 {
+  margin: var(--space-3) 0 var(--space-1);
+}
+.ticket-type-form {
+  margin-inline-start: 0;
+  padding-block: var(--space-1);
+}
+.ticket-type-rows {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-6);
 }

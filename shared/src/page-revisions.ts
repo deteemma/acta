@@ -95,6 +95,25 @@ export function checkPageRevisionRestore(revisions: readonly PageRevisionItem[],
   return currentPageRevision(revisions)?.id === revisionId ? 'currentPageRevision' : null;
 }
 
+/**
+ * Modification simultanée (décision 07, point 6 ; ticket 24) : pas de verrou ;
+ * l'enregistrement est refusé si la page a été enregistrée depuis l'ouverture de
+ * la saisie, c'est-à-dire si l'enregistrement sur lequel elle est basée n'est
+ * plus l'état actuel de la page. Null si c'est permis.
+ */
+export function checkPageSaveBase(revisions: readonly PageRevisionItem[], baseRevisionId: string): PageSaveRefusal | null {
+  return currentPageRevision(revisions)?.id === baseRevisionId ? null : 'pageChangedSince';
+}
+
+/**
+ * Refus d'un enregistrement de la page, renvoyé par l'API (`refusal`) avec la
+ * page dans son état actuel (`PageChangedSinceBody`) :
+ * - `pageChangedSince` : la page a été enregistrée depuis l'ouverture de la saisie.
+ */
+export const PAGE_SAVE_REFUSALS = ['pageChangedSince'] as const;
+export type PageSaveRefusal = (typeof PAGE_SAVE_REFUSALS)[number];
+export const isPageSaveRefusal = (value: unknown): value is PageSaveRefusal => PAGE_SAVE_REFUSALS.some((r) => r === value);
+
 /** Ce que la page affiche de ses versions (décision 07, point 5). */
 export interface PageVersionStatus {
   /** Numéro de la dernière version encore présente ; null si la page n'en a aucune. */

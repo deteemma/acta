@@ -7,6 +7,7 @@ import type {
   Locale,
   NeedNature,
   PageDoc,
+  PageTemplateOrigin,
   ReferenceCategory,
   RequirementSnapshot,
   RequirementStatus,
@@ -17,6 +18,7 @@ import type {
   StakeholderRole,
   RiskLevel,
   TicketSnapshot,
+  StatusTone,
   TicketStatus,
   TicketType,
 } from '@app/shared';
@@ -118,6 +120,25 @@ export interface PageTable {
   created_at: ColumnType<Date, never, never>;
   updated_by: ColumnType<string, never, never>;
   updated_at: ColumnType<Date, never, never>;
+  /** Modèle d'origine et son nom à la création (migration 0025) : posés à l'insertion, figés ensuite. */
+  template_id: ColumnType<string | null, string | null | undefined, never>;
+  template_name: ColumnType<string | null, string | null | undefined, never>;
+  /** Tâche du modèle, posée par la base à l'insertion. */
+  task_id: ColumnType<string | null, never, never>;
+}
+
+/** Modèle de page (migrations 0025 et 0030) : écrit seulement par les fonctions admin_* (ticket 30). */
+export interface PageTemplateTable {
+  id: ColumnType<string, never, never>;
+  name_fr: string;
+  name_en: string;
+  content_fr: ColumnType<PageDoc, string, string>;
+  content_en: ColumnType<PageDoc, string, string>;
+  task_id: string | null;
+  origin: PageTemplateOrigin;
+  active: boolean;
+  /** Une page a déjà été créée depuis ce modèle : il ne se supprime plus. */
+  used: ColumnType<boolean, never, never>;
 }
 
 /**
@@ -155,7 +176,7 @@ export interface CommentTable {
   deleted_at: ColumnType<Date | null, never, never>;
 }
 
-/** Paramètres de l'application, une seule ligne (migration 0024) ; réglés au ticket 31. */
+/** Paramètres de l'application, une seule ligne (migration 0024) ; écrits seulement par admin_set_attachment_quota (migration 0031). */
 export interface AppSettingsTable {
   id: ColumnType<boolean, never, never>;
   attachment_quota_mb: ColumnType<number, never, never>;
@@ -232,6 +253,29 @@ export interface ReferenceAcronymTable {
 }
 
 /** Statut d'exigence (migration 0017) : écrit seulement par les fonctions admin_*. */
+export interface TicketTypeTable {
+  code: string;
+  delivered: boolean;
+  label_fr: string | null;
+  label_en: string | null;
+  active: boolean;
+  created_at: Date | null;
+  used: boolean;
+}
+
+export interface TicketStatusTable {
+  type: string;
+  code: string;
+  position: number;
+  delivered: boolean;
+  label_fr: string | null;
+  label_en: string | null;
+  tone: StatusTone;
+  closed: boolean;
+  active: boolean;
+  used: boolean;
+}
+
 export interface RequirementStatusTable {
   code: RequirementStatus;
   babok: boolean;
@@ -267,6 +311,25 @@ export interface TicketNeedTable {
   initiative_id: string;
   ticket_id: string;
   need_id: string;
+}
+
+/** Liens d'une page, sans nature (migration 0027) : vers un ticket, un besoin ou une exigence. */
+export interface PageTicketTable {
+  initiative_id: string;
+  page_id: string;
+  ticket_id: string;
+}
+
+export interface PageNeedTable {
+  initiative_id: string;
+  page_id: string;
+  need_id: string;
+}
+
+export interface PageRequirementTable {
+  initiative_id: string;
+  page_id: string;
+  requirement_id: string;
 }
 
 /** Lien entre deux tickets (migration 0022) : la source « bloque » ou « duplique » la cible. */
@@ -376,6 +439,10 @@ export interface Database {
   need_stakeholder: NeedStakeholderTable;
   owner_designation: OwnerDesignationTable;
   page: PageTable;
+  page_need: PageNeedTable;
+  page_requirement: PageRequirementTable;
+  page_ticket: PageTicketTable;
+  page_template: PageTemplateTable;
   page_revision: PageRevisionTable;
   reference_acronym: ReferenceAcronymTable;
   reference_category: ReferenceCategoryTable;
@@ -388,6 +455,8 @@ export interface Database {
   suggestion_dismissal: SuggestionDismissalTable;
   question_stakeholder: QuestionStakeholderTable;
   ticket: TicketTable;
+  ticket_status: TicketStatusTable;
+  ticket_type: TicketTypeTable;
   ticket_link: TicketLinkTable;
   ticket_need: TicketNeedTable;
   ticket_requirement: TicketRequirementTable;

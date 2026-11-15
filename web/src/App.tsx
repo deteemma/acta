@@ -4,6 +4,7 @@ import { Archive, BookOpen, FileText, ListChecks, LogOut, PanelLeft, Plus, Searc
 import { useEffect, useState } from 'react';
 import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
+import { PageTemplatePanel } from './admin-page-templates';
 import { AlertsButton, AlertsPanel, useMyAlerts } from './alerts';
 import { api } from './api';
 import { BabokElementPanel, BabokPanel } from './babok-panels';
@@ -12,6 +13,7 @@ import { EmptyState } from './empty-state';
 import { login, loginErrorFromUrl, logout, shouldRedirectToLogin } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
+import { Logotype } from './logotype';
 import { CreateInitiativePanel, InitiativePanel, MemberPanel } from './initiative-panels';
 import { MyActions } from './my-actions';
 import { NeedPanel } from './need-panels';
@@ -55,7 +57,7 @@ function SignedOut() {
   return (
     <main className="signed-out">
       <div className="signed-out-text">
-        <h1 className="logotype">{t('app.title')}</h1>
+        <Logotype as="h1" />
         <p className="tagline">{t('app.tagline')}</p>
         <div className="signed-out-buttons">
           <button type="button" className="primary" onClick={() => login().catch((e: unknown) => setFailure(String(e)))}>
@@ -179,7 +181,7 @@ function Shell({ user }: { user: User }) {
           {!navHidden && (
             <nav id="sidebar" className="sidebar" aria-label={t('shell.navigation')}>
               <ResizeHandle area={SIDEBAR} label={t('shell.resizeNav')} className="sidebar-resize" />
-              <span className="logotype">{t('app.title')}</span>
+              <Logotype />
               <button
                 type="button"
                 className="nav-item"
@@ -267,8 +269,12 @@ function Shell({ user }: { user: User }) {
                     initiativeId={screen.initiativeId}
                     pageId={screen.pageId}
                     initiative={initiatives.find((i) => i.id === screen.initiativeId)}
+                    babok={babok}
                     version={pagesVersion}
                     onChanged={pagesChanged}
+                    myId={me?.id ?? null}
+                    linksVersion={actionsVersion}
+                    onLinksChanged={actionsChanged}
                   />
                 </ScreenForms>
               ) : screen.kind === 'tickets' ? (
@@ -338,7 +344,9 @@ function Shell({ user }: { user: User }) {
               case 'member':
                 return <MemberPanel member={content.member} onClose={close} />;
               case 'admin':
-                return me && <AdminPanel myId={me.id} onClose={close} />;
+                return me && <AdminPanel myId={me.id} babok={babok} onClose={close} />;
+              case 'pageTemplate':
+                return babok && <PageTemplatePanel babok={babok} templateId={content.templateId} onClose={close} />;
               case 'babok':
                 return babok && <BabokPanel babok={babok} onClose={close} />;
               case 'babokElement': {

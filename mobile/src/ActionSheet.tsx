@@ -1,12 +1,20 @@
 // Fiche d'une action (ticket 17) : plein écran, glissée depuis le bas, en
 // consultation. Libellés et règles de @app/shared, comme sur le web. En-tête
 // et carte des informations : refonte du design, ticket 06.
-import { type ActionDto, actionStatusTone, type BabokDto, findBabokElement, memberName } from '@app/shared';
+import {
+  type ActionDto,
+  type BabokDto,
+  findBabokElement,
+  memberName,
+  ticketStatusLabel,
+  ticketStatusTone,
+} from '@app/shared';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import type { Api } from './api';
 import { describeError, useI18n } from './i18n';
 import { RichText } from './RichText';
+import { useTicketTypes } from './ticket-types';
 import { type AppTheme, useStyles } from './theme';
 import { babokLabel, formatDate, formatDateTime, Sheet, StatusBadge, Text, useUiStyles } from './ui';
 
@@ -23,7 +31,8 @@ export function ActionSheet({
   actionId: string;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const ticketTypes = useTicketTypes(api);
   const ui = useUiStyles();
   const [action, setAction] = useState<ActionDto | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -42,7 +51,14 @@ export function ActionSheet({
         )
       }
       title={action ? action.title : t('common.loading')}
-      badges={action && <StatusBadge tone={actionStatusTone(action.status)} label={t(`actionStatus.${action.status}`)} />}
+      badges={
+        action && (
+          <StatusBadge
+            tone={ticketStatusTone(ticketTypes, 'action', action.status)}
+            label={ticketStatusLabel(ticketTypes, 'action', action.status, locale)}
+          />
+        )
+      }
       onClose={onClose}
     >
       {error != null && <Text style={ui.error}>{describeError(t, error)}</Text>}

@@ -1,10 +1,16 @@
 // Administration (ticket 05, ADR-0005) : comptes de Keycloak, initiatives sans
 // propriétaire actif, acronymes des références (ticket 09), statuts d'exigence
-// (ticket 11). Les contrôles proposés et les refus suivent les règles de
-// @app/shared (admin.ts, references.ts, requirement-statuses.ts).
+// (ticket 11), types de ticket et leurs statuts (ticket 29, admin-ticket-types.tsx),
+// modèles de page (ticket 30, admin-page-templates.tsx), limite de pièces jointes
+// (ticket 31, admin-attachment-quota.tsx).
+// Les contrôles proposés et les refus suivent les règles de
+// @app/shared (admin.ts, references.ts, requirement-statuses.ts, ticket-type-catalog.ts,
+// page-template-admin.ts, attachments.ts).
 import {
+  ACRONYM_MAX_LENGTH,
   memberName,
   type AccountDto,
+  type BabokDto,
   type AdminRequirementStatusDto,
   checkAccountChange,
   checkAcronymChange,
@@ -27,6 +33,10 @@ import {
 import { useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import { adminRefusalError, ErrorMessage, toUiError, type UiError } from './errors';
+import { AttachmentQuotaSection } from './admin-attachment-quota';
+import { PageTemplatesSection } from './admin-page-templates';
+import { TicketTypesSection } from './admin-ticket-types';
+import { useTicketLabels, useTicketTypes } from './ticket-types';
 import { useI18n } from './i18n';
 import { Panel } from './panels';
 import { setRequirementStatuses } from './requirement-statuses';
@@ -47,14 +57,14 @@ function adminError(error: unknown): UiError {
 const accountName = (account: AccountDto) =>
   [account.firstName, account.lastName].filter(Boolean).join(' ') || account.username;
 
-type AdminTab = 'accounts' | 'orphans' | 'references' | 'statuses';
+type AdminTab = 'accounts' | 'orphans' | 'references' | 'statuses' | 'ticketTypes' | 'pageTemplates' | 'attachments';
 
 /**
- * Quatre onglets (refonte du design, validé le 01.11.2026). Toutes les sections
+ * Onglets (refonte du design, validé le 01.11.2026 ; « Types de ticket », « Modèles de page » et « Pièces jointes » : décision 14 de la phase 2). Toutes les sections
  * restent montées : elles se chargent à l'ouverture, ce qui donne les compteurs,
  * et une saisie en cours survit au changement d'onglet.
  */
-export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => void }) {
+export function AdminPanel({ myId, babok, onClose }: { myId: string; babok: BabokDto | null; onClose: () => void }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<AdminTab>('accounts');
   const [accountCount, setAccountCount] = useState<number | null>(null);
@@ -64,6 +74,9 @@ export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => voi
     { id: 'orphans', label: t('admin.orphansTab'), count: orphanCount, warn: true },
     { id: 'references', label: t('admin.references'), count: null },
     { id: 'statuses', label: t('admin.requirementStatuses'), count: null },
+    { id: 'ticketTypes', label: t('admin.ticketTypes'), count: null },
+    { id: 'pageTemplates', label: t('admin.pageTemplates'), count: null },
+    { id: 'attachments', label: t('admin.attachments'), count: null },
   ];
   const panel = (id: AdminTab) => ({ role: 'tabpanel', id: `admin-${id}`, 'aria-labelledby': `admin-tab-${id}`, hidden: tab !== id });
   return (
@@ -102,6 +115,19 @@ export function AdminPanel({ myId, onClose }: { myId: string; onClose: () => voi
       <div {...panel('statuses')}>
         <RevealFormContext.Provider value={() => setTab('statuses')}>
           <RequirementStatusesSection />
+        </RevealFormContext.Provider>
+      </div>
+      <div {...panel('ticketTypes')}>
+        <RevealFormContext.Provider value={() => setTab('ticketTypes')}>
+          <TicketTypesSection />
+        </RevealFormContext.Provider>
+      </div>
+      <div {...panel('pageTemplates')}>
+        <PageTemplatesSection babok={babok} />
+      </div>
+      <div {...panel('attachments')}>
+        <RevealFormContext.Provider value={() => setTab('attachments')}>
+          <AttachmentQuotaSection />
         </RevealFormContext.Provider>
       </div>
     </Panel>
@@ -325,13 +351,16 @@ function OrphanInitiativesSection({ onCount }: { onCount: (count: number) => voi
 /** Acronyme de chaque catégorie ; les références déjà attribuées ne changent pas. */
 function ReferenceCategoriesSection() {
   const { t } = useI18n();
+  const { categoryLabel } = useTicketLabels();
   const [categories, setCategories] = useState<ReferenceCategoryDto[] | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
+  // Relue quand la liste des types change : un type ajouté est une catégorie de plus.
+  const ticketTypes = useTicketTypes();
   useEffect(() => {
     api.listReferenceCategories().then(setCategories, (e: unknown) => setError(toUiError(e)));
-  }, []);
+  }, [ticketTypes]);
 
   async function save(category: ReferenceCategoryDto, acronym: string): Promise<boolean> {
     const refusal = checkAcronymChange(categories ?? [], category.category, acronym);
@@ -343,7 +372,7 @@ function ReferenceCategoriesSection() {
     try {
       setCategories(await api.updateReferenceCategory(category.category, { acronym }));
       setError(null);
-      setDone(t('admin.reference.saved', { category: t(`referenceCategory.${category.category}`), acronym }));
+      setDone(t('admin.reference.saved', { category: categoryLabel(category.category), acronym }));
       return true;
     } catch (e) {
       setDone(null);
@@ -379,9 +408,10 @@ function AcronymForm({
   onSave: (acronym: string) => Promise<boolean>;
 }) {
   const { t } = useI18n();
+  const { categoryLabel } = useTicketLabels();
   const [acronym, setAcronym] = useState(category.acronym);
   const submit = useUnsavedForm({ acronym }, () => onSave(acronym));
-  const name = t(`referenceCategory.${category.category}`);
+  const name = categoryLabel(category.category);
   const former = category.usedAcronyms.filter((a) => a !== category.acronym);
   return (
     <li>
@@ -393,7 +423,7 @@ function AcronymForm({
         <input
           value={acronym}
           size={5}
-          maxLength={4}
+          maxLength={ACRONYM_MAX_LENGTH}
           aria-label={t('admin.reference.acronym', { category: name })}
           onChange={(e) => setAcronym(e.target.value.toUpperCase())}
         />

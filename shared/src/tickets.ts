@@ -1,61 +1,49 @@
-// Tickets d'une initiative (tickets 17 et 18, décisions 01, 03 et 11) : types,
+// Tickets d'une initiative (tickets 17, 18 et 29, décisions 01, 03 et 11) : types,
 // statuts, champs propres, Epics, filtres et tri de la liste, historique. Règles
 // écrites une seule fois ici, appliquées par l'API et reproduites par la base
-// (migration 0019).
+// (migrations 0019 et 0029). Les types et statuts ajoutés par l'administration
+// sont lus dans la liste des types (ticket-type-catalog.ts).
 import { z } from 'zod';
-import { ACTION_STATUSES, actionDescriptionSchema, actionTitleSchema, CLOSED_ACTION_STATUSES } from './actions.js';
-import { type Locale, type MessageKey, translate } from './i18n.js';
+import { actionDescriptionSchema, actionTitleSchema } from './actions.js';
+import type { Locale } from './i18n.js';
 import { sortByReference } from './references.js';
 import type { InitiativeRole } from './roles.js';
 import { sameIdSet } from './requirements.js';
 import { memberName, type MemberNameDto } from './schemas.js';
 import { matchesEveryWord } from './search.js';
 import { STAKEHOLDER_LEVELS, stakeholderIdsSchema, type StakeholderRefDto } from './stakeholders.js';
+import {
+  type DeliveredTicketType,
+  findTicketStatus,
+  findTicketType,
+  isDeliveredTicketType,
+  isClosedTicketStatus,
+  selectableTicketStatuses,
+  ticketStatusLabel,
+  type TicketTypeDto,
+  ticketTypeLabel,
+} from './ticket-type-catalog.js';
 
-/** Types livrés, dans l'ordre affiché ; un ticket garde son type à vie. */
-export const TICKET_TYPES = ['action', 'question', 'decision', 'risk', 'change_request', 'epic'] as const;
-export type TicketType = (typeof TICKET_TYPES)[number];
+export {
+  CLOSED_TICKET_STATUSES,
+  type DeliveredTicketType,
+  isDeliveredTicketType,
+  TICKET_STATUSES,
+  TICKET_TYPES,
+  type TicketStatus,
+  ticketStatusLabelKey,
+  type TicketType,
+} from './ticket-type-catalog.js';
+import type { TicketStatus, TicketType } from './ticket-type-catalog.js';
 
-/** Types sans autre champ obligatoire que le titre, créés par la route générique. L'Action garde la sienne. */
-export const GENERIC_TICKET_TYPES = ['question', 'decision', 'risk', 'change_request', 'epic'] as const;
-export type GenericTicketType = (typeof GENERIC_TICKET_TYPES)[number];
-
-/** Statuts de chaque type, dans l'ordre affiché ; le premier est le statut initial, tout statut peut passer à tout autre. */
-export const TICKET_STATUSES = {
-  action: ACTION_STATUSES,
-  question: ['open', 'on_hold', 'answered', 'closed', 'rejected'],
-  decision: ['proposed', 'on_hold', 'agreed', 'rejected'],
-  risk: ['identified', 'on_hold', 'addressed', 'closed'],
-  change_request: ['submitted', 'analysed', 'on_hold', 'accepted', 'rejected'],
-  epic: ['todo', 'in_progress', 'on_hold', 'done', 'cancelled'],
-} as const satisfies Record<TicketType, readonly string[]>;
-export type TicketStatus = (typeof TICKET_STATUSES)[TicketType][number];
-
-/** Statuts fermés : le ticket est terminé. En attente n'en fait jamais partie. */
-const CLOSED_TICKET_STATUSES: Record<TicketType, readonly TicketStatus[]> = {
-  action: CLOSED_ACTION_STATUSES,
-  question: ['closed', 'rejected'],
-  decision: ['agreed', 'rejected'],
-  risk: ['closed'],
-  change_request: ['accepted', 'rejected'],
-  epic: ['done', 'cancelled'],
-};
-
-export const isOpenTicket = (ticket: { type: TicketType; status: TicketStatus }) =>
-  !CLOSED_TICKET_STATUSES[ticket.type].includes(ticket.status);
-
-export const isTicketStatusOf = (type: TicketType, status: string): boolean =>
-  (TICKET_STATUSES[type] as readonly string[]).includes(status);
-
-/** Libellé d'un statut, qui dépend du type (Terminée pour l'Action, Terminé pour l'Epic). */
-export function ticketStatusLabelKey(type: TicketType, status: TicketStatus): MessageKey {
-  return (type === 'action' ? `actionStatus.${status}` : `ticketStatus.${type}.${status}`) as MessageKey;
-}
+/** Ticket ouvert : son statut n'est pas fermé. */
+export const isOpenTicket = (types: readonly TicketTypeDto[], ticket: { type: TicketType; status: TicketStatus }) =>
+  !isClosedTicketStatus(types, ticket.type, ticket.status);
 
 /** Champs qui dépendent du type : `babok` pour la tâche et la technique, `riskLevels` pour la probabilité et l'impact. */
 export type TicketTypeField = 'epic' | 'babok' | 'questionedStakeholders' | 'riskLevels';
 
-const TICKET_TYPE_FIELDS: Record<TicketType, readonly TicketTypeField[]> = {
+const TICKET_TYPE_FIELDS: Record<DeliveredTicketType, readonly TicketTypeField[]> = {
   action: ['epic', 'babok'],
   question: ['epic', 'questionedStakeholders'],
   decision: ['epic'],
@@ -64,17 +52,20 @@ const TICKET_TYPE_FIELDS: Record<TicketType, readonly TicketTypeField[]> = {
   epic: [],
 };
 
-export const ticketHasField = (type: TicketType, field: TicketTypeField) => TICKET_TYPE_FIELDS[type].includes(field);
+/** Un type ajouté n'a que les champs communs, dont l'Epic. */
+export const ticketHasField = (type: TicketType, field: TicketTypeField) =>
+  (isDeliveredTicketType(type) ? TICKET_TYPE_FIELDS[type] : ['epic']).includes(field);
 
 /** Le responsable n'est obligatoire que pour l'Action. */
 export const isAssigneeRequired = (type: TicketType) => type === 'action';
 
-/** Création rapide : type et titre, pour les types sans autre champ obligatoire. */
-export const QUICK_CREATE_TICKET_TYPES = GENERIC_TICKET_TYPES;
+/** Types proposés par « Nouveau ticket » : les actifs ; dans un Epic, seulement ceux qui peuvent y entrer. */
+export const newTicketTypes = (types: readonly TicketTypeDto[], inEpic: boolean): TicketTypeDto[] =>
+  types.filter((type) => type.active && (!inEpic || ticketHasField(type.code, 'epic')));
 
-/** Types proposés par « Nouveau ticket » ; dans un Epic, seulement ceux qui peuvent y entrer. */
-export const newTicketTypes = (inEpic: boolean): readonly TicketType[] =>
-  inEpic ? TICKET_TYPES.filter((type) => ticketHasField(type, 'epic')) : TICKET_TYPES;
+/** Création rapide : type et titre, pour les types actifs sans autre champ obligatoire, donc pas l'Action. */
+export const quickCreateTicketTypes = (types: readonly TicketTypeDto[]): TicketTypeDto[] =>
+  types.filter((type) => type.active && type.code !== 'action');
 
 /** Probabilité et impact d'un Risque : faible, moyen ou fort, aucune criticité calculée. */
 export const RISK_LEVELS = STAKEHOLDER_LEVELS;
@@ -94,7 +85,11 @@ const commonTicketFields = {
 
 /** Création par la route générique : tout ticket sauf l'Action, dans le statut initial de son type. */
 export const createTicketSchema = z.object({
-  type: z.enum(GENERIC_TICKET_TYPES),
+  /** L'Action garde sa route (`/actions`). */
+  type: z
+    .string()
+    .min(1)
+    .refine((type) => type !== 'action'),
   title: commonTicketFields.title,
   description: commonTicketFields.description.optional(),
   assigneeId: commonTicketFields.assigneeId.optional(),
@@ -119,18 +114,47 @@ export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
  * - `epicInEpic` : un Epic ne rejoint pas un Epic ;
  * - `unknownEpic` : cet Epic n'existe pas dans l'initiative ;
  * - `epicHasTickets` : un Epic qui contient des tickets ne se supprime pas ;
- * - `ticketLinked` : le ticket est lié à un autre objet.
+ * - `ticketLinked` : le ticket est lié à un autre objet ;
+ * - `inactiveStatus` : le statut est désactivé, il n'est plus attribué ;
+ * - `inactiveType` : le type est désactivé, il n'est plus proposé à la création ;
+ * - `unknownType` : le type n'existe pas.
  */
-export const TICKET_REFUSALS = ['statusNotOfType', 'fieldNotOfType', 'epicInEpic', 'unknownEpic', 'epicHasTickets', 'ticketLinked'] as const;
+export const TICKET_REFUSALS = [
+  'statusNotOfType',
+  'fieldNotOfType',
+  'epicInEpic',
+  'unknownEpic',
+  'epicHasTickets',
+  'ticketLinked',
+  'inactiveStatus',
+  'inactiveType',
+  'unknownType',
+] as const;
 export type TicketRefusal = (typeof TICKET_REFUSALS)[number];
 export const isTicketRefusal = (value: unknown): value is TicketRefusal => TICKET_REFUSALS.some((r) => r === value);
 
-/** Vérifie les champs saisis d'après le type du ticket ; null s'ils sont permis. Un champ propre vide est permis. */
+/** Vérifie le type d'un ticket à créer ; null s'il est permis : un type actif. */
+export function checkTicketCreation(types: readonly TicketTypeDto[], type: TicketType): TicketRefusal | null {
+  const found = findTicketType(types, type);
+  if (!found) return 'unknownType';
+  return found.active ? null : 'inactiveType';
+}
+
+/**
+ * Vérifie les champs saisis d'après le type du ticket et son statut actuel (null :
+ * ticket à créer) ; null s'ils sont permis. Un champ propre vide est permis. Un
+ * statut désactivé n'est plus attribué, mais le ticket qui le porte le garde.
+ */
 export function checkTicketFields(
+  types: readonly TicketTypeDto[],
   type: TicketType,
   input: Pick<UpdateTicketInput, 'status' | 'epicId' | 'questionedStakeholderIds' | 'probability' | 'impact'>,
+  current: TicketStatus | null,
 ): TicketRefusal | null {
-  if (input.status !== undefined && !isTicketStatusOf(type, input.status)) return 'statusNotOfType';
+  if (input.status !== undefined) {
+    if (!findTicketStatus(types, type, input.status)) return 'statusNotOfType';
+    if (!selectableTicketStatuses(types, type, current).some((s) => s.code === input.status)) return 'inactiveStatus';
+  }
   if (!ticketHasField(type, 'epic') && input.epicId) return 'epicInEpic';
   if (!ticketHasField(type, 'questionedStakeholders') && input.questionedStakeholderIds?.length) return 'fieldNotOfType';
   if (!ticketHasField(type, 'riskLevels') && (input.probability || input.impact)) return 'fieldNotOfType';
@@ -186,8 +210,12 @@ export interface TicketRow {
 }
 
 /** Une échéance est dépassée à partir du lendemain, tant que le ticket est ouvert. */
-export function isOverdueTicket(ticket: Pick<TicketRow, 'type' | 'status' | 'dueDate'>, today: string): boolean {
-  return ticket.dueDate != null && ticket.dueDate < today && isOpenTicket(ticket);
+export function isOverdueTicket(
+  types: readonly TicketTypeDto[],
+  ticket: Pick<TicketRow, 'type' | 'status' | 'dueDate'>,
+  today: string,
+): boolean {
+  return ticket.dueDate != null && ticket.dueDate < today && isOpenTicket(types, ticket);
 }
 
 export const TICKET_STATES = ['open', 'closed', 'all'] as const;
@@ -225,17 +253,21 @@ export function changeTicketFilters(filters: TicketFilters, change: Partial<Tick
 const matchesFilter = (filter: string, id: string | undefined) =>
   !filter || (filter === TICKET_FILTER_NONE ? id === undefined : filter === id);
 
-function matchesState(state: TicketState, ticket: TicketRow): boolean {
+function matchesState(types: readonly TicketTypeDto[], state: TicketState, ticket: TicketRow): boolean {
   if (state === 'all') return true;
-  return isOpenTicket(ticket) === (state === 'open');
+  return isOpenTicket(types, ticket) === (state === 'open');
 }
 
-export function selectTickets(tickets: readonly TicketRow[], filters: TicketFilters): TicketRow[] {
+export function selectTickets(
+  types: readonly TicketTypeDto[],
+  tickets: readonly TicketRow[],
+  filters: TicketFilters,
+): TicketRow[] {
   return tickets.filter(
     (ticket) =>
       matchesEveryWord(`${ticket.reference} ${ticket.title}`, filters.text) &&
       (!filters.type || ticket.type === filters.type) &&
-      matchesState(filters.state, ticket) &&
+      matchesState(types, filters.state, ticket) &&
       (!filters.status || ticket.status === filters.status) &&
       matchesFilter(filters.assignee, ticket.assignee?.userId) &&
       matchesFilter(filters.epic, ticket.epic?.id) &&
@@ -261,9 +293,13 @@ export function ticketEpicOptions(tickets: readonly TicketRow[]): TicketEpicRef[
 }
 
 /** Tickets d'un Epic : ses fermés sur le total, à titre d'information ; le statut de l'Epic ne s'en déduit pas. */
-export function epicProgress(tickets: readonly TicketRow[], epicId: string): { closed: number; total: number } {
+export function epicProgress(
+  types: readonly TicketTypeDto[],
+  tickets: readonly TicketRow[],
+  epicId: string,
+): { closed: number; total: number } {
   const own = tickets.filter((t) => t.epic?.id === epicId);
-  return { closed: own.filter((t) => !isOpenTicket(t)).length, total: own.length };
+  return { closed: own.filter((t) => !isOpenTicket(types, t)).length, total: own.length };
 }
 
 export interface TicketEpicGroup {
@@ -281,6 +317,7 @@ export interface TicketEpicGroup {
  * si au moins un de ses tickets est montré.
  */
 export function groupTicketsByEpic(
+  types: readonly TicketTypeDto[],
   all: readonly TicketRow[],
   shown: readonly TicketRow[],
 ): { epics: TicketEpicGroup[]; withoutEpic: TicketRow[] } {
@@ -290,7 +327,7 @@ export function groupTicketsByEpic(
     .map((epic) => ({
       epic,
       tickets: members.filter((t) => t.epic?.id === epic.id),
-      ...epicProgress(all, epic.id),
+      ...epicProgress(types, all, epic.id),
     }))
     .filter((group) => group.tickets.length > 0 || shownIds.has(group.epic.id));
   return { epics, withoutEpic: members.filter((t) => !t.epic) };
@@ -313,16 +350,16 @@ export function toggleTicketSort(sort: TicketSort, key: TicketSortKey): TicketSo
 }
 
 /** Valeur de tri, telle qu'elle est affichée ; null si le ticket n'en a pas. */
-function sortValue(ticket: TicketRow, key: TicketSortKey, locale: Locale): string | null {
+function sortValue(types: readonly TicketTypeDto[], ticket: TicketRow, key: TicketSortKey, locale: Locale): string | null {
   switch (key) {
     case 'reference':
       return ticket.reference;
     case 'type':
-      return translate(locale, `ticketType.${ticket.type}`);
+      return ticketTypeLabel(types, ticket.type, locale);
     case 'title':
       return ticket.title;
     case 'status':
-      return translate(locale, ticketStatusLabelKey(ticket.type, ticket.status));
+      return ticketStatusLabel(types, ticket.type, ticket.status, locale);
     case 'assignee':
       return ticket.assignee && memberName(ticket.assignee);
     case 'dueDate':
@@ -333,9 +370,14 @@ function sortValue(ticket: TicketRow, key: TicketSortKey, locale: Locale): strin
 }
 
 /** Tickets triés : sans valeur en dernier dans les deux sens ; à égalité, l'échéance puis la date de création départagent. */
-export function sortTickets(tickets: readonly TicketRow[], sort: TicketSort, locale: Locale): TicketRow[] {
+export function sortTickets(
+  types: readonly TicketTypeDto[],
+  tickets: readonly TicketRow[],
+  sort: TicketSort,
+  locale: Locale,
+): TicketRow[] {
   const compareValues = (a: TicketRow, b: TicketRow, key: TicketSortKey, sign: 1 | -1) => {
-    const [left, right] = [sortValue(a, key, locale), sortValue(b, key, locale)];
+    const [left, right] = [sortValue(types, a, key, locale), sortValue(types, b, key, locale)];
     if (left === null || right === null) return Number(left === null) - Number(right === null);
     return sign * left.localeCompare(right, locale, { numeric: true });
   };

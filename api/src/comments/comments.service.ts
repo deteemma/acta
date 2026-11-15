@@ -18,12 +18,16 @@ export function commentRefusal(refusal: CommentRefusal) {
     : new ForbiddenException({ statusCode: 403, refusal });
 }
 
-/** Objet commenté : un ticket de tout type ; une page au ticket 25. */
-export type CommentSubject = { ticketId: string };
+/** Objet commenté : un ticket de tout type, ou une page entière (ticket 25). */
+export type CommentSubject = { ticketId: string } | { pageId: string };
+
+const subjectColumns = (subject: CommentSubject) =>
+  'ticketId' in subject ? { ticket_id: subject.ticketId } : { page_id: subject.pageId };
 
 /**
- * Commentaires (ticket 20, décision 05) : fil simple d'un ticket. Ni le ticket ni
- * son historique ne changent. Le rôle et l'archivage sont vérifiés par le guard ;
+ * Commentaires (tickets 20 et 25, décision 05) : fil simple d'un ticket ou d'une
+ * page. Ni l'objet commenté ni son historique ne changent ; sur une page, le fil ne
+ * dépend d'aucun enregistrement. Le rôle et l'archivage sont vérifiés par le guard ;
  * l'auteur et le propriétaire, ici, puis par la base.
  */
 @Injectable()
@@ -42,7 +46,7 @@ export class CommentsService {
       await checkSubject(tx, initiativeId, subject);
       await tx
         .insertInto('comment')
-        .values({ id: randomUUID(), initiative_id: initiativeId, ticket_id: subject.ticketId, body: input.body })
+        .values({ id: randomUUID(), initiative_id: initiativeId, ...subjectColumns(subject), body: input.body })
         .execute();
       return loadThread(tx, initiativeId, subject);
     });
@@ -73,10 +77,10 @@ export class CommentsService {
 /** L'objet commenté existe dans l'initiative ; sinon 404. */
 async function checkSubject(tx: Tx, initiativeId: string, subject: CommentSubject): Promise<void> {
   const found = await tx
-    .selectFrom('ticket')
+    .selectFrom('ticketId' in subject ? 'ticket' : 'page')
     .select('id')
     .where('initiative_id', '=', initiativeId)
-    .where('id', '=', subject.ticketId)
+    .where('id', '=', 'ticketId' in subject ? subject.ticketId : subject.pageId)
     .executeTakeFirst();
   if (!found) throw new NotFoundException();
 }
@@ -132,7 +136,10 @@ function toDto(r: CommentRow): CommentDto {
 }
 
 async function loadThread(tx: Tx, initiativeId: string, subject: CommentSubject): Promise<CommentDto[]> {
-  const rows = await selectComments(tx, initiativeId).where('c.ticket_id', '=', subject.ticketId).execute();
+  const rows = await ('ticketId' in subject
+    ? selectComments(tx, initiativeId).where('c.ticket_id', '=', subject.ticketId)
+    : selectComments(tx, initiativeId).where('c.page_id', '=', subject.pageId)
+  ).execute();
   return sortThread(rows.map(toDto));
 }
 

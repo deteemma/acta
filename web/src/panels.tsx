@@ -37,6 +37,8 @@ export type PanelContent =
   | { kind: 'alerts' }
   | { kind: 'member'; member: InitiativeMemberDto }
   | { kind: 'admin' }
+  /** Modèle de page dans l'administration (ticket 30) ; sans `templateId`, ajout d'un modèle. */
+  | { kind: 'pageTemplate'; templateId?: string }
   | { kind: 'babok' }
   | { kind: 'babokElement'; elementId: string }
   /**

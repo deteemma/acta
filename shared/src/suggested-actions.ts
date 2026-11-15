@@ -9,6 +9,7 @@ import type { AnalysisApproach } from './schemas.js';
 import type { StakeholderLevel, StakeholderRole } from './stakeholders.js';
 import type { RequirementStatus } from './requirement-statuses.js';
 import { requirementStatusTask } from './suggestions.js';
+import type { TicketTypeDto } from './ticket-type-catalog.js';
 
 /** G1 : nombre de suggestions affichées avant « voir tout ». */
 export const SUGGESTED_ACTIONS_SHOWN = 5;
@@ -25,6 +26,8 @@ export interface SuggestionContext {
   /** Date du jour, AAAA-MM-JJ, pour la date de fin prévue. */
   today: string;
   initiative: { archived: boolean; analysisApproach: AnalysisApproach | null; plannedEndDate: string | null };
+  /** Types de ticket et leurs statuts, pour savoir si une action est fermée (ticket 29). */
+  ticketTypes: readonly TicketTypeDto[];
   actions: readonly {
     taskId: string;
     status: ActionStatus;
@@ -183,7 +186,7 @@ const isOnObjects = (s: SuggestedAction) => s.count != null;
 export function suggestActions(babok: BabokDto, context: SuggestionContext): SuggestedAction[] {
   if (context.initiative.archived) return [];
   const inProgress = new Set(
-    context.actions.filter(isOpenAction).map((a) => a.suggestionKey),
+    context.actions.filter((a) => isOpenAction(context.ticketTypes, a)).map((a) => a.suggestionKey),
   );
   const visible = currentSituations(babok, context).filter(
     (s) => !context.dismissedKeys.includes(s.key) && !inProgress.has(s.key),

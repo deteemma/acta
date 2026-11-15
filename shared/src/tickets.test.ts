@@ -14,6 +14,8 @@ import {
   type TicketSort,
   toggleTicketSort,
 } from './tickets.js';
+import { deliveredTicketTypes } from './ticket-type-catalog.js';
+const types = deliveredTicketTypes();
 
 const alice = { userId: 'a', email: null, displayName: 'Alice', eligible: true };
 const bruno = { userId: 'b', email: null, displayName: 'Bruno', eligible: false };
@@ -33,7 +35,7 @@ const row = (reference: string, fields: Partial<TicketRow> = {}): TicketRow => (
 
 const references = (rows: readonly TicketRow[]) => rows.map((r) => r.reference);
 const filtered = (rows: readonly TicketRow[], change: Partial<TicketFilters>) =>
-  references(selectTickets(rows, { ...DEFAULT_TICKET_FILTERS, ...change }));
+  references(selectTickets(types, rows, { ...DEFAULT_TICKET_FILTERS, ...change }));
 
 test('par défaut, seuls les tickets ouverts sont montrés ; En attente est ouvert', () => {
   const rows = [
@@ -85,11 +87,11 @@ test('changer de type ou d’état efface le statut choisi ; choisir un statut p
 });
 
 test('une échéance est dépassée à partir du lendemain, pour un ticket ouvert seulement', () => {
-  assert.equal(isOverdueTicket(row('A', { dueDate: '2026-11-05' }), '2026-11-06'), true);
-  assert.equal(isOverdueTicket(row('A', { dueDate: '2026-11-06' }), '2026-11-06'), false);
-  assert.equal(isOverdueTicket(row('A', { dueDate: '2026-11-05', status: 'on_hold' }), '2026-11-06'), true);
-  assert.equal(isOverdueTicket(row('A', { dueDate: '2026-11-05', status: 'done' }), '2026-11-06'), false);
-  assert.equal(isOverdueTicket(row('A'), '2026-11-06'), false);
+  assert.equal(isOverdueTicket(types, row('A', { dueDate: '2026-11-05' }), '2026-11-06'), true);
+  assert.equal(isOverdueTicket(types, row('A', { dueDate: '2026-11-06' }), '2026-11-06'), false);
+  assert.equal(isOverdueTicket(types, row('A', { dueDate: '2026-11-05', status: 'on_hold' }), '2026-11-06'), true);
+  assert.equal(isOverdueTicket(types, row('A', { dueDate: '2026-11-05', status: 'done' }), '2026-11-06'), false);
+  assert.equal(isOverdueTicket(types, row('A'), '2026-11-06'), false);
 });
 
 test('le filtre responsable propose chaque responsable présent une fois, par ordre alphabétique', () => {
@@ -104,7 +106,7 @@ test('le filtre Epic propose chaque Epic présent une fois, par référence', ()
 });
 
 const sorted = (rows: readonly TicketRow[], key: TicketSort['key'], direction: TicketSort['direction'] = 'asc') =>
-  references(sortTickets(rows, { key, direction }, 'fr'));
+  references(sortTickets(types, rows, { key, direction }, 'fr'));
 
 test('tri par défaut : échéance la plus proche d’abord, sans échéance en dernier ; à égalité, la plus ancienne créée', () => {
   const rows = [
@@ -113,7 +115,7 @@ test('tri par défaut : échéance la plus proche d’abord, sans échéance en 
     row('B', { dueDate: '2026-12-01', createdAt: '2026-01-01T00:00:00Z' }),
     row('A', { dueDate: '2026-11-01' }),
   ];
-  assert.deepEqual(references(sortTickets(rows, DEFAULT_TICKET_SORT, 'fr')), ['A', 'B', 'C', 'D']);
+  assert.deepEqual(references(sortTickets(types, rows, DEFAULT_TICKET_SORT, 'fr')), ['A', 'B', 'C', 'D']);
 });
 
 test('la référence se trie par numéro : 999 avant 1000', () => {
@@ -134,8 +136,8 @@ test('titre, responsable et Epic se trient dans l’ordre alphabétique de ce qu
 
 test('le statut se trie sur son libellé dans la langue de l’écran', () => {
   const rows = [row('1', { status: 'in_progress' }), row('2', { status: 'todo' })];
-  assert.deepEqual(references(sortTickets(rows, { key: 'status', direction: 'asc' }, 'fr')), ['2', '1']); // À faire, En cours
-  assert.deepEqual(references(sortTickets(rows, { key: 'status', direction: 'asc' }, 'en')), ['1', '2']); // In progress, To do
+  assert.deepEqual(references(sortTickets(types, rows, { key: 'status', direction: 'asc' }, 'fr')), ['2', '1']); // À faire, En cours
+  assert.deepEqual(references(sortTickets(types, rows, { key: 'status', direction: 'asc' }, 'en')), ['1', '2']); // In progress, To do
 });
 
 test('un ticket sans valeur reste en dernier, dans les deux sens', () => {
