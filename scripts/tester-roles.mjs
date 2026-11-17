@@ -35,6 +35,7 @@ const SECTIONS = [
   '25-administration-des-modeles-de-page',
   '26-limite-de-pieces-jointes',
   '27-scenarios',
+  '28-contexte-et-langue',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);
@@ -63,8 +64,12 @@ const { tpInitiativeId } = run['24-types-et-statuts-parametrables'];
 const { amInitiativeId } = run['25-administration-des-modeles-de-page'];
 const { lpInitiativeId, lpOtherInitiativeId } = run['26-limite-de-pieces-jointes'];
 const { scInitiativeId } = run['27-scenarios'];
+const { clInitiativeId } = run['28-contexte-et-langue'];
 
 console.log('\nNettoyage');
+await check('alice supprime l’initiative du Contexte et de la langue, avec ses exigences : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${clInitiativeId}`)).status, 204);
+});
 await check('alice supprime l’initiative des scénarios, avec ses exigences et leurs scénarios : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${scInitiativeId}`)).status, 204);
 });

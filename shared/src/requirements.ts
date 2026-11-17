@@ -62,17 +62,26 @@ export function checkRequirementShape(shape: RequirementShape): RequirementRefus
   return null;
 }
 
-/** D2 (phase 3) : le type et le sous-type d'une exigence sont figés tant qu'elle a au moins un scénario Gherkin. */
-export const isRequirementTypeLocked = (scenarioCount: number) => scenarioCount > 0;
+/** Ce que porte la Fonctionnalité d'une exigence : nombre de scénarios, présence d'un Contexte. */
+export interface FeatureContent {
+  scenarioCount: number;
+  hasBackground: boolean;
+}
+
+/**
+ * D2 (phase 3) : le type et le sous-type d'une exigence sont figés tant qu'elle a
+ * au moins un scénario Gherkin ou un Contexte, même sans scénario.
+ */
+export const isRequirementTypeLocked = ({ scenarioCount, hasBackground }: FeatureContent) => scenarioCount > 0 || hasBackground;
 
 /** Refus d'un changement de type ou de sous-type figé (isRequirementTypeLocked) ; null s'il est permis. */
 export function checkRequirementTypeChange(
   current: { type: RequirementType; subtype: RequirementSubtype | null },
   next: { type: RequirementType; subtype: RequirementSubtype | null },
-  scenarioCount: number,
+  feature: FeatureContent,
 ): RequirementRefusal | null {
   const changes = current.type !== next.type || current.subtype !== next.subtype;
-  return changes && isRequirementTypeLocked(scenarioCount) ? 'typeLockedByScenarios' : null;
+  return changes && isRequirementTypeLocked(feature) ? 'typeLockedByScenarios' : null;
 }
 
 /**

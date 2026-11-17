@@ -29,7 +29,7 @@ Chaque ticket de réalisation renvoie à ces décisions : **les lire avant de co
 ### Fonctionnalité
 
 - **D4** — La Fonctionnalité est l'ensemble des scénarios d'une exigence. Elle n'a ni titre ni description propres : ce sont ceux de l'exigence (titre, énoncé). (Q4)
-- **D5** — La Fonctionnalité porte une **langue**, français ou anglais, commune à son Contexte et à tous ses scénarios. Elle est fixée à la création du premier scénario ou du Contexte, à la langue de son auteur par défaut, et reste modifiable par un propriétaire ou un contributeur. La changer ne traduit aucun texte : la validation signalera alors les mots-clés de l'autre langue. (Q17 corrigée par Q24)
+- **D5** — La Fonctionnalité porte une **langue**, français ou anglais, commune à son Contexte et à tous ses scénarios. Elle est fixée à la création du premier scénario ou du Contexte, à la langue de son auteur par défaut, et reste modifiable par un propriétaire ou un contributeur. La changer ne traduit aucun texte : la validation signalera alors les mots-clés de l'autre langue. (Q17 corrigée par Q24 ; une fois fixée, elle le reste même si tous les scénarios et le Contexte sont supprimés, précisé le 17.11.2026)
 
 ### Scénario
 
@@ -45,7 +45,7 @@ Chaque ticket de réalisation renvoie à ces décisions : **les lire avant de co
 
 ### Contexte
 
-- **D12** — Le Contexte (*Background*) regroupe les étapes communes à tous les scénarios de la Fonctionnalité. Facultatif, un au plus par exigence, 10 000 caractères au plus, sans titre ni référence. (Q16, Q22)
+- **D12** — Le Contexte (*Background*) regroupe les étapes communes à tous les scénarios de la Fonctionnalité. Facultatif, un au plus par exigence, 10 000 caractères au plus, sans titre ni référence. (Q16, Q22 ; jamais vide : on le supprime, après confirmation, précisé le 17.11.2026)
 
 ### Historique et modification simultanée
 

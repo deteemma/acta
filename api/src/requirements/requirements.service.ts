@@ -22,7 +22,7 @@ import { isConstraintViolation, isForeignKeyViolation } from '../db/pg-errors.js
 import { SuggestedActionsService } from '../suggested-actions/suggested-actions.service.js';
 import { needRefusal } from '../needs/needs.service.js';
 import { loadRequirementStatuses } from '../requirement-statuses/requirement-statuses.service.js';
-import { countScenarios } from '../scenarios/scenarios.service.js';
+import { loadFeatureContent } from '../scenarios/scenarios.service.js';
 import { stakeholderRefusal } from '../stakeholders/stakeholders.service.js';
 
 @Injectable()
@@ -122,11 +122,11 @@ export class RequirementsService {
         parentId: input.parentId !== undefined ? input.parentId : (current.parent?.id ?? null),
       });
       if (refusal) throw requirementRefusal(refusal);
-      // Type et sous-type figés tant que l'exigence a un scénario (phase 3, D2).
+      // Type et sous-type figés tant que l'exigence a un scénario ou un Contexte (phase 3, D2).
       const typeRefusal = checkRequirementTypeChange(
         current,
         { type: input.type ?? current.type, subtype: input.subtype !== undefined ? input.subtype : current.subtype },
-        await countScenarios(tx, requirementId),
+        await loadFeatureContent(tx, requirementId),
       );
       if (typeRefusal) throw requirementRefusal(typeRefusal);
       if (input.status !== undefined) {
@@ -175,8 +175,8 @@ export class RequirementsService {
 
   /**
    * Une exigence liée à une action ou qui a des enfants ne se supprime pas ; ses
-   * sources, ses liens vers ses besoins, son historique et ses scénarios (phase 3,
-   * D3) partent avec elle.
+   * sources, ses liens vers ses besoins, son historique, ses scénarios et son Contexte
+   * (phase 3, D3) partent avec elle.
    */
   remove(userId: string, initiativeId: string, requirementId: string): Promise<void> {
     return this.database.asUser(userId, async (tx) => {

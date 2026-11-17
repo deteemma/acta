@@ -128,16 +128,22 @@ test("le sous-type n'est retenu que pour une exigence de solution", () => {
   assert.equal(subtypeForType('business', 'functional'), null);
 });
 
-test('le type et le sous-type d’une exigence ne changent pas tant qu’elle a un scénario', () => {
+test('le type et le sous-type d’une exigence ne changent pas tant qu’elle a un scénario ou un Contexte', () => {
   const functional = { type: 'solution', subtype: 'functional' } as const;
-  assert.equal(checkRequirementTypeChange(functional, { type: 'solution', subtype: 'non_functional' }, 1), 'typeLockedByScenarios');
-  assert.equal(checkRequirementTypeChange(functional, { type: 'business', subtype: null }, 2), 'typeLockedByScenarios');
-  // Même type : rien ne change ; sans scénario, le type change librement.
-  assert.equal(checkRequirementTypeChange(functional, functional, 3), null);
-  assert.equal(checkRequirementTypeChange(functional, { type: 'business', subtype: null }, 0), null);
+  const scenarios = (scenarioCount: number) => ({ scenarioCount, hasBackground: false });
+  assert.equal(checkRequirementTypeChange(functional, { type: 'solution', subtype: 'non_functional' }, scenarios(1)), 'typeLockedByScenarios');
+  assert.equal(checkRequirementTypeChange(functional, { type: 'business', subtype: null }, scenarios(2)), 'typeLockedByScenarios');
+  assert.equal(
+    checkRequirementTypeChange(functional, { type: 'business', subtype: null }, { scenarioCount: 0, hasBackground: true }),
+    'typeLockedByScenarios',
+  );
+  // Même type : rien ne change ; sans scénario ni Contexte, le type change librement.
+  assert.equal(checkRequirementTypeChange(functional, functional, scenarios(3)), null);
+  assert.equal(checkRequirementTypeChange(functional, { type: 'business', subtype: null }, scenarios(0)), null);
 });
 
-test('le type est figé dès le premier scénario', () => {
-  assert.equal(isRequirementTypeLocked(0), false);
-  assert.equal(isRequirementTypeLocked(1), true);
+test('le type est figé dès le premier scénario ou dès le Contexte, même sans scénario', () => {
+  assert.equal(isRequirementTypeLocked({ scenarioCount: 0, hasBackground: false }), false);
+  assert.equal(isRequirementTypeLocked({ scenarioCount: 1, hasBackground: false }), true);
+  assert.equal(isRequirementTypeLocked({ scenarioCount: 0, hasBackground: true }), true);
 });

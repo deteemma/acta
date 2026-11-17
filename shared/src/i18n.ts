@@ -431,8 +431,11 @@ const fr = {
   'requirement.refusal.requirementLinked':
     'Cette exigence est liée à un ticket ou à une page, ou a des exigences enfants : elle ne peut pas être supprimée. Retirez d’abord ses liens avec ces tickets et pages, et rattachez ailleurs ses enfants.',
   'requirement.refusal.typeLockedByScenarios':
-    'Cette exigence a des scénarios : son type et son sous-type ne changent pas tant qu’elle en a. Supprimez d’abord ses scénarios.',
-  'requirement.typeLockedHint': 'Type et sous-type figés : l’exigence a des scénarios.',
+    'Cette exigence a des scénarios ou un Contexte : son type et son sous-type ne changent pas tant qu’elle en a. Supprimez d’abord ses scénarios et son Contexte.',
+  'requirement.typeLockedHint': 'Type et sous-type figés : l’exigence a des scénarios ou un Contexte.',
+  'requirement.deleteConfirmFeature':
+    'Supprimer définitivement l’exigence {reference} « {title} », son historique, son Contexte et ses scénarios ({count}) ?',
+  'requirement.deleteConfirmBackground': 'Supprimer définitivement l’exigence {reference} « {title} », son historique et son Contexte ?',
   'requirement.deleteConfirmScenarios':
     'Supprimer définitivement l’exigence {reference} « {title} », son historique et ses scénarios ({count}) ?',
   'referenceCategory.scenario': 'Scénario',
@@ -464,6 +467,27 @@ const fr = {
     'Ce scénario a été modifié depuis que vous l’avez ouvert : votre saisie n’est pas enregistrée. Rechargez le scénario, puis refaites votre modification.',
   'scenario.refusal.scenarioOrderOutdated':
     'Les scénarios de cette exigence ont changé entre-temps : la liste a été rechargée, recommencez le déplacement.',
+  'scenario.refusal.backgroundChangedSince':
+    'Le Contexte a été créé, modifié ou supprimé depuis que vous l’avez ouvert : votre saisie n’est pas enregistrée. Rechargez le Contexte, puis refaites votre modification.',
+  'scenario.refusal.featureLanguageNotSet':
+    'La langue des scénarios est fixée à la création du premier scénario ou du Contexte : il n’y en a pas encore.',
+  'feature.language': 'Langue des scénarios',
+  'feature.languageHint': 'Commune au Contexte et à tous les scénarios. La changer ne traduit aucun texte.',
+  'background.title': 'Contexte',
+  'background.text': 'Étapes communes à tous les scénarios',
+  'background.textHint':
+    'Étapes communes, placées avant chaque scénario de l’exigence. Le texte s’enregistre même s’il n’est pas du Gherkin correct.',
+  'background.add': 'Ajouter un Contexte',
+  'background.create': 'Créer le Contexte',
+  'background.save': 'Enregistrer',
+  'background.edit': 'Modifier',
+  'background.editLabel': 'Modifier le Contexte',
+  'background.delete': 'Supprimer',
+  'background.deleteLabel': 'Supprimer le Contexte',
+  'background.deleteConfirm': 'Supprimer définitivement le Contexte de cette exigence ?',
+  'background.deleteConfirmButton': 'Oui, supprimer',
+  'background.reload': 'Recharger le Contexte',
+  'background.invalid': 'Le Contexte compte au moins un caractère et 10 000 au plus. Pour le retirer, supprimez-le.',
   'action.requirements': 'Exigences',
   'action.noRequirements': 'Aucune',
   'need.requirements': 'Exigences liées',
@@ -1406,8 +1430,11 @@ const en: Record<MessageKey, string> = {
   'requirement.refusal.requirementLinked':
     'This requirement is linked to a ticket or a page, or has child requirements: it cannot be deleted. Remove its links with those tickets and pages, and move its children elsewhere first.',
   'requirement.refusal.typeLockedByScenarios':
-    'This requirement has scenarios: its type and subtype cannot change while it has any. Delete its scenarios first.',
-  'requirement.typeLockedHint': 'Type and subtype locked: the requirement has scenarios.',
+    'This requirement has scenarios or a Background: its type and subtype cannot change while it has any. Delete its scenarios and its Background first.',
+  'requirement.typeLockedHint': 'Type and subtype locked: the requirement has scenarios or a Background.',
+  'requirement.deleteConfirmFeature':
+    'Permanently delete requirement {reference} “{title}”, its history, its Background and its scenarios ({count})?',
+  'requirement.deleteConfirmBackground': 'Permanently delete requirement {reference} “{title}”, its history and its Background?',
   'requirement.deleteConfirmScenarios':
     'Permanently delete requirement {reference} “{title}”, its history and its scenarios ({count})?',
   'referenceCategory.scenario': 'Scenario',
@@ -1439,6 +1466,27 @@ const en: Record<MessageKey, string> = {
     'This scenario has changed since you opened it: your input was not saved. Reload the scenario, then make your change again.',
   'scenario.refusal.scenarioOrderOutdated':
     'The scenarios of this requirement have changed in the meantime: the list has been reloaded, move it again.',
+  'scenario.refusal.backgroundChangedSince':
+    'The Background has been created, changed or deleted since you opened it: your input was not saved. Reload the Background, then make your change again.',
+  'scenario.refusal.featureLanguageNotSet':
+    'The scenario language is set when the first scenario or the Background is created: there is none yet.',
+  'feature.language': 'Scenario language',
+  'feature.languageHint': 'Shared by the Background and all scenarios. Changing it does not translate any text.',
+  'background.title': 'Background',
+  'background.text': 'Steps shared by all scenarios',
+  'background.textHint':
+    'Shared steps, placed before each scenario of the requirement. The text is saved even if it is not valid Gherkin.',
+  'background.add': 'Add a Background',
+  'background.create': 'Create Background',
+  'background.save': 'Save',
+  'background.edit': 'Edit',
+  'background.editLabel': 'Edit the Background',
+  'background.delete': 'Delete',
+  'background.deleteLabel': 'Delete the Background',
+  'background.deleteConfirm': 'Permanently delete the Background of this requirement?',
+  'background.deleteConfirmButton': 'Yes, delete',
+  'background.reload': 'Reload Background',
+  'background.invalid': 'The Background has at least one character and 10,000 at most. To remove it, delete it.',
   'action.requirements': 'Requirements',
   'action.noRequirements': 'None',
   'need.requirements': 'Linked requirements',

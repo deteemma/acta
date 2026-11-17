@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { acceptsScenarios, checkScenarioOrder, createScenarioSchema, moveScenario, updateScenarioSchema } from './scenarios.js';
+import {
+  acceptsScenarios,
+  checkScenarioOrder,
+  createScenarioSchema,
+  moveScenario,
+  newFeatureLanguage,
+  saveBackgroundSchema,
+  setFeatureLanguageSchema,
+  updateScenarioSchema,
+} from './scenarios.js';
 
 test('monter ou descendre un scénario l’échange avec son voisin', () => {
   assert.deepEqual(moveScenario(['a', 'b', 'c'], 'b', -1), ['b', 'a', 'c']);
@@ -48,4 +57,32 @@ test('seule une exigence de solution fonctionnelle a des scénarios', () => {
   for (const type of ['business', 'stakeholder', 'transition'] as const) {
     assert.equal(acceptsScenarios({ type, subtype: null }), false);
   }
+});
+
+test('le Contexte compte 10 000 caractères au plus, garde ses retraits, et n’est jamais vide', () => {
+  const text = '  Étant donné un client connu\n    | nom |\n';
+  assert.deepEqual(saveBackgroundSchema.parse({ baseRowVersion: null, text }), { baseRowVersion: null, text });
+  assert.equal(saveBackgroundSchema.safeParse({ baseRowVersion: null, text: 'x'.repeat(10_000) }).success, true);
+  assert.equal(saveBackgroundSchema.safeParse({ baseRowVersion: null, text: 'x'.repeat(10_001) }).success, false);
+  assert.equal(saveBackgroundSchema.safeParse({ baseRowVersion: 2, text: ' \n ' }).success, false);
+});
+
+test('un Contexte s’enregistre en disant sur quel état il est basé : aucun (création) ou celui de son ouverture', () => {
+  assert.equal(saveBackgroundSchema.safeParse({ text: 'Étant donné un client' }).success, false);
+  assert.equal(saveBackgroundSchema.safeParse({ baseRowVersion: 3, text: 'Étant donné un client' }).success, true);
+  // Pas de titre : un champ inconnu est ignoré.
+  assert.deepEqual(saveBackgroundSchema.parse({ baseRowVersion: 0, text: 'x', title: 'T' }), { baseRowVersion: 0, text: 'x' });
+});
+
+test('la langue d’une nouvelle fonctionnalité est celle demandée, sinon celle de son auteur, sinon le français', () => {
+  assert.equal(newFeatureLanguage('en', 'fr'), 'en');
+  assert.equal(newFeatureLanguage(undefined, 'en'), 'en');
+  assert.equal(newFeatureLanguage(undefined, null), 'fr');
+});
+
+test('la langue de la fonctionnalité est le français ou l’anglais', () => {
+  assert.deepEqual(setFeatureLanguageSchema.parse({ language: 'en' }), { language: 'en' });
+  assert.equal(setFeatureLanguageSchema.safeParse({ language: 'de' }).success, false);
+  assert.equal(createScenarioSchema.safeParse({ title: 'T', text: '', language: 'de' }).success, false);
+  assert.equal(createScenarioSchema.parse({ title: 'T', text: '', language: 'en' }).language, 'en');
 });

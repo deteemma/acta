@@ -127,6 +127,27 @@ export interface PageTable {
   task_id: ColumnType<string | null, never, never>;
 }
 
+/** Fonctionnalité d'une exigence (migration 0033, phase 3) : sa langue ; auteur posé par la base. */
+export interface GherkinFeatureTable {
+  requirement_id: ColumnType<string, string, never>;
+  initiative_id: ColumnType<string, string, never>;
+  language: Locale;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+}
+
+/** Contexte d'une Fonctionnalité (migration 0033, phase 3) : auteurs et état posés par la base. */
+export interface GherkinBackgroundTable {
+  requirement_id: ColumnType<string, string, never>;
+  initiative_id: ColumnType<string, string, never>;
+  text: string;
+  row_version: ColumnType<number, never, never>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  updated_by: ColumnType<string, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
 /** Scénario Gherkin d'une exigence (migration 0032, phase 3) : référence, place, auteurs et état posés par la base. */
 export interface GherkinScenarioTable {
   id: string;
@@ -456,6 +477,8 @@ export interface Database {
   owner_designation: OwnerDesignationTable;
   page: PageTable;
   gherkin_scenario: GherkinScenarioTable;
+  gherkin_feature: GherkinFeatureTable;
+  gherkin_background: GherkinBackgroundTable;
   page_need: PageNeedTable;
   page_requirement: PageRequirementTable;
   page_ticket: PageTicketTable;

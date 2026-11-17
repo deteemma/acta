@@ -1,9 +1,17 @@
-// Scénarios Gherkin (phase 3, ticket 01) : section « Scénarios » de la fiche d'une
-// exigence de solution fonctionnelle. Règles dans @app/shared (scenarios.ts,
-// roles.ts) ; décisions D1 à D19 de .scratch/phase-3/spec.md. Web seulement (D19).
+// Scénarios Gherkin (phase 3, tickets 01 et 02) : section « Scénarios » de la
+// fiche d'une exigence de solution fonctionnelle, avec en tête la langue et le
+// Contexte de sa Fonctionnalité. Règles dans @app/shared (scenarios.ts, roles.ts) ;
+// décisions D1 à D19 de .scratch/phase-3/spec.md. Web seulement (D19).
 import {
+  BACKGROUND_TEXT_MAX_LENGTH,
+  type BackgroundChangedSinceBody,
+  type BackgroundDto,
   createScenarioSchema,
+  type FeatureDto,
+  type Locale,
+  LOCALES,
   moveScenario,
+  saveBackgroundSchema,
   SCENARIO_TEXT_MAX_LENGTH,
   SCENARIO_TITLE_MAX_LENGTH,
   type ScenarioChangedSinceBody,
@@ -17,28 +25,38 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { useUnsavedForm } from './unsaved-changes';
 
-const toError = (e: unknown): UiError =>
-  e instanceof ApiError && e.status === 400 && !e.refusal ? { key: 'scenario.invalid' } : toUiError(e);
+/** Saisie refusée par le schéma de l'API (400 sans motif) : `invalid` ; sinon le motif du refus. */
+const toError = (e: unknown, invalid: UiError = { key: 'scenario.invalid' }): UiError =>
+  e instanceof ApiError && e.status === 400 && !e.refusal ? invalid : toUiError(e);
+
+/** Fonctionnalité sans langue ni Contexte : rien n'a encore été créé (D5). */
+export const NO_FEATURE: FeatureDto = { language: null, background: null };
 
 /**
- * Scénarios d'une exigence, dans leur ordre (D9) : tout membre lit ; propriétaires
- * et contributeurs écrivent, ordonnent et suppriment (D17). La liste est tenue par
- * la fiche, qui en a besoin pour figer le type (D2) et confirmer la suppression (D3).
+ * Scénarios d'une exigence, dans leur ordre (D9), précédés de la langue et du
+ * Contexte de la Fonctionnalité (D5, D12) : tout membre lit ; propriétaires et
+ * contributeurs écrivent, ordonnent, suppriment et changent la langue (D17). La
+ * liste et la Fonctionnalité sont tenues par la fiche, qui en a besoin pour figer
+ * le type (D2) et confirmer la suppression (D3).
  */
 export function ScenariosSection({
   initiativeId,
   requirementId,
   scenarios,
+  feature,
   canEdit,
   onChange,
+  onFeatureChange,
 }: {
   initiativeId: string;
   requirementId: string;
   scenarios: ScenarioDto[];
+  feature: FeatureDto;
   canEdit: boolean;
   onChange: (scenarios: ScenarioDto[]) => void;
+  onFeatureChange: (feature: FeatureDto) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
 
@@ -68,6 +86,22 @@ export function ScenariosSection({
         {t('scenario.section')} {scenarios.length > 0 && <span className="count">{scenarios.length}</span>}
       </h3>
       <ErrorMessage error={error} />
+      {feature.language && (
+        <FeatureLanguage
+          initiativeId={initiativeId}
+          requirementId={requirementId}
+          language={feature.language}
+          canEdit={canEdit}
+          onChange={onFeatureChange}
+        />
+      )}
+      <Background
+        initiativeId={initiativeId}
+        requirementId={requirementId}
+        background={feature.background}
+        canEdit={canEdit}
+        onChange={onFeatureChange}
+      />
       {scenarios.length === 0 && (
         <p>
           <small>{t('scenario.none')}</small>
@@ -97,9 +131,10 @@ export function ScenariosSection({
             submitLabel={t('scenario.create')}
             initial={{ title: '', text: '' }}
             onSave={async (values) => {
-              // Créé en dernier (D9).
-              onChange([...scenarios, await api.createScenario(initiativeId, requirementId, values)]);
+              // Créé en dernier (D9) ; le premier fixe la langue à celle de son auteur (D5).
+              onChange([...scenarios, await api.createScenario(initiativeId, requirementId, { ...values, language: locale })]);
               setAdding(false);
+              if (!feature.language) api.getFeature(initiativeId, requirementId).then(onFeatureChange, () => undefined);
             }}
             onCancel={() => setAdding(false)}
           />
@@ -109,6 +144,276 @@ export function ScenariosSection({
           </button>
         ))}
     </section>
+  );
+}
+
+/**
+ * Langue de la Fonctionnalité (D5), visible de tous ; propriétaires et
+ * contributeurs la changent, enregistrée aussitôt, sans traduire aucun texte.
+ */
+function FeatureLanguage({
+  initiativeId,
+  requirementId,
+  language,
+  canEdit,
+  onChange,
+}: {
+  initiativeId: string;
+  requirementId: string;
+  language: Locale;
+  canEdit: boolean;
+  onChange: (feature: FeatureDto) => void;
+}) {
+  const { t } = useI18n();
+  const [error, setError] = useState<UiError | null>(null);
+
+  async function change(next: Locale) {
+    try {
+      onChange(await api.setFeatureLanguage(initiativeId, requirementId, { language: next }));
+      setError(null);
+    } catch (e) {
+      setError(toError(e));
+    }
+  }
+
+  return (
+    <div className="feature-language">
+      {canEdit ? (
+        <label>
+          {t('feature.language')}{' '}
+          <select value={language} onChange={(e) => void change(e.target.value as Locale)}>
+            {LOCALES.map((l) => (
+              <option key={l} value={l}>
+                {t(`language.${l}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p>
+          {t('feature.language')} : {t(`language.${language}`)}
+        </p>
+      )}
+      <small>{t('feature.languageHint')}</small>
+      <ErrorMessage error={error} />
+    </div>
+  );
+}
+
+/**
+ * Contexte de la Fonctionnalité (D12), en tête de la section : facultatif, un au
+ * plus, sans titre ni référence. Créé, modifié et supprimé par un propriétaire ou
+ * un contributeur ; le premier fixe la langue s'il n'y a pas encore de scénario (D5).
+ */
+function Background({
+  initiativeId,
+  requirementId,
+  background,
+  canEdit,
+  onChange,
+}: {
+  initiativeId: string;
+  requirementId: string;
+  background: BackgroundDto | null;
+  canEdit: boolean;
+  onChange: (feature: FeatureDto) => void;
+}) {
+  const { t } = useI18n();
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<UiError | null>(null);
+  const titleId = useId();
+
+  async function remove() {
+    try {
+      await api.deleteBackground(initiativeId, requirementId);
+      onChange(await api.getFeature(initiativeId, requirementId));
+      setConfirming(false);
+      setError(null);
+    } catch (e) {
+      setConfirming(false);
+      setError(toError(e));
+    }
+  }
+
+  if (!background && !editing) {
+    return canEdit ? (
+      <p>
+        <button type="button" onClick={() => setEditing(true)}>
+          {t('background.add')}
+        </button>
+      </p>
+    ) : null;
+  }
+
+  return (
+    <div className="scenario background" aria-labelledby={titleId}>
+      <div className="scenario-header">
+        <h4 id={titleId} className="scenario-title">
+          {t('background.title')}
+        </h4>
+        {canEdit && background && !editing && !confirming && (
+          <span className="scenario-actions">
+            <button type="button" className="ghost" aria-label={t('background.editLabel')} onClick={() => setEditing(true)}>
+              {t('background.edit')}
+            </button>
+            <button type="button" className="ghost" aria-label={t('background.deleteLabel')} onClick={() => setConfirming(true)}>
+              {t('background.delete')}
+            </button>
+          </span>
+        )}
+      </div>
+      {editing ? (
+        <EditBackground
+          initiativeId={initiativeId}
+          requirementId={requirementId}
+          background={background}
+          onSaved={(next) => {
+            onChange(next);
+            setEditing(false);
+          }}
+          onReloaded={onChange}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        background && <pre className="gherkin-text">{background.text}</pre>
+      )}
+      {confirming && (
+        <div role="alertdialog" aria-labelledby={`${titleId}-delete`} className="confirm">
+          <p id={`${titleId}-delete`}>{t('background.deleteConfirm')}</p>
+          <button type="button" autoFocus onClick={() => setConfirming(false)}>
+            {t('common.cancel')}
+          </button>{' '}
+          <button type="button" className="danger" onClick={() => void remove()}>
+            {t('background.deleteConfirmButton')}
+          </button>
+        </div>
+      )}
+      <ErrorMessage error={error} />
+    </div>
+  );
+}
+
+/**
+ * Saisie du Contexte, basée sur son état à l'ouverture, absence comprise (D14).
+ * Si quelqu'un l'a créé, modifié ou supprimé entre-temps, l'enregistrement est
+ * refusé : « Recharger le Contexte » repart de l'état actuel.
+ */
+function EditBackground({
+  initiativeId,
+  requirementId,
+  background,
+  onSaved,
+  onReloaded,
+  onCancel,
+}: {
+  initiativeId: string;
+  requirementId: string;
+  background: BackgroundDto | null;
+  onSaved: (feature: FeatureDto) => void;
+  onReloaded: (feature: FeatureDto) => void;
+  onCancel: () => void;
+}) {
+  const { t, locale } = useI18n();
+  const [base, setBase] = useState(background);
+  // `undefined` : pas de refus ; sinon l'état actuel du Contexte (null s'il a été supprimé).
+  const [latest, setLatest] = useState<BackgroundDto | null | undefined>(undefined);
+  const [formKey, setFormKey] = useState(0);
+
+  return (
+    <>
+      <BackgroundForm
+        key={formKey}
+        submitLabel={base ? t('background.save') : t('background.create')}
+        initialText={base?.text ?? ''}
+        onSave={async (text) => {
+          try {
+            // Le premier Contexte fixe la langue à celle de son auteur s'il n'y a pas encore de scénario (D5).
+            onSaved(await api.saveBackground(initiativeId, requirementId, { baseRowVersion: base?.rowVersion ?? null, text, language: locale }));
+          } catch (e) {
+            if (e instanceof ApiError && e.refusal === 'backgroundChangedSince') {
+              setLatest((e.body as BackgroundChangedSinceBody).background);
+            }
+            throw e;
+          }
+        }}
+        onCancel={onCancel}
+      />
+      {latest !== undefined && (
+        <button
+          type="button"
+          onClick={() => {
+            setBase(latest);
+            setLatest(undefined);
+            setFormKey((k) => k + 1);
+            api.getFeature(initiativeId, requirementId).then(onReloaded, () => undefined);
+          }}
+        >
+          {t('background.reload')}
+        </button>
+      )}
+    </>
+  );
+}
+
+/** Texte du Contexte, déclaré pour l'alerte de modification non enregistrée. */
+function BackgroundForm({
+  submitLabel,
+  initialText,
+  onSave,
+  onCancel,
+}: {
+  submitLabel: string;
+  initialText: string;
+  /** Lève l'erreur de l'API : elle s'affiche sous le formulaire. */
+  onSave: (text: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const { t } = useI18n();
+  const [text, setText] = useState(initialText);
+  const [error, setError] = useState<UiError | null>(null);
+  const submit = useUnsavedForm({ text }, save);
+
+  async function save() {
+    // Même schéma de validation que l'API (@app/shared) : le Gherkin n'est pas contrôlé (D11).
+    const parsed = saveBackgroundSchema.safeParse({ baseRowVersion: null, text });
+    if (!parsed.success) {
+      setError({ key: 'background.invalid' });
+      return false;
+    }
+    try {
+      await onSave(parsed.data.text);
+      setError(null);
+      return true;
+    } catch (e) {
+      setError(toError(e, { key: 'background.invalid' }));
+      return false;
+    }
+  }
+
+  return (
+    <form className="stacked scenario-form" onSubmit={submit}>
+      <label>
+        {t('background.text')}
+        <textarea
+          data-autofocus
+          className="gherkin-input"
+          value={text}
+          rows={6}
+          maxLength={BACKGROUND_TEXT_MAX_LENGTH}
+          spellCheck={false}
+          onChange={(e) => setText(e.target.value)}
+        />
+      </label>
+      <small>{t('background.textHint')}</small>
+      <div>
+        <button type="submit">{submitLabel}</button>{' '}
+        <button type="button" onClick={onCancel}>
+          {t('common.cancel')}
+        </button>
+      </div>
+      <ErrorMessage error={error} />
+    </form>
   );
 }
 

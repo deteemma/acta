@@ -2714,6 +2714,17 @@ details.ticket-type h5 {
   flex-wrap: wrap;
   gap: var(--space-1);
 }
+/* Langue et Contexte de la Fonctionnalité (phase 3, ticket 02), en tête de la section. */
+.feature-language {
+  margin-bottom: var(--space-2);
+}
+.feature-language p {
+  margin: 0;
+}
+.scenario.background {
+  border-top: none;
+  margin-bottom: var(--space-2);
+}
 .gherkin-text,
 .gherkin-input {
   font-family: var(--font-mono);

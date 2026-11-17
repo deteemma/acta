@@ -28,6 +28,8 @@ import {
   type RequirementSubtype,
   type RequirementType,
   type RequirementVersionDto,
+  type FeatureContent,
+  type FeatureDto,
   type ScenarioDto,
   selectableStatuses,
   type StakeholderDto,
@@ -44,7 +46,7 @@ import { NeedLink } from './need-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { setRequirementStatuses, StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
-import { ScenariosSection } from './scenario-panels';
+import { NO_FEATURE, ScenariosSection } from './scenario-panels';
 import { StakeholderLink } from './stakeholder-panels';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
@@ -180,6 +182,8 @@ export function RequirementPanel({
   const [versions, setVersions] = useState<RequirementVersionDto[]>([]);
   // Scénarios Gherkin (phase 3), seulement pour une exigence de solution fonctionnelle (D1, D18).
   const [loadedScenarios, setScenarios] = useState<ScenarioDto[]>([]);
+  // Langue et Contexte de la Fonctionnalité (phase 3, ticket 02).
+  const [loadedFeature, setFeature] = useState<FeatureDto>(NO_FEATURE);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
@@ -209,10 +213,13 @@ export function RequirementPanel({
 
   const hasScenarios = requirement != null && acceptsScenarios(requirement);
   const scenarios = hasScenarios ? loadedScenarios : [];
+  const feature = hasScenarios ? loadedFeature : NO_FEATURE;
   useEffect(() => {
     if (!requirementId || !hasScenarios) return;
     api.listScenarios(initiativeId, requirementId).then(setScenarios, (e: unknown) => setError(toUiError(e)));
+    api.getFeature(initiativeId, requirementId).then(setFeature, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, requirementId, hasScenarios]);
+  const featureContent = { scenarioCount: scenarios.length, hasBackground: feature.background != null };
 
   const children = (requirements ?? []).filter((r) => r.parent?.id === requirementId);
   const ready = initiative && stakeholders && needs && requirements && (!requirementId || requirement);
@@ -252,7 +259,7 @@ export function RequirementPanel({
               stakeholders={stakeholders}
               needs={needs}
               requirements={requirements}
-              typeLocked={isRequirementTypeLocked(scenarios.length)}
+              typeLocked={isRequirementTypeLocked(featureContent)}
               onSaved={(next) => {
                 setRequirement(next);
                 onChanged();
@@ -267,8 +274,10 @@ export function RequirementPanel({
               initiativeId={initiativeId}
               requirementId={requirement.id}
               scenarios={scenarios}
+              feature={feature}
               canEdit={can(initiative.myRole, 'editScenarios', { archived: initiative.archivedAt != null })}
               onChange={setScenarios}
+              onFeatureChange={setFeature}
             />
           )}
           {requirement && (
@@ -291,7 +300,7 @@ export function RequirementPanel({
               {canEditRequirements(initiative) && (
                 <DeleteRequirement
                   requirement={requirement}
-                  scenarioCount={scenarios.length}
+                  featureContent={featureContent}
                   onDeleted={() => {
                     onChanged();
                     closeSilently();
@@ -681,18 +690,20 @@ function ChangeLine({ change }: { change: RequirementChange }) {
 
 /**
  * Suppression après confirmation ; refusée si l'exigence est liée à une action ou a
- * des enfants. Ses scénarios partent avec elle : la confirmation en donne le nombre (D3).
+ * des enfants. Ses scénarios et son Contexte partent avec elle : la confirmation
+ * le dit et donne le nombre de scénarios (D3).
  */
 function DeleteRequirement({
   requirement,
-  scenarioCount,
+  featureContent: { scenarioCount, hasBackground },
   onDeleted,
 }: {
   requirement: RequirementDto;
-  scenarioCount: number;
+  featureContent: FeatureContent;
   onDeleted: () => void;
 }) {
   const { t } = useI18n();
+  const params = { reference: requirement.reference, title: requirement.title, count: scenarioCount };
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
 
@@ -711,13 +722,11 @@ function DeleteRequirement({
       {confirming ? (
         <div role="alertdialog" aria-labelledby="requirement-delete-confirm" className="confirm">
           <p id="requirement-delete-confirm">
-            {scenarioCount > 0
-              ? t('requirement.deleteConfirmScenarios', {
-                  reference: requirement.reference,
-                  title: requirement.title,
-                  count: scenarioCount,
-                })
-              : t('requirement.deleteConfirm', { reference: requirement.reference, title: requirement.title })}
+            {hasBackground
+              ? t(scenarioCount > 0 ? 'requirement.deleteConfirmFeature' : 'requirement.deleteConfirmBackground', params)
+              : scenarioCount > 0
+                ? t('requirement.deleteConfirmScenarios', params)
+                : t('requirement.deleteConfirm', params)}
           </p>
           <button type="button" autoFocus onClick={() => setConfirming(false)}>
             {t('common.cancel')}

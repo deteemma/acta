@@ -2,12 +2,20 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   acceptsScenarios,
+  type BackgroundChangedSinceBody,
+  type BackgroundDto,
   checkScenarioOrder,
   type CreateScenarioInput,
+  type FeatureContent,
+  type FeatureDto,
+  type Locale,
+  newFeatureLanguage,
   type ReorderScenariosInput,
   type ScenarioChangedSinceBody,
   type ScenarioDto,
+  type SaveBackgroundInput,
   type ScenarioRefusal,
+  type SetFeatureLanguageInput,
   type UpdateScenarioInput,
 } from '@app/shared';
 import { sql } from 'kysely';
@@ -15,8 +23,9 @@ import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation } from '../db/pg-errors.js';
 
 /**
- * Scénarios Gherkin d'une exigence (phase 3, ticket 01) : tout membre consulte ;
- * propriétaires et contributeurs créent, modifient, ordonnent et suppriment (D17).
+ * Scénarios Gherkin d'une exigence, Contexte et langue de sa Fonctionnalité
+ * (phase 3, tickets 01 et 02) : tout membre consulte ; propriétaires et
+ * contributeurs créent, modifient, ordonnent et suppriment, et changent la langue (D17).
  */
 @Injectable()
 export class ScenariosService {
@@ -36,6 +45,7 @@ export class ScenariosService {
     return this.database.asUser(userId, async (tx) => {
       const requirement = await loadRequirement(tx, initiativeId, requirementId);
       if (!acceptsScenarios(requirement)) throw scenarioRefusal('notFunctionalRequirement');
+      await ensureFeature(tx, initiativeId, requirementId, userId, input.language);
       await tx
         .insertInto('gherkin_scenario')
         .values({ id, initiative_id: initiativeId, requirement_id: requirementId, title: input.title, text: input.text })
@@ -115,16 +125,125 @@ export class ScenariosService {
       if (deleted.numDeletedRows === 0n) throw new NotFoundException();
     });
   }
+
+  /** Langue et Contexte ; langue nulle et pas de Contexte tant qu'aucun n'a été créé (D5). */
+  feature(userId: string, initiativeId: string, requirementId: string): Promise<FeatureDto> {
+    return this.database.asUser(userId, async (tx) => {
+      await loadRequirement(tx, initiativeId, requirementId);
+      return loadFeature(tx, requirementId);
+    });
+  }
+
+  /** D5 : change la langue sans traduire aucun texte ; seulement une fois fixée. */
+  setLanguage(userId: string, initiativeId: string, requirementId: string, input: SetFeatureLanguageInput): Promise<FeatureDto> {
+    return this.database.asUser(userId, async (tx) => {
+      const requirement = await loadRequirement(tx, initiativeId, requirementId);
+      if (!acceptsScenarios(requirement)) throw scenarioRefusal('notFunctionalRequirement');
+      const updated = await tx
+        .updateTable('gherkin_feature')
+        .set({ language: input.language })
+        .where('requirement_id', '=', requirementId)
+        .executeTakeFirst();
+      if (updated.numUpdatedRows === 0n) throw scenarioRefusal('featureLanguageNotSet');
+      return loadFeature(tx, requirementId);
+    });
+  }
+
+  /**
+   * Crée (`baseRowVersion` nul) ou modifie le Contexte (D12). Modification
+   * simultanée (D14) : l'écriture ne passe que si le Contexte est encore dans
+   * l'état sur lequel la saisie est basée, absence comprise.
+   */
+  saveBackground(userId: string, initiativeId: string, requirementId: string, input: SaveBackgroundInput): Promise<FeatureDto> {
+    return this.database.asUser(userId, async (tx) => {
+      const requirement = await loadRequirement(tx, initiativeId, requirementId);
+      if (!acceptsScenarios(requirement)) throw scenarioRefusal('notFunctionalRequirement');
+      const { baseRowVersion, text } = input;
+      let saved: { requirement_id: string } | undefined;
+      if (baseRowVersion === null) {
+        await ensureFeature(tx, initiativeId, requirementId, userId, input.language);
+        saved = await tx
+          .insertInto('gherkin_background')
+          .values({ requirement_id: requirementId, initiative_id: initiativeId, text })
+          .onConflict((oc) => oc.column('requirement_id').doNothing())
+          .returning('requirement_id')
+          .executeTakeFirst()
+          .catch(translate);
+      } else {
+        saved = await tx
+          .updateTable('gherkin_background')
+          .set({ text })
+          .where('requirement_id', '=', requirementId)
+          .where('row_version', '=', baseRowVersion)
+          .returning('requirement_id')
+          .executeTakeFirst()
+          .catch(translate);
+      }
+      const feature = await loadFeature(tx, requirementId);
+      if (!saved) throw backgroundChangedSince(feature.background);
+      return feature;
+    });
+  }
+
+  /** Suppression définitive du Contexte ; la langue reste fixée. */
+  removeBackground(userId: string, initiativeId: string, requirementId: string): Promise<void> {
+    return this.database.asUser(userId, async (tx) => {
+      await loadRequirement(tx, initiativeId, requirementId);
+      const deleted = await tx.deleteFrom('gherkin_background').where('requirement_id', '=', requirementId).executeTakeFirst();
+      if (deleted.numDeletedRows === 0n) throw new NotFoundException();
+    });
+  }
 }
 
-/** Nombre de scénarios d'une exigence : son type est figé s'il y en a (D2). */
-export async function countScenarios(tx: Tx, requirementId: string): Promise<number> {
+/** Ce que porte la Fonctionnalité d'une exigence : son type est figé s'il y a un scénario ou un Contexte (D2). */
+export async function loadFeatureContent(tx: Tx, requirementId: string): Promise<FeatureContent> {
   const row = await tx
     .selectFrom('gherkin_scenario')
     .select((eb) => eb.fn.countAll<string>().as('count'))
     .where('requirement_id', '=', requirementId)
     .executeTakeFirstOrThrow();
-  return Number(row.count);
+  const background = await tx
+    .selectFrom('gherkin_background')
+    .select('requirement_id')
+    .where('requirement_id', '=', requirementId)
+    .executeTakeFirst();
+  return { scenarioCount: Number(row.count), hasBackground: background !== undefined };
+}
+
+/**
+ * Fixe la langue de la Fonctionnalité à la création de son premier scénario ou de
+ * son Contexte (D5) ; sans effet si elle l'est déjà.
+ */
+async function ensureFeature(tx: Tx, initiativeId: string, requirementId: string, userId: string, requested?: Locale) {
+  const existing = await tx.selectFrom('gherkin_feature').select('language').where('requirement_id', '=', requirementId).executeTakeFirst();
+  if (existing) return;
+  const author = await tx.selectFrom('app_user').select('locale').where('id', '=', userId).executeTakeFirst();
+  await tx
+    .insertInto('gherkin_feature')
+    .values({ requirement_id: requirementId, initiative_id: initiativeId, language: newFeatureLanguage(requested, author?.locale ?? null) })
+    .onConflict((oc) => oc.column('requirement_id').doNothing())
+    .execute()
+    .catch(translate);
+}
+
+async function loadFeature(tx: Tx, requirementId: string): Promise<FeatureDto> {
+  const feature = await tx.selectFrom('gherkin_feature').select('language').where('requirement_id', '=', requirementId).executeTakeFirst();
+  const background = await tx
+    .selectFrom('gherkin_background')
+    .select(['text', 'row_version', 'created_at', 'updated_at'])
+    .where('requirement_id', '=', requirementId)
+    .executeTakeFirst();
+  return {
+    language: feature?.language ?? null,
+    background: background
+      ? {
+          text: background.text,
+          rowVersion: background.row_version,
+          createdAt: background.created_at.toISOString(),
+          updatedAt: background.updated_at.toISOString(),
+        }
+      : null,
+  };
 }
 
 async function loadRequirement(tx: Tx, initiativeId: string, requirementId: string) {
@@ -203,6 +322,9 @@ function translate(error: unknown): never {
   if (isConstraintViolation(error, 'gherkin_scenario_functional_requirement')) throw scenarioRefusal('notFunctionalRequirement');
   throw error;
 }
+
+const backgroundChangedSince = (background: BackgroundDto | null) =>
+  new ConflictException({ statusCode: 409, refusal: 'backgroundChangedSince', background } satisfies BackgroundChangedSinceBody);
 
 const changedSince = (scenario: ScenarioDto) =>
   new ConflictException({ statusCode: 409, refusal: 'scenarioChangedSince', scenario } satisfies ScenarioChangedSinceBody);

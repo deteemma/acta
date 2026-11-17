@@ -42,6 +42,7 @@ import {
 import { RequirementStatusesService } from './requirement-statuses/requirement-statuses.service.js';
 import { RequirementsController } from './requirements/requirements.controller.js';
 import { RequirementsService } from './requirements/requirements.service.js';
+import { FeatureController } from './scenarios/feature.controller.js';
 import { ScenariosController } from './scenarios/scenarios.controller.js';
 import { ScenariosService } from './scenarios/scenarios.service.js';
 import { StakeholdersController } from './stakeholders/stakeholders.controller.js';
@@ -75,6 +76,7 @@ import { UsersService } from './users/users.service.js';
     TicketTypesController,
     RequirementsController,
     ScenariosController,
+    FeatureController,
     StakeholdersController,
     SuggestedActionsController,
   ],

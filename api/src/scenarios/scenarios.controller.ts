@@ -15,9 +15,9 @@ import { ScenariosService } from './scenarios.service.js';
 
 /**
  * Scénarios Gherkin d'une exigence (phase 3, ticket 01) : tout membre consulte,
- * propriétaires et contributeurs écrivent (D17). Le Contexte (ticket 02) et les
- * historiques (ticket 03) prendront place sous la même exigence
- * (`…/background`, `…/scenarios/:scenarioId/history`).
+ * propriétaires et contributeurs écrivent (D17). Le Contexte et la langue
+ * (ticket 02) sont sous `…/feature` (FeatureController) ; les historiques
+ * (ticket 03) prendront place sous `…/scenarios/:scenarioId/history`.
  */
 @Controller('initiatives/:initiativeId/requirements/:requirementId/scenarios')
 export class ScenariosController {

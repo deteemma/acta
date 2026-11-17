@@ -60,7 +60,10 @@ import type {
   RequirementStatusDto,
   RequirementVersionDto,
   CreateScenarioInput,
+  FeatureDto,
   ReorderScenariosInput,
+  SaveBackgroundInput,
+  SetFeatureLanguageInput,
   ScenarioDto,
   UpdateScenarioInput,
   UpdateRequirementInput,
@@ -363,6 +366,20 @@ export const api = {
     }),
   deleteScenario: (id: string, requirementId: string, scenarioId: string) =>
     request<void>(`/initiatives/${id}/requirements/${requirementId}/scenarios/${scenarioId}`, { method: 'DELETE' }),
+  // Langue et Contexte de la Fonctionnalité (phase 3, ticket 02).
+  getFeature: (id: string, requirementId: string) => request<FeatureDto>(`/initiatives/${id}/requirements/${requirementId}/feature`),
+  setFeatureLanguage: (id: string, requirementId: string, input: SetFeatureLanguageInput) =>
+    request<FeatureDto>(`/initiatives/${id}/requirements/${requirementId}/feature/language`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
+  saveBackground: (id: string, requirementId: string, input: SaveBackgroundInput) =>
+    request<FeatureDto>(`/initiatives/${id}/requirements/${requirementId}/feature/background`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
+  deleteBackground: (id: string, requirementId: string) =>
+    request<void>(`/initiatives/${id}/requirements/${requirementId}/feature/background`, { method: 'DELETE' }),
   requirementStatuses: () => request<RequirementStatusDto[]>('/requirement-statuses'),
   // Administration (rôle administrateur, tickets 05, 09 et 11).
   listRequirementStatuses: () => request<AdminRequirementStatusDto[]>('/admin/requirement-statuses'),
