@@ -10,6 +10,7 @@ import {
   type ScenarioDto,
   updateScenarioSchema,
 } from '@app/shared';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useId, useState } from 'react';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
@@ -160,21 +161,23 @@ function ScenarioItem({
             </button>
             <button
               type="button"
-              className="ghost"
+              className="ghost icon-only"
               disabled={first}
               aria-label={t('scenario.moveUpLabel', { reference })}
+              title={t('scenario.moveUp')}
               onClick={() => onMove(-1)}
             >
-              {t('scenario.moveUp')}
+              <ArrowUp />
             </button>
             <button
               type="button"
-              className="ghost"
+              className="ghost icon-only"
               disabled={last}
               aria-label={t('scenario.moveDownLabel', { reference })}
+              title={t('scenario.moveDown')}
               onClick={() => onMove(1)}
             >
-              {t('scenario.moveDown')}
+              <ArrowDown />
             </button>
             <button type="button" className="ghost" aria-label={t('scenario.deleteLabel', { reference })} onClick={() => setConfirming(true)}>
               {t('scenario.delete')}
