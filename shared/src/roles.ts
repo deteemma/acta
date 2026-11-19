@@ -56,6 +56,8 @@ export const INITIATIVE_PERMISSIONS = {
    * ticket (phase 2, ticket 21) ; tout membre l'ouvre et la télécharge (`view`).
    */
   editAttachments: 'contributor',
+  /** Créer, modifier, ordonner et supprimer les scénarios Gherkin d'une exigence (phase 3, D17). */
+  editScenarios: 'contributor',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;

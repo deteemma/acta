@@ -11,7 +11,7 @@ import { matchesEveryWord } from './search.js';
  * acronyme ; chaque type de ticket ajouté par l'administration en est une de
  * plus, qui porte son code (ticket 29).
  */
-export const REFERENCE_CATEGORIES = ['need', 'requirement', 'action', 'question', 'decision', 'risk', 'change_request', 'epic', 'page'] as const;
+export const REFERENCE_CATEGORIES = ['need', 'requirement', 'action', 'question', 'decision', 'risk', 'change_request', 'epic', 'page', 'scenario'] as const;
 export type DeliveredReferenceCategory = (typeof REFERENCE_CATEGORIES)[number];
 /** Catégorie livrée, ou code d'un type de ticket ajouté. */
 export type ReferenceCategory = string;
@@ -30,7 +30,26 @@ export const DEFAULT_ACRONYMS: Record<DeliveredReferenceCategory, string> = {
   change_request: 'DC',
   epic: 'EP',
   page: 'PA',
+  scenario: 'SC',
 };
+
+/**
+ * Acronymes de repli d'une catégorie livrée, si l'acronyme par défaut est déjà
+ * porté par une autre (validé le 15.11.2026 pour les scénarios).
+ */
+const FALLBACK_ACRONYMS: Partial<Record<DeliveredReferenceCategory, readonly string[]>> = {
+  scenario: ['SCE', 'SCEN'],
+};
+
+/**
+ * Acronyme donné à une catégorie livrée à sa création : le premier jamais porté
+ * parmi son acronyme par défaut et ses replis ; null si tous sont pris (la
+ * migration s'arrête alors). Reproduit par la migration qui la crée.
+ */
+export function deliveredAcronym(category: DeliveredReferenceCategory, usedAcronyms: readonly string[]): string | null {
+  const candidates = [DEFAULT_ACRONYMS[category], ...(FALLBACK_ACRONYMS[category] ?? [])];
+  return candidates.find((acronym) => !usedAcronyms.includes(acronym)) ?? null;
+}
 
 /** Acronyme : 2 à 4 lettres majuscules. */
 export const ACRONYM_MAX_LENGTH = 4;

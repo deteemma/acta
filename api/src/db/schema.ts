@@ -2,6 +2,7 @@
 import type { ColumnType, Generated } from 'kysely';
 import type {
   AnalysisApproach,
+  BackgroundSnapshot,
   InitiativeRole,
   LinkKind,
   Locale,
@@ -17,6 +18,7 @@ import type {
   StakeholderLevel,
   StakeholderRole,
   RiskLevel,
+  ScenarioSnapshot,
   TicketSnapshot,
   StatusTone,
   TicketStatus,
@@ -125,6 +127,65 @@ export interface PageTable {
   template_name: ColumnType<string | null, string | null | undefined, never>;
   /** Tâche du modèle, posée par la base à l'insertion. */
   task_id: ColumnType<string | null, never, never>;
+}
+
+/** Fonctionnalité d'une exigence (migration 0033, phase 3) : sa langue ; auteur posé par la base. */
+export interface GherkinFeatureTable {
+  requirement_id: ColumnType<string, string, never>;
+  initiative_id: ColumnType<string, string, never>;
+  language: Locale;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+}
+
+/** Contexte d'une Fonctionnalité (migration 0033, phase 3) : auteurs et état posés par la base. */
+export interface GherkinBackgroundTable {
+  requirement_id: ColumnType<string, string, never>;
+  initiative_id: ColumnType<string, string, never>;
+  text: string;
+  row_version: ColumnType<number, never, never>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  updated_by: ColumnType<string, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+/** Historique d'un scénario (migration 0034) : écrit seulement par la base, en lecture seule. */
+export interface GherkinScenarioVersionTable {
+  id: ColumnType<string, never, never>;
+  initiative_id: ColumnType<string, never, never>;
+  scenario_id: ColumnType<string, never, never>;
+  changed_by: ColumnType<string, never, never>;
+  changed_at: ColumnType<Date, never, never>;
+  snapshot_before: ColumnType<ScenarioSnapshot, never, never>;
+  snapshot_after: ColumnType<ScenarioSnapshot, never, never>;
+}
+
+/** Historique du Contexte (migration 0034) : écrit seulement par la base, en lecture seule. */
+export interface GherkinBackgroundVersionTable {
+  id: ColumnType<string, never, never>;
+  initiative_id: ColumnType<string, never, never>;
+  requirement_id: ColumnType<string, never, never>;
+  changed_by: ColumnType<string, never, never>;
+  changed_at: ColumnType<Date, never, never>;
+  snapshot_before: ColumnType<BackgroundSnapshot, never, never>;
+  snapshot_after: ColumnType<BackgroundSnapshot, never, never>;
+}
+
+/** Scénario Gherkin d'une exigence (migration 0032, phase 3) : référence, place, auteurs et état posés par la base. */
+export interface GherkinScenarioTable {
+  id: string;
+  initiative_id: string;
+  requirement_id: string;
+  reference: ColumnType<string, never, never>;
+  title: string;
+  text: string;
+  position: ColumnType<number, never, number>;
+  row_version: ColumnType<number, never, never>;
+  created_by: ColumnType<string, never, never>;
+  created_at: ColumnType<Date, never, never>;
+  updated_by: ColumnType<string, never, never>;
+  updated_at: ColumnType<Date, never, never>;
 }
 
 /** Modèle de page (migrations 0025 et 0030) : écrit seulement par les fonctions admin_* (ticket 30). */
@@ -439,6 +500,11 @@ export interface Database {
   need_stakeholder: NeedStakeholderTable;
   owner_designation: OwnerDesignationTable;
   page: PageTable;
+  gherkin_scenario: GherkinScenarioTable;
+  gherkin_feature: GherkinFeatureTable;
+  gherkin_background: GherkinBackgroundTable;
+  gherkin_scenario_version: GherkinScenarioVersionTable;
+  gherkin_background_version: GherkinBackgroundVersionTable;
   page_need: PageNeedTable;
   page_requirement: PageRequirementTable;
   page_ticket: PageTicketTable;

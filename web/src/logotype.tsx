@@ -4,7 +4,7 @@
 // chaque survol. Il s'affiche en position fixe, sous le logo, pour ne pas être
 // coupé par la barre latérale qui défile.
 import { type CSSProperties, type ElementType, type MouseEvent, useRef, useState } from 'react';
-import film from './assets/film-v2-sarcelle.mp4';
+import film from './assets/film-v3-boucle.mp4';
 import { useI18n } from './i18n';
 
 export function Logotype({ as: Tag = 'span' }: { as?: ElementType }) {

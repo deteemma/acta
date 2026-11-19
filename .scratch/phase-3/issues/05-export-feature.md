@@ -10,7 +10,7 @@ Règles : [spécification](../spec.md), décisions D5, D16, D17.
 
 - [ ] Fichier nommé d'après la référence de l'exigence (ex. `CRM-EX-012.feature`), dans la langue de la fonctionnalité (D5, D16).
 - [ ] Contenu dans l'ordre : ligne « Fonctionnalité » avec référence et titre de l'exigence ; énoncé en description ; Contexte ; chaque scénario dans l'ordre, avec l'étiquette de sa référence, introduit par « Scénario » ou « Plan du scénario » selon la présence d'Exemples, puis titre et texte (D16).
-- [ ] Les textes sont repris tels quels, même invalides.
+- [ ] Les textes sont repris tels quels, même invalides, et sans traduire les mots-clés de l'autre langue que la validation admet désormais (D15 et D16, réponse de la responsable fonctionnelle du 19.11.2026).
 - [ ] Disponible pour tout membre, y compris sur une initiative archivée (D17). Export tableur des exigences inchangé.
 - [ ] Construction du fichier dans `shared/`, avec tests en français et en anglais.
 

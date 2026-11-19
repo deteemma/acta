@@ -29,7 +29,7 @@ Chaque ticket de réalisation renvoie à ces décisions : **les lire avant de co
 ### Fonctionnalité
 
 - **D4** — La Fonctionnalité est l'ensemble des scénarios d'une exigence. Elle n'a ni titre ni description propres : ce sont ceux de l'exigence (titre, énoncé). (Q4)
-- **D5** — La Fonctionnalité porte une **langue**, français ou anglais, commune à son Contexte et à tous ses scénarios. Elle est fixée à la création du premier scénario ou du Contexte, à la langue de son auteur par défaut, et reste modifiable par un propriétaire ou un contributeur. La changer ne traduit aucun texte : la validation signalera alors les mots-clés de l'autre langue. (Q17 corrigée par Q24)
+- **D5** — La Fonctionnalité porte une **langue**, français ou anglais, commune à son Contexte et à tous ses scénarios. Elle est fixée à la création du premier scénario ou du Contexte, à la langue de son auteur par défaut, et reste modifiable par un propriétaire ou un contributeur. La changer ne traduit aucun texte. (Q17 corrigée par Q24 ; la validation admet les mots-clés des deux langues depuis le 19.11.2026, voir D15 ; une fois fixée, elle le reste même si tous les scénarios et le Contexte sont supprimés, précisé le 17.11.2026)
 
 ### Scénario
 
@@ -45,7 +45,7 @@ Chaque ticket de réalisation renvoie à ces décisions : **les lire avant de co
 
 ### Contexte
 
-- **D12** — Le Contexte (*Background*) regroupe les étapes communes à tous les scénarios de la Fonctionnalité. Facultatif, un au plus par exigence, 10 000 caractères au plus, sans titre ni référence. (Q16, Q22)
+- **D12** — Le Contexte (*Background*) regroupe les étapes communes à tous les scénarios de la Fonctionnalité. Facultatif, un au plus par exigence, 10 000 caractères au plus, sans titre ni référence. (Q16, Q22 ; jamais vide : on le supprime, après confirmation, précisé le 17.11.2026)
 
 ### Historique et modification simultanée
 
@@ -56,15 +56,15 @@ Chaque ticket de réalisation renvoie à ces décisions : **les lire avant de co
 
 - **D15** — Tout membre peut demander la validation du texte d'un scénario ou du Contexte. Elle contrôle :
   1. la grammaire Gherkin ;
-  2. les mots-clés de la seule langue de la Fonctionnalité ;
+  2. ~~les mots-clés de la seule langue de la Fonctionnalité~~ — modifié le 19.11.2026 : les mots-clés français et anglais sont admis, même mélangés dans un texte, quelle que soit la langue de la Fonctionnalité ; celle-ci choisit seulement les mots-clés cités par les messages ;
   3. pour un scénario, au moins une étape « Quand » et une étape « Alors » ;
   4. pour un plan de scénario (texte qui contient des Exemples), que chaque `<paramètre>` des étapes a sa colonne dans les Exemples.
 
-  Elle affiche « Syntaxe correcte » ou la liste des erreurs, chacune avec son numéro de ligne et un message dans la langue de l'utilisateur. Le résultat n'est pas conservé. Une bulle d'aide présente ces règles à l'utilisateur. (Q5, Q12, Q13, Q15, Q27)
+  Elle affiche « Syntaxe correcte » ou la liste des erreurs, chacune avec son numéro de ligne et un message dans la langue de l'utilisateur. Le résultat n'est pas conservé. Une bulle d'aide présente ces règles à l'utilisateur. (Q5, Q12, Q13, Q15, Q27 ; précisé le 19.11.2026 : le texte libre est admis là où Gherkin l'admet, avant la première étape et juste après « Exemples » ; les synonymes officiels comptent pour « Quand » (Lorsque) et « Alors » (Donc), pas « Et », « Mais » ni « * » ; une erreur sans ligne propre, comme une étape manquante, porte le numéro de la dernière ligne du texte, 1 s'il est vide)
 
 ### Export
 
-- **D16** — Depuis la fiche de l'exigence, tout membre télécharge un fichier `.feature` nommé d'après la référence de l'exigence (ex. `CRM-EX-012.feature`), dans la langue de la Fonctionnalité. Il contient, dans l'ordre :
+- **D16** — Depuis la fiche de l'exigence, tout membre télécharge un fichier `.feature` nommé d'après la référence de l'exigence (ex. `CRM-EX-012.feature`), dans la langue de la Fonctionnalité. Les textes y sont repris tels qu'ils ont été saisis, sans traduire les mots-clés de l'autre langue (décidé le 19.11.2026, en connaissance de cause : un mélange de langues peut être refusé par les outils des équipes de développement et de test). Il contient, dans l'ordre :
   - la ligne `Fonctionnalité: CRM-EX-012 <titre de l'exigence>` ;
   - l'énoncé de l'exigence en description ;
   - le Contexte ;

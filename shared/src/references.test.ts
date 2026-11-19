@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkAcronymChange, DEFAULT_ACRONYMS, formatReference, type ReferenceCategoryDto, type ReferenceDto, searchReferences } from './references.js';
+import { checkAcronymChange, DEFAULT_ACRONYMS, deliveredAcronym, formatReference, type ReferenceCategoryDto, type ReferenceDto, searchReferences } from './references.js';
 
 test('une référence s’écrit CODE-ACRONYME-NUMÉRO, le numéro sur 3 chiffres au moins', () => {
   assert.equal(formatReference('CRM', 'BE', 1), 'CRM-BE-001');
@@ -62,4 +62,13 @@ test('les références sont rangées par code, acronyme puis numéro', () => {
 
 test('la page a sa catégorie de référence, PA par défaut', () => {
   assert.equal(DEFAULT_ACRONYMS.page, 'PA');
+});
+
+test('un scénario porte par défaut l’acronyme SC, repli sur SCE puis SCEN s’il a déjà été porté', () => {
+  assert.equal(DEFAULT_ACRONYMS.scenario, 'SC');
+  assert.equal(deliveredAcronym('scenario', ['BE', 'EX']), 'SC');
+  assert.equal(deliveredAcronym('scenario', ['SC']), 'SCE');
+  assert.equal(deliveredAcronym('scenario', ['SC', 'SCE']), 'SCEN');
+  // Les trois pris : rien n'est inventé, la question revient à la responsable fonctionnelle.
+  assert.equal(deliveredAcronym('scenario', ['SC', 'SCE', 'SCEN']), null);
 });
