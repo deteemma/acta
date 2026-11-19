@@ -3,14 +3,15 @@
 // un texte invalide s'enregistre quand même (D11, D15). Décisions D7 et D15 de
 // .scratch/phase-3/spec.md, précisées le 19.11.2026 : le texte libre est admis
 // là où Gherkin l'admet ; « Quand » et « Alors » comptent leurs synonymes ; une
-// erreur sans ligne propre porte la dernière ligne du texte.
+// erreur sans ligne propre porte la dernière ligne du texte. Règle 2 modifiée le
+// même jour : les mots-clés français et anglais sont admis, même mélangés, quelle
+// que soit la langue des scénarios ; celle-ci ne sert plus qu'aux messages.
 //
 // Pas de bibliothèque d'analyse : le texte n'est qu'un corps de scénario ou de
 // Contexte, sans ligne « Fonctionnalité » ni « Scénario » (D7), et les messages
 // sont dans la langue de l'utilisateur. Les états suivent la grammaire Gherkin
 // officielle (cucumber/gherkin, gherkin.berp) et ses mots-clés
-// (gherkin-languages.json, fr et en), pour que le `.feature` exporté (D16) se lise
-// sans erreur chez les équipes de développement et de test.
+// (gherkin-languages.json, fr et en).
 import { type Locale, LOCALES, translate } from './i18n.js';
 
 /** Mots-clés Gherkin d'une langue, tels qu'ils s'écrivent (sans l'espace ni le deux-points qui suivent). */
@@ -81,7 +82,6 @@ export type GherkinCheckSubject = 'scenario' | 'background';
 /**
  * Erreurs de la validation :
  * - `excludedLine` : ligne « Fonctionnalité », « Règle », « Contexte » ou « Scénario » dans le texte (D7) ;
- * - `otherLanguageKeyword` : mot-clé de l'autre langue que celle de la Fonctionnalité (D15, règle 2) ;
  * - `spaceBeforeColon` : « Exemples : » au lieu de « Exemples: » ;
  * - `unexpectedText` : texte libre ailleurs qu'avant la première étape ou juste après « Exemples: » ;
  * - `unexpectedTable`, `unexpectedDocString` : tableau ou bloc `"""` sans étape juste avant ;
@@ -96,7 +96,6 @@ export type GherkinCheckSubject = 'scenario' | 'background';
  */
 export const GHERKIN_ISSUE_CODES = [
   'excludedLine',
-  'otherLanguageKeyword',
   'spaceBeforeColon',
   'unexpectedText',
   'unexpectedTable',
@@ -179,7 +178,7 @@ function tableCells(trimmed: string): string[] {
   return cells;
 }
 
-function tokenize(line: string, language: Locale): Token {
+function tokenize(line: string): Token {
   // Comme Gherkin, seules les espaces de tête sont retirées : « Quand » suivi d'une espace est une étape.
   const trimmed = line.trimStart();
   if (trimmed.trim() === '') return { kind: 'empty' };
@@ -187,17 +186,17 @@ function tokenize(line: string, language: Locale): Token {
   if (trimmed.startsWith('@')) return { kind: 'tag', text: trimmed };
   if (trimmed.startsWith('|')) return { kind: 'row', cells: tableCells(trimmed) };
   if (trimmed.startsWith('"""') || trimmed.startsWith('```')) return { kind: 'docString', delimiter: trimmed.slice(0, 3) };
-  const keywords = GHERKIN_KEYWORDS[language];
-  const header = headerKeyword(trimmed, keywords);
-  // Une ligne exclue (D7) l'est avec ou sans espace avant le deux-points.
-  if (header && header.type !== 'examples') return { kind: 'issue', code: 'excludedLine', values: { keyword: header.keyword } };
-  if (header?.spaced) return { kind: 'issue', code: 'spaceBeforeColon', values: { keyword: header.keyword } };
-  if (header) return { kind: 'examples' };
-  const step = stepKeyword(trimmed, keywords);
-  if (step) return { kind: 'step', type: step.type, text: step.text };
-  for (const other of LOCALES.filter((l) => l !== language)) {
-    const keyword = headerKeyword(trimmed, GHERKIN_KEYWORDS[other])?.keyword ?? stepKeyword(trimmed, GHERKIN_KEYWORDS[other])?.keyword;
-    if (keyword) return { kind: 'issue', code: 'otherLanguageKeyword', values: { keyword, language: other } };
+  // D15, règle 2 modifiée le 19.11.2026 : mots-clés français et anglais admis, quelle que soit la langue des scénarios.
+  for (const language of LOCALES) {
+    const header = headerKeyword(trimmed, GHERKIN_KEYWORDS[language]);
+    // Une ligne exclue (D7) l'est avec ou sans espace avant le deux-points.
+    if (header && header.type !== 'examples') return { kind: 'issue', code: 'excludedLine', values: { keyword: header.keyword } };
+    if (header?.spaced) return { kind: 'issue', code: 'spaceBeforeColon', values: { keyword: header.keyword } };
+    if (header) return { kind: 'examples' };
+  }
+  for (const language of LOCALES) {
+    const step = stepKeyword(trimmed, GHERKIN_KEYWORDS[language]);
+    if (step) return { kind: 'step', type: step.type, text: step.text };
   }
   return { kind: 'other' };
 }
@@ -237,10 +236,10 @@ const IN_EXAMPLES: readonly State[] = ['examplesStart', 'examplesDescription', '
 const parametersIn = (text: string) => [...text.matchAll(/<([^\s<>](?:[^<>]*[^\s<>])?)>/g)].map((m) => m[1]!);
 
 /**
- * Valide le texte d'un scénario ou du Contexte (D15) dans la langue de sa
- * Fonctionnalité. Renvoie les erreurs dans l'ordre des lignes ; aucune : syntaxe correcte.
+ * Valide le texte d'un scénario ou du Contexte (D15), mots-clés français et
+ * anglais admis. Renvoie les erreurs dans l'ordre des lignes ; aucune : syntaxe correcte.
  */
-export function checkGherkin(text: string, subject: GherkinCheckSubject, language: Locale): GherkinIssue[] {
+export function checkGherkin(text: string, subject: GherkinCheckSubject): GherkinIssue[] {
   const lines = text.split(/\r?\n/);
   const issues: GherkinIssue[] = [];
   const report = (line: number, code: GherkinIssueCode, values: Record<string, string> = {}) => issues.push({ line, code, values });
@@ -262,7 +261,7 @@ export function checkGherkin(text: string, subject: GherkinCheckSubject, languag
       if (line.trim().startsWith(docString.delimiter)) docString = null;
       continue;
     }
-    const token = tokenize(line, language);
+    const token = tokenize(line);
     if (token.kind === 'empty') continue;
     if (token.kind === 'issue') {
       report(n, token.code, token.values);
@@ -373,16 +372,15 @@ export function checkGherkin(text: string, subject: GherkinCheckSubject, languag
  * mots-clés dans la langue de la Fonctionnalité (`language`).
  */
 export function gherkinIssueMessage(locale: Locale, language: Locale, issue: GherkinIssue): string {
-  return translate(locale, `gherkinCheck.${issue.code}`, { ...gherkinMessageValues(locale, language), ...issue.values });
+  return translate(locale, `gherkinCheck.${issue.code}`, { ...gherkinMessageValues(language), ...issue.values });
 }
 
-/** Valeurs communes aux messages et à la bulle d'aide : mots-clés et nom de la langue de la Fonctionnalité. */
-export function gherkinMessageValues(locale: Locale, language: Locale): Record<string, string> {
+/** Valeurs communes aux messages et à la bulle d'aide : mots-clés cités, dans la langue de la Fonctionnalité. */
+export function gherkinMessageValues(language: Locale): Record<string, string> {
   const keywords = GHERKIN_KEYWORDS[language];
   return {
     when: keywords.when[0]!,
     then: keywords.then[0]!,
     examples: keywords.examples[0]!,
-    featureLanguage: translate(locale, `language.${language}`),
   };
 }

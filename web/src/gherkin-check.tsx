@@ -10,13 +10,15 @@ import {
   gherkinIssueMessage,
   gherkinMessageValues,
   type Locale,
+  LOCALES,
 } from '@app/shared';
 import { useState } from 'react';
 import { useI18n } from './i18n';
 
 /**
  * Bouton « Valider la syntaxe », son résultat et la bulle d'aide des règles.
- * `language` : langue de la Fonctionnalité, ou celle qui lui sera donnée (D5).
+ * `language` : langue de la Fonctionnalité, ou celle qui lui sera donnée (D5) ;
+ * elle choisit les mots-clés cités par les messages, les deux langues étant admises.
  * Le résultat ne vaut que pour le texte vérifié : il disparaît dès que le texte change.
  */
 export function GherkinCheck({
@@ -38,7 +40,7 @@ export function GherkinCheck({
   return (
     <div className="gherkin-check">
       <div className="gherkin-check-actions">
-        <button type="button" className="ghost" aria-label={label} onClick={() => setResult({ text, language, issues: checkGherkin(text, subject, language) })}>
+        <button type="button" className="ghost" aria-label={label} onClick={() => setResult({ text, language, issues: checkGherkin(text, subject) })}>
           {t('gherkinCheck.run')}
         </button>
         <GherkinHelp language={language} />
@@ -64,12 +66,10 @@ export function GherkinCheck({
   );
 }
 
-/** Bulle d'aide : les règles contrôlées (D15) et les mots-clés de la langue de la Fonctionnalité. */
+/** Bulle d'aide : les règles contrôlées (D15) et les mots-clés admis, en français et en anglais. */
 function GherkinHelp({ language }: { language: Locale }) {
-  const { t, locale } = useI18n();
-  const values = gherkinMessageValues(locale, language);
-  const keywords = GHERKIN_KEYWORDS[language];
-  const groups = [keywords.given, keywords.when, keywords.then, keywords.and, keywords.but, keywords.examples];
+  const { t } = useI18n();
+  const values = gherkinMessageValues(language);
 
   return (
     <details className="gherkin-help">
@@ -83,11 +83,17 @@ function GherkinHelp({ language }: { language: Locale }) {
           <li>{t('gherkinCheck.helpGrammar', values)}</li>
           <li>
             {t('gherkinCheck.helpLanguage', values)}
-            <ul className="gherkin-keywords" lang={language}>
-              {groups.map((group) => (
-                <li key={group[0]}>{group.join(' · ')}</li>
-              ))}
-            </ul>
+            {LOCALES.map((l) => {
+              const keywords = GHERKIN_KEYWORDS[l];
+              const groups = [keywords.given, keywords.when, keywords.then, keywords.and, keywords.but, keywords.examples];
+              return (
+                <ul key={l} className="gherkin-keywords" lang={l} aria-label={t(`language.${l}`)}>
+                  {groups.map((group) => (
+                    <li key={group[0]}>{group.join(' · ')}</li>
+                  ))}
+                </ul>
+              );
+            })}
           </li>
           <li>{t('gherkinCheck.helpWhenThen', values)}</li>
           <li>{t('gherkinCheck.helpParameters', values)}</li>

@@ -8,7 +8,7 @@
 
 Règles : [spécification](../spec.md), décisions D7, D11, D15, D17.
 
-- [ ] Contrôles : grammaire Gherkin ; mots-clés de la seule langue de la fonctionnalité ; pour un scénario, au moins un « Quand » et un « Alors » ; pour un plan de scénario, chaque `<paramètre>` présent dans les Exemples (D15). Les éléments exclus par D7 sont des erreurs.
+- [ ] Contrôles : grammaire Gherkin ; mots-clés français ou anglais, même mélangés, quelle que soit la langue de la fonctionnalité (D15 modifiée le 19.11.2026) ; pour un scénario, au moins un « Quand » et un « Alors » ; pour un plan de scénario, chaque `<paramètre>` présent dans les Exemples (D15). Les éléments exclus par D7 sont des erreurs.
 - [ ] Résultat : « Syntaxe correcte », ou chaque erreur avec son numéro de ligne et un message dans la langue de l'utilisateur ; rien n'est conservé (D15).
 - [ ] La validation n'empêche jamais d'enregistrer (D11). Elle porte sur le texte affiché, même non enregistré.
 - [ ] Bulle d'aide qui énonce ces règles, dans les deux langues (D15).

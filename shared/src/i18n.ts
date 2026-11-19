@@ -509,14 +509,13 @@ const fr = {
     'La validation contrôle le texte affiché, même non enregistré. Elle n’empêche jamais d’enregistrer et son résultat n’est pas conservé.',
   'gherkinCheck.helpGrammar':
     'Grammaire Gherkin : des étapes, éventuellement précédées d’un texte libre ; sous une étape, un tableau | … | ou un bloc """ ; à la fin d’un plan de scénario, des « {examples}: » éventuellement précédés d’étiquettes @ ; des commentaires # partout. Pas de ligne « Fonctionnalité », « Règle », « Contexte » ni « Scénario » : la fiche les porte déjà.',
-  'gherkinCheck.helpLanguage': 'Mots-clés de la seule langue des scénarios ({featureLanguage}) :',
+  'gherkinCheck.helpLanguage': 'Mots-clés en français ou en anglais, même mélangés, quelle que soit la langue des scénarios :',
   'gherkinCheck.helpWhenThen':
     'Un scénario a au moins une étape « {when} » et une étape « {then} » (ou leurs synonymes). Le Contexte n’est pas concerné.',
   'gherkinCheck.helpParameters':
     'Plan de scénario (texte qui contient « {examples}: ») : chaque <paramètre> des étapes et de leurs tableaux a sa colonne dans chaque tableau d’Exemples.',
   'gherkinCheck.excludedLine':
     'Ligne « {keyword}: » non admise : la fonctionnalité, la règle, le Contexte et le titre du scénario sont portés par la fiche.',
-  'gherkinCheck.otherLanguageKeyword': '« {keyword} » n’est pas un mot-clé de la langue des scénarios ({featureLanguage}).',
   'gherkinCheck.spaceBeforeColon': 'Pas d’espace avant le deux-points : écrire « {keyword}: ».',
   'gherkinCheck.unexpectedText':
     'Texte libre non admis ici : il n’est permis qu’avant la première étape ou juste après « {examples}: », et pas après un commentaire.',
@@ -1552,14 +1551,13 @@ const en: Record<MessageKey, string> = {
     'The check covers the text shown, even if not saved. It never prevents saving and its result is not kept.',
   'gherkinCheck.helpGrammar':
     'Gherkin grammar: steps, optionally preceded by free text; under a step, a | … | table or a """ block; at the end of a scenario outline, “{examples}:” optionally preceded by @ tags; # comments anywhere. No “Feature”, “Rule”, “Background” or “Scenario” line: the record already carries them.',
-  'gherkinCheck.helpLanguage': 'Keywords of the scenario language only ({featureLanguage}):',
+  'gherkinCheck.helpLanguage': 'Keywords in French or English, even mixed, whatever the scenario language:',
   'gherkinCheck.helpWhenThen':
     'A scenario has at least one “{when}” step and one “{then}” step (or their synonyms). The Background is not concerned.',
   'gherkinCheck.helpParameters':
     'Scenario outline (text containing “{examples}:”): each <parameter> of the steps and their tables has its column in every Examples table.',
   'gherkinCheck.excludedLine':
     '“{keyword}:” line not allowed: the feature, the rule, the Background and the scenario title are carried by the record.',
-  'gherkinCheck.otherLanguageKeyword': '“{keyword}” is not a keyword of the scenario language ({featureLanguage}).',
   'gherkinCheck.spaceBeforeColon': 'No space before the colon: write “{keyword}:”.',
   'gherkinCheck.unexpectedText':
     'Free text not allowed here: it is only allowed before the first step or right after “{examples}:”, and not after a comment.',

@@ -2798,6 +2798,9 @@ details.ticket-type h5 {
   padding-inline-start: var(--space-3);
   font-family: var(--font-mono);
 }
+.gherkin-keywords + .gherkin-keywords {
+  margin-top: var(--space-1);
+}
 .gherkin-check-result {
   margin: var(--space-2) 0 0;
   padding: var(--space-2) var(--space-3);
