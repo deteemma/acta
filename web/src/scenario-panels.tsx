@@ -1,6 +1,6 @@
-// Scénarios Gherkin (phase 3, tickets 01 à 04) : section « Scénarios » de la
+// Scénarios Gherkin (phase 3, tickets 01 à 05) : section « Scénarios » de la
 // fiche d'une exigence de solution fonctionnelle, avec en tête la langue et le
-// Contexte de sa Fonctionnalité, l'historique et la validation de syntaxe de chacun. Règles dans
+// Contexte de sa Fonctionnalité, l'historique et la validation de syntaxe de chacun, et l'export .feature. Règles dans
 // @app/shared (scenarios.ts, roles.ts) ; décisions D1 à D19 de
 // .scratch/phase-3/spec.md. Web seulement (D19).
 import {
@@ -9,6 +9,8 @@ import {
   type BackgroundDto,
   backgroundHistory,
   createScenarioSchema,
+  featureFile,
+  featureFileName,
   type FeatureDto,
   type GherkinChange,
   type GherkinHistoryEntry,
@@ -26,7 +28,7 @@ import {
   type ScenarioSnapshot,
   updateScenarioSchema,
 } from '@app/shared';
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
@@ -98,6 +100,7 @@ export function ScenariosSection({
         {t('scenario.section')} {scenarios.length > 0 && <span className="count">{scenarios.length}</span>}
       </h3>
       <ErrorMessage error={error} />
+      <ExportFeatureButton initiativeId={initiativeId} requirementId={requirementId} onError={setError} />
       {feature.language && (
         <FeatureLanguage
           initiativeId={initiativeId}
@@ -159,6 +162,61 @@ export function ScenariosSection({
           </button>
         ))}
     </section>
+  );
+}
+
+/**
+ * Export .feature (ticket 05, D16), pour tout membre, même sur une initiative
+ * archivée (D17) : l'exigence, sa Fonctionnalité et ses scénarios relus au clic,
+ * enregistrés par le navigateur. Tant que la langue n'est pas fixée (ni scénario
+ * ni Contexte), celle que la section affiche : celle de l'utilisateur (D5).
+ */
+function ExportFeatureButton({
+  initiativeId,
+  requirementId,
+  onError,
+}: {
+  initiativeId: string;
+  requirementId: string;
+  onError: (error: UiError) => void;
+}) {
+  const { t, locale } = useI18n();
+  const [busy, setBusy] = useState(false);
+
+  async function exportFeature() {
+    setBusy(true);
+    try {
+      const [requirement, feature, scenarios] = await Promise.all([
+        api.getRequirement(initiativeId, requirementId),
+        api.getFeature(initiativeId, requirementId),
+        api.listScenarios(initiativeId, requirementId),
+      ]);
+      const content = featureFile({
+        requirement,
+        language: feature.language ?? newFeatureLanguage(locale, null),
+        background: feature.background?.text ?? null,
+        scenarios,
+      });
+      const url = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = featureFileName(requirement.reference);
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      onError(toUiError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <p>
+      <button type="button" className="ghost" disabled={busy} onClick={() => void exportFeature()}>
+        <Download />
+        {t('feature.export')}
+      </button>
+    </p>
   );
 }
 

@@ -368,6 +368,24 @@ export function checkGherkin(text: string, subject: GherkinCheckSubject): Gherki
 }
 
 /**
+ * Le texte contient-il des Exemples, qui en font un plan de scénario ? Une ligne
+ * « Exemples: » ou « Examples: » (les deux langues, D15), hors bloc `"""`.
+ */
+export function containsExamples(text: string): boolean {
+  let docString: string | null = null;
+  for (const line of text.split(/\r?\n/)) {
+    if (docString) {
+      if (line.trim().startsWith(docString)) docString = null;
+      continue;
+    }
+    const token = tokenize(line);
+    if (token.kind === 'examples') return true;
+    if (token.kind === 'docString') docString = token.delimiter;
+  }
+  return false;
+}
+
+/**
  * Message d'une erreur dans la langue de l'utilisateur (`locale`), avec les
  * mots-clés dans la langue de la Fonctionnalité (`language`).
  */

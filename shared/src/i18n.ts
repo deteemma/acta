@@ -473,6 +473,7 @@ const fr = {
     'La langue des scénarios est fixée à la création du premier scénario ou du Contexte : il n’y en a pas encore.',
   'feature.language': 'Langue des scénarios',
   'feature.languageHint': 'Commune au Contexte et à tous les scénarios. La changer ne traduit aucun texte.',
+  'feature.export': 'Exporter (.feature)',
   'background.title': 'Contexte',
   'background.text': 'Étapes communes à tous les scénarios',
   'background.textHint':
@@ -1515,6 +1516,7 @@ const en: Record<MessageKey, string> = {
     'The scenario language is set when the first scenario or the Background is created: there is none yet.',
   'feature.language': 'Scenario language',
   'feature.languageHint': 'Shared by the Background and all scenarios. Changing it does not translate any text.',
+  'feature.export': 'Export (.feature)',
   'background.title': 'Background',
   'background.text': 'Steps shared by all scenarios',
   'background.textHint':
