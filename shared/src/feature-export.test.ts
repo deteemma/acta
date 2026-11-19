@@ -95,6 +95,16 @@ test('les textes sont repris tels quels, même invalides, sans traduire les mots
   );
 });
 
+test('« Exemples : » mal écrit ne fait pas un plan du scénario (réponse du 19.11.2026)', () => {
+  const file = featureFile({
+    requirement,
+    language: 'fr',
+    background: null,
+    scenarios: [{ reference: 'CRM-SC-001', title: 'Espace', text: 'Quand il paie <x>\nExemples :\n| x |' }],
+  });
+  assert.match(file, /\n {2}Scénario: Espace\n/);
+});
+
 test('l’énoncé en texte enrichi devient une description en texte simple', () => {
   const file = featureFile({
     requirement: { ...requirement, statement: 'Le client **paie** :\n\n- par carte\n- par virement' },

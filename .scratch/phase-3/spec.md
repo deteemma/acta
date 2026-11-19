@@ -72,6 +72,8 @@ Chaque ticket de réalisation renvoie à ces décisions : **les lire avant de co
 
   L'export est proposé même sans scénario ni Contexte (précisé le 15.11.2026). Pas d'export groupé de l'initiative. L'export tableur des exigences est inchangé. (Q20, Q26)
 
+  Précisé le 19.11.2026 : le fichier commence par la ligne `# language: fr` ou `# language: en`, pour que les outils lisent les mots-clés dans la bonne langue ; tant que la langue n'est pas fixée (ni scénario ni Contexte), c'est celle de l'utilisateur qui exporte ; l'énoncé est repris en texte simple, comme dans l'export tableur ; un texte qui ne contient des Exemples que sous la forme mal écrite « Exemples : » (espace avant le deux-points) sort en `Scénario:`, comme le liraient les outils.
+
 ### Accès et écrans
 
 - **D17** — Propriétaires et contributeurs créent, modifient, ordonnent et suppriment les scénarios et le Contexte, et changent la langue. Tout membre les consulte. Sur une initiative archivée, tout est en lecture seule, mais la consultation, la validation et l'export restent possibles. (Q8, Q31)
