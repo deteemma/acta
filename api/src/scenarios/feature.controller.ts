@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Put } from '@nestjs/common';
 import {
+  type BackgroundHistoryDto,
   type FeatureDto,
   saveBackgroundSchema,
   type SaveBackgroundInput,
@@ -14,8 +15,8 @@ import { ScenariosService } from './scenarios.service.js';
 /**
  * Fonctionnalité d'une exigence (phase 3, ticket 02) : sa langue et son Contexte.
  * Tout membre consulte ; propriétaires et contributeurs écrivent le Contexte et
- * changent la langue (D17). L'historique du Contexte (ticket 03) prendra place
- * sous `…/feature/background/history`.
+ * changent la langue (D17). L'historique du Contexte (ticket 03) est sous
+ * `…/feature/background/history`.
  */
 @Controller('initiatives/:initiativeId/requirements/:requirementId/feature')
 export class FeatureController {
@@ -51,6 +52,17 @@ export class FeatureController {
     @Body(new ZodValidationPipe(saveBackgroundSchema)) body: SaveBackgroundInput,
   ): Promise<FeatureDto> {
     return this.scenarios.saveBackground(user.id, initiativeId, requirementId, body);
+  }
+
+  /** Historique propre au Contexte, consultable par tout membre (D13). */
+  @Get('background/history')
+  @RequireInitiativeRole('view')
+  backgroundHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('requirementId', ParseUUIDPipe) requirementId: string,
+  ): Promise<BackgroundHistoryDto> {
+    return this.scenarios.backgroundHistory(user.id, initiativeId, requirementId);
   }
 
   @Delete('background')

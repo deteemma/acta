@@ -4,15 +4,18 @@ import {
   acceptsScenarios,
   type BackgroundChangedSinceBody,
   type BackgroundDto,
+  type BackgroundHistoryDto,
   checkScenarioOrder,
   type CreateScenarioInput,
   type FeatureContent,
   type FeatureDto,
+  type GherkinHistoryDto,
   type Locale,
   newFeatureLanguage,
   type ReorderScenariosInput,
   type ScenarioChangedSinceBody,
   type ScenarioDto,
+  type ScenarioHistoryDto,
   type SaveBackgroundInput,
   type ScenarioRefusal,
   type SetFeatureLanguageInput,
@@ -24,8 +27,9 @@ import { isConstraintViolation } from '../db/pg-errors.js';
 
 /**
  * Scénarios Gherkin d'une exigence, Contexte et langue de sa Fonctionnalité
- * (phase 3, tickets 01 et 02) : tout membre consulte ; propriétaires et
- * contributeurs créent, modifient, ordonnent et suppriment, et changent la langue (D17).
+ * (phase 3, tickets 01 à 03) : tout membre consulte, historiques compris ;
+ * propriétaires et contributeurs créent, modifient, ordonnent et suppriment, et
+ * changent la langue (D17). Les historiques sont écrits par la base (migration 0034).
  */
 @Injectable()
 export class ScenariosService {
@@ -123,6 +127,54 @@ export class ScenariosService {
         .where('requirement_id', '=', requirementId)
         .executeTakeFirst();
       if (deleted.numDeletedRows === 0n) throw new NotFoundException();
+    });
+  }
+
+  /**
+   * Historique propre au scénario (D13) : sa création, puis chaque modification du
+   * titre ou du texte, la plus ancienne d'abord (scenarioHistory les compare).
+   */
+  history(userId: string, initiativeId: string, requirementId: string, scenarioId: string): Promise<ScenarioHistoryDto> {
+    return this.database.asUser(userId, async (tx) => {
+      await loadRequirement(tx, initiativeId, requirementId);
+      const scenario = await tx
+        .selectFrom('gherkin_scenario as s')
+        .leftJoin('app_user as u', 'u.id', 's.created_by')
+        .select(['s.created_at', 's.created_by', 'u.email', 'u.display_name'])
+        .where('s.id', '=', scenarioId)
+        .where('s.requirement_id', '=', requirementId)
+        .executeTakeFirst();
+      if (!scenario) throw new NotFoundException();
+      const versions = await tx
+        .selectFrom('gherkin_scenario_version as v')
+        .leftJoin('app_user as u', 'u.id', 'v.changed_by')
+        .select(['v.changed_at', 'v.changed_by', 'u.email', 'u.display_name', 'v.snapshot_before', 'v.snapshot_after'])
+        .where('v.scenario_id', '=', scenarioId)
+        .orderBy('v.id')
+        .execute();
+      return toHistory(scenario, versions);
+    });
+  }
+
+  /** Historique propre au Contexte (D13) : sa création, puis chaque modification du texte. */
+  backgroundHistory(userId: string, initiativeId: string, requirementId: string): Promise<BackgroundHistoryDto> {
+    return this.database.asUser(userId, async (tx) => {
+      await loadRequirement(tx, initiativeId, requirementId);
+      const background = await tx
+        .selectFrom('gherkin_background as b')
+        .leftJoin('app_user as u', 'u.id', 'b.created_by')
+        .select(['b.created_at', 'b.created_by', 'u.email', 'u.display_name'])
+        .where('b.requirement_id', '=', requirementId)
+        .executeTakeFirst();
+      if (!background) throw new NotFoundException();
+      const versions = await tx
+        .selectFrom('gherkin_background_version as v')
+        .leftJoin('app_user as u', 'u.id', 'v.changed_by')
+        .select(['v.changed_at', 'v.changed_by', 'u.email', 'u.display_name', 'v.snapshot_before', 'v.snapshot_after'])
+        .where('v.requirement_id', '=', requirementId)
+        .orderBy('v.id')
+        .execute();
+      return toHistory(background, versions);
     });
   }
 
@@ -314,6 +366,27 @@ function toDto(r: ScenarioRow): ScenarioDto {
     rowVersion: r.row_version,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
+  };
+}
+
+interface AuthorRow {
+  email: string | null;
+  display_name: string | null;
+}
+
+function toHistory<S>(
+  creation: AuthorRow & { created_at: Date; created_by: string },
+  versions: (AuthorRow & { changed_at: Date; changed_by: string; snapshot_before: S; snapshot_after: S })[],
+): GherkinHistoryDto<S> {
+  return {
+    createdAt: creation.created_at.toISOString(),
+    createdBy: { userId: creation.created_by, email: creation.email, displayName: creation.display_name },
+    versions: versions.map((v) => ({
+      changedAt: v.changed_at.toISOString(),
+      changedBy: { userId: v.changed_by, email: v.email, displayName: v.display_name },
+      before: v.snapshot_before,
+      after: v.snapshot_after,
+    })),
   };
 }
 

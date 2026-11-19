@@ -2,6 +2,7 @@
 import type { ColumnType, Generated } from 'kysely';
 import type {
   AnalysisApproach,
+  BackgroundSnapshot,
   InitiativeRole,
   LinkKind,
   Locale,
@@ -17,6 +18,7 @@ import type {
   StakeholderLevel,
   StakeholderRole,
   RiskLevel,
+  ScenarioSnapshot,
   TicketSnapshot,
   StatusTone,
   TicketStatus,
@@ -146,6 +148,28 @@ export interface GherkinBackgroundTable {
   created_at: ColumnType<Date, never, never>;
   updated_by: ColumnType<string, never, never>;
   updated_at: ColumnType<Date, never, never>;
+}
+
+/** Historique d'un scénario (migration 0034) : écrit seulement par la base, en lecture seule. */
+export interface GherkinScenarioVersionTable {
+  id: ColumnType<string, never, never>;
+  initiative_id: ColumnType<string, never, never>;
+  scenario_id: ColumnType<string, never, never>;
+  changed_by: ColumnType<string, never, never>;
+  changed_at: ColumnType<Date, never, never>;
+  snapshot_before: ColumnType<ScenarioSnapshot, never, never>;
+  snapshot_after: ColumnType<ScenarioSnapshot, never, never>;
+}
+
+/** Historique du Contexte (migration 0034) : écrit seulement par la base, en lecture seule. */
+export interface GherkinBackgroundVersionTable {
+  id: ColumnType<string, never, never>;
+  initiative_id: ColumnType<string, never, never>;
+  requirement_id: ColumnType<string, never, never>;
+  changed_by: ColumnType<string, never, never>;
+  changed_at: ColumnType<Date, never, never>;
+  snapshot_before: ColumnType<BackgroundSnapshot, never, never>;
+  snapshot_after: ColumnType<BackgroundSnapshot, never, never>;
 }
 
 /** Scénario Gherkin d'une exigence (migration 0032, phase 3) : référence, place, auteurs et état posés par la base. */
@@ -479,6 +503,8 @@ export interface Database {
   gherkin_scenario: GherkinScenarioTable;
   gherkin_feature: GherkinFeatureTable;
   gherkin_background: GherkinBackgroundTable;
+  gherkin_scenario_version: GherkinScenarioVersionTable;
+  gherkin_background_version: GherkinBackgroundVersionTable;
   page_need: PageNeedTable;
   page_requirement: PageRequirementTable;
   page_ticket: PageTicketTable;

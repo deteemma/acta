@@ -2,11 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   acceptsScenarios,
+  backgroundHistory,
   checkScenarioOrder,
   createScenarioSchema,
   moveScenario,
   newFeatureLanguage,
   saveBackgroundSchema,
+  scenarioHistory,
   setFeatureLanguageSchema,
   updateScenarioSchema,
 } from './scenarios.js';
@@ -85,4 +87,62 @@ test('la langue de la fonctionnalité est le français ou l’anglais', () => {
   assert.equal(setFeatureLanguageSchema.safeParse({ language: 'de' }).success, false);
   assert.equal(createScenarioSchema.safeParse({ title: 'T', text: '', language: 'de' }).success, false);
   assert.equal(createScenarioSchema.parse({ title: 'T', text: '', language: 'en' }).language, 'en');
+});
+
+const alice = { userId: 'alice', email: 'alice@example.org', displayName: 'Alice' };
+const bruno = { userId: 'bruno', email: 'bruno@example.org', displayName: 'Bruno' };
+
+test('historique d’un scénario : la création, puis chaque modification du titre ou du texte, la plus récente en tête', () => {
+  const history = scenarioHistory({
+    createdAt: '2026-11-17T09:00:00.000Z',
+    createdBy: alice,
+    versions: [
+      {
+        changedAt: '2026-11-17T10:00:00.000Z',
+        changedBy: bruno,
+        before: { title: 'Connexion', text: 'Quand je me connecte' },
+        after: { title: 'Connexion réussie', text: 'Quand je me connecte' },
+      },
+      {
+        changedAt: '2026-11-17T11:00:00.000Z',
+        changedBy: alice,
+        before: { title: 'Connexion réussie', text: 'Quand je me connecte' },
+        after: { title: 'Connexion réussie', text: 'Quand je me connecte\nAlors je vois mon tableau de bord' },
+      },
+    ],
+  });
+  assert.deepEqual(history, [
+    {
+      changedAt: '2026-11-17T11:00:00.000Z',
+      changedBy: alice,
+      kind: 'updated',
+      changes: [{ field: 'text', from: 'Quand je me connecte', to: 'Quand je me connecte\nAlors je vois mon tableau de bord' }],
+    },
+    {
+      changedAt: '2026-11-17T10:00:00.000Z',
+      changedBy: bruno,
+      kind: 'updated',
+      changes: [{ field: 'title', from: 'Connexion', to: 'Connexion réussie' }],
+    },
+    { changedAt: '2026-11-17T09:00:00.000Z', changedBy: alice, kind: 'created', changes: [] },
+  ]);
+});
+
+test('historique du Contexte : la création, puis chaque modification du texte', () => {
+  const history = backgroundHistory({
+    createdAt: '2026-11-17T09:00:00.000Z',
+    createdBy: alice,
+    versions: [
+      { changedAt: '2026-11-17T10:00:00.000Z', changedBy: bruno, before: { text: 'Étant donné un client' }, after: { text: 'Étant donné un client connecté' } },
+    ],
+  });
+  assert.deepEqual(history, [
+    {
+      changedAt: '2026-11-17T10:00:00.000Z',
+      changedBy: bruno,
+      kind: 'updated',
+      changes: [{ field: 'text', from: 'Étant donné un client', to: 'Étant donné un client connecté' }],
+    },
+    { changedAt: '2026-11-17T09:00:00.000Z', changedBy: alice, kind: 'created', changes: [] },
+  ]);
 });

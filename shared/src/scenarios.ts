@@ -1,4 +1,4 @@
-// Scénarios Gherkin (phase 3, tickets 01 et 02) : description d'un comportement
+// Scénarios Gherkin (phase 3, tickets 01 à 03) : description d'un comportement
 // attendu, rattachée à une exigence de solution fonctionnelle et à elle seule,
 // avec le Contexte et la langue de sa Fonctionnalité. Règles écrites une seule
 // fois ici, appliquées par l'API et reproduites par la base (migrations 0032 et
@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { DEFAULT_LOCALE, type Locale, LOCALES } from './i18n.js';
 import type { RequirementSubtype, RequirementType } from './requirements.js';
+import type { MemberNameDto } from './schemas.js';
 
 /** Même limite que le titre des autres objets d'analyse. */
 export const SCENARIO_TITLE_MAX_LENGTH = 200;
@@ -158,3 +159,68 @@ export const SCENARIO_REFUSALS = [
 ] as const;
 export type ScenarioRefusal = (typeof SCENARIO_REFUSALS)[number];
 export const isScenarioRefusal = (value: unknown): value is ScenarioRefusal => SCENARIO_REFUSALS.some((r) => r === value);
+
+// ── Historique (D13) ───────────────────────────────────────────────────────
+
+/** Champs suivis d'un scénario : la place (D9) n'en fait pas partie. */
+export interface ScenarioSnapshot {
+  title: string;
+  text: string;
+}
+
+/** Champ suivi du Contexte. La langue de la Fonctionnalité n'a pas d'historique. */
+export interface BackgroundSnapshot {
+  text: string;
+}
+
+/** Modification enregistrée par la base : qui, quand, et l'état avant et après. */
+export interface GherkinVersionDto<S> {
+  changedAt: string;
+  changedBy: MemberNameDto;
+  before: S;
+  after: S;
+}
+
+/**
+ * Historique tel que renvoyé par l'API : la création (auteur et date portés par le
+ * scénario ou le Contexte), puis les modifications, la plus ancienne d'abord.
+ */
+export interface GherkinHistoryDto<S> {
+  createdAt: string;
+  createdBy: MemberNameDto;
+  versions: GherkinVersionDto<S>[];
+}
+export type ScenarioHistoryDto = GherkinHistoryDto<ScenarioSnapshot>;
+export type BackgroundHistoryDto = GherkinHistoryDto<BackgroundSnapshot>;
+
+/** Champ modifié : ancienne et nouvelle valeur. */
+export type GherkinChange<S> = { [F in keyof S & string]: { field: F; from: S[F]; to: S[F] } }[keyof S & string];
+
+export interface GherkinHistoryEntry<C> {
+  changedAt: string;
+  changedBy: MemberNameDto;
+  kind: 'created' | 'updated';
+  /** Vide pour la création. */
+  changes: C[];
+}
+
+function gherkinHistory<S>(history: GherkinHistoryDto<S>, fields: readonly (keyof S & string)[]): GherkinHistoryEntry<GherkinChange<S>>[] {
+  const updates = history.versions
+    .map(({ changedAt, changedBy, before, after }) => ({
+      changedAt,
+      changedBy,
+      kind: 'updated' as const,
+      changes: fields
+        .filter((field) => before[field] !== after[field])
+        .map((field) => ({ field, from: before[field], to: after[field] }) as GherkinChange<S>),
+    }))
+    .filter((entry) => entry.changes.length > 0);
+  const created = { changedAt: history.createdAt, changedBy: history.createdBy, kind: 'created' as const, changes: [] };
+  return [created, ...updates].reverse();
+}
+
+/** D13 : historique propre au scénario (titre, texte), la plus récente modification en tête. */
+export const scenarioHistory = (history: ScenarioHistoryDto) => gherkinHistory(history, ['title', 'text']);
+
+/** D13 : historique propre au Contexte (texte), la plus récente modification en tête. */
+export const backgroundHistory = (history: BackgroundHistoryDto) => gherkinHistory(history, ['text']);

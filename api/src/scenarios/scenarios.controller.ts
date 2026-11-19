@@ -5,6 +5,7 @@ import {
   reorderScenariosSchema,
   type ReorderScenariosInput,
   type ScenarioDto,
+  type ScenarioHistoryDto,
   updateScenarioSchema,
   type UpdateScenarioInput,
 } from '@app/shared';
@@ -14,10 +15,9 @@ import { ZodValidationPipe } from '../zod-validation.pipe.js';
 import { ScenariosService } from './scenarios.service.js';
 
 /**
- * Scénarios Gherkin d'une exigence (phase 3, ticket 01) : tout membre consulte,
- * propriétaires et contributeurs écrivent (D17). Le Contexte et la langue
- * (ticket 02) sont sous `…/feature` (FeatureController) ; les historiques
- * (ticket 03) prendront place sous `…/scenarios/:scenarioId/history`.
+ * Scénarios Gherkin d'une exigence (phase 3, tickets 01 et 03) : tout membre
+ * consulte, historique compris ; propriétaires et contributeurs écrivent (D17).
+ * Le Contexte et la langue (ticket 02) sont sous `…/feature` (FeatureController).
  */
 @Controller('initiatives/:initiativeId/requirements/:requirementId/scenarios')
 export class ScenariosController {
@@ -65,6 +65,18 @@ export class ScenariosController {
     @Body(new ZodValidationPipe(updateScenarioSchema)) body: UpdateScenarioInput,
   ): Promise<ScenarioDto> {
     return this.scenarios.update(user.id, initiativeId, requirementId, scenarioId, body);
+  }
+
+  /** Historique propre au scénario, consultable par tout membre (D13). */
+  @Get(':scenarioId/history')
+  @RequireInitiativeRole('view')
+  history(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('requirementId', ParseUUIDPipe) requirementId: string,
+    @Param('scenarioId', ParseUUIDPipe) scenarioId: string,
+  ): Promise<ScenarioHistoryDto> {
+    return this.scenarios.history(user.id, initiativeId, requirementId, scenarioId);
   }
 
   @Delete(':scenarioId')

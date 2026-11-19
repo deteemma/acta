@@ -1,28 +1,36 @@
-// Scénarios Gherkin (phase 3, tickets 01 et 02) : section « Scénarios » de la
+// Scénarios Gherkin (phase 3, tickets 01 à 03) : section « Scénarios » de la
 // fiche d'une exigence de solution fonctionnelle, avec en tête la langue et le
-// Contexte de sa Fonctionnalité. Règles dans @app/shared (scenarios.ts, roles.ts) ;
-// décisions D1 à D19 de .scratch/phase-3/spec.md. Web seulement (D19).
+// Contexte de sa Fonctionnalité, et l'historique de chacun. Règles dans
+// @app/shared (scenarios.ts, roles.ts) ; décisions D1 à D19 de
+// .scratch/phase-3/spec.md. Web seulement (D19).
 import {
   BACKGROUND_TEXT_MAX_LENGTH,
   type BackgroundChangedSinceBody,
   type BackgroundDto,
+  backgroundHistory,
   createScenarioSchema,
   type FeatureDto,
+  type GherkinChange,
+  type GherkinHistoryEntry,
   type Locale,
   LOCALES,
+  memberName,
   moveScenario,
   saveBackgroundSchema,
   SCENARIO_TEXT_MAX_LENGTH,
   SCENARIO_TITLE_MAX_LENGTH,
   type ScenarioChangedSinceBody,
   type ScenarioDto,
+  scenarioHistory,
+  type ScenarioSnapshot,
   updateScenarioSchema,
 } from '@app/shared';
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
+import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
 /** Saisie refusée par le schéma de l'API (400 sans motif) : `invalid` ; sinon le motif du refus. */
@@ -221,6 +229,7 @@ function Background({
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
   const titleId = useId();
 
@@ -228,6 +237,8 @@ function Background({
     try {
       await api.deleteBackground(initiativeId, requirementId);
       onChange(await api.getFeature(initiativeId, requirementId));
+      // L'historique part avec le Contexte (D3) : un nouveau Contexte repart d'un historique vierge.
+      setHistoryOpen(false);
       setConfirming(false);
       setError(null);
     } catch (e) {
@@ -252,14 +263,27 @@ function Background({
         <h4 id={titleId} className="scenario-title">
           {t('background.title')}
         </h4>
-        {canEdit && background && !editing && !confirming && (
+        {background && !editing && !confirming && (
           <span className="scenario-actions">
-            <button type="button" className="ghost" aria-label={t('background.editLabel')} onClick={() => setEditing(true)}>
-              {t('background.edit')}
+            <button
+              type="button"
+              className="ghost"
+              aria-expanded={historyOpen}
+              aria-label={t(historyOpen ? 'background.historyHideLabel' : 'background.historyLabel')}
+              onClick={() => setHistoryOpen(!historyOpen)}
+            >
+              {t(historyOpen ? 'scenario.historyHide' : 'scenario.history')}
             </button>
-            <button type="button" className="ghost" aria-label={t('background.deleteLabel')} onClick={() => setConfirming(true)}>
-              {t('background.delete')}
-            </button>
+            {canEdit && (
+              <>
+                <button type="button" className="ghost" aria-label={t('background.editLabel')} onClick={() => setEditing(true)}>
+                  {t('background.edit')}
+                </button>
+                <button type="button" className="ghost" aria-label={t('background.deleteLabel')} onClick={() => setConfirming(true)}>
+                  {t('background.delete')}
+                </button>
+              </>
+            )}
           </span>
         )}
       </div>
@@ -277,6 +301,9 @@ function Background({
         />
       ) : (
         background && <pre className="gherkin-text">{background.text}</pre>
+      )}
+      {background && historyOpen && (
+        <GherkinHistory initiativeId={initiativeId} requirementId={requirementId} rowVersion={background.rowVersion} labelledBy={titleId} />
       )}
       {confirming && (
         <div role="alertdialog" aria-labelledby={`${titleId}-delete`} className="confirm">
@@ -439,6 +466,7 @@ function ScenarioItem({
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
   const titleId = useId();
   const { reference } = scenario;
@@ -459,34 +487,47 @@ function ScenarioItem({
         <h4 id={titleId} className="scenario-title">
           <span className="code">{reference}</span> {scenario.title}
         </h4>
-        {canEdit && !editing && !confirming && (
+        {!editing && !confirming && (
           <span className="scenario-actions">
-            <button type="button" className="ghost" aria-label={t('scenario.editLabel', { reference })} onClick={() => setEditing(true)}>
-              {t('scenario.edit')}
-            </button>
             <button
               type="button"
-              className="ghost icon-only"
-              disabled={first}
-              aria-label={t('scenario.moveUpLabel', { reference })}
-              title={t('scenario.moveUp')}
-              onClick={() => onMove(-1)}
+              className="ghost"
+              aria-expanded={historyOpen}
+              aria-label={t(historyOpen ? 'scenario.historyHideLabel' : 'scenario.historyLabel', { reference })}
+              onClick={() => setHistoryOpen(!historyOpen)}
             >
-              <ArrowUp />
+              {t(historyOpen ? 'scenario.historyHide' : 'scenario.history')}
             </button>
-            <button
-              type="button"
-              className="ghost icon-only"
-              disabled={last}
-              aria-label={t('scenario.moveDownLabel', { reference })}
-              title={t('scenario.moveDown')}
-              onClick={() => onMove(1)}
-            >
-              <ArrowDown />
-            </button>
-            <button type="button" className="ghost" aria-label={t('scenario.deleteLabel', { reference })} onClick={() => setConfirming(true)}>
-              {t('scenario.delete')}
-            </button>
+            {canEdit && (
+              <>
+                <button type="button" className="ghost" aria-label={t('scenario.editLabel', { reference })} onClick={() => setEditing(true)}>
+                  {t('scenario.edit')}
+                </button>
+                <button
+                  type="button"
+                  className="ghost icon-only"
+                  disabled={first}
+                  aria-label={t('scenario.moveUpLabel', { reference })}
+                  title={t('scenario.moveUp')}
+                  onClick={() => onMove(-1)}
+                >
+                  <ArrowUp />
+                </button>
+                <button
+                  type="button"
+                  className="ghost icon-only"
+                  disabled={last}
+                  aria-label={t('scenario.moveDownLabel', { reference })}
+                  title={t('scenario.moveDown')}
+                  onClick={() => onMove(1)}
+                >
+                  <ArrowDown />
+                </button>
+                <button type="button" className="ghost" aria-label={t('scenario.deleteLabel', { reference })} onClick={() => setConfirming(true)}>
+                  {t('scenario.delete')}
+                </button>
+              </>
+            )}
           </span>
         )}
       </div>
@@ -506,6 +547,15 @@ function ScenarioItem({
         <p>
           <small>{t('scenario.textEmpty')}</small>
         </p>
+      )}
+      {historyOpen && (
+        <GherkinHistory
+          initiativeId={initiativeId}
+          requirementId={scenario.requirementId}
+          scenarioId={scenario.id}
+          rowVersion={scenario.rowVersion}
+          labelledBy={titleId}
+        />
       )}
       {confirming && (
         <div role="alertdialog" aria-labelledby={`scenario-delete-${scenario.id}`} className="confirm">
@@ -648,5 +698,96 @@ function ScenarioForm({
       </div>
       <ErrorMessage error={error} />
     </form>
+  );
+}
+
+/** Le Contexte n'a qu'un champ suivi, le texte : ses entrées sont celles d'un scénario. */
+type HistoryEntry = GherkinHistoryEntry<GherkinChange<ScenarioSnapshot>>;
+
+/**
+ * Historique propre à un scénario ou au Contexte (D13), consultable par tout
+ * membre : qui, quand, et pour chaque champ modifié l'ancienne et la nouvelle
+ * valeur. Même frise que l'historique d'une exigence ; le texte, souvent long,
+ * s'affiche avant et après à la demande. Sans `scenarioId`, celui du Contexte.
+ * Relu à chaque enregistrement (`rowVersion`).
+ */
+function GherkinHistory({
+  initiativeId,
+  requirementId,
+  scenarioId,
+  rowVersion,
+  labelledBy,
+}: {
+  initiativeId: string;
+  requirementId: string;
+  scenarioId?: string;
+  rowVersion: number;
+  labelledBy: string;
+}) {
+  const { t, locale } = useI18n();
+  const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
+  const [error, setError] = useState<UiError | null>(null);
+
+  useEffect(() => {
+    const loaded: Promise<HistoryEntry[]> = scenarioId
+      ? api.scenarioHistory(initiativeId, requirementId, scenarioId).then(scenarioHistory)
+      : api.backgroundHistory(initiativeId, requirementId).then(backgroundHistory);
+    loaded.then(setEntries, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, requirementId, scenarioId, rowVersion]);
+
+  if (error) return <ErrorMessage error={error} />;
+  if (!entries) return <p role="status">{t('common.loading')}</p>;
+  const empty = <em>{t('scenario.historyEmptyText')}</em>;
+  return (
+    <section className="gherkin-history" aria-labelledby={labelledBy}>
+      <ol className="timeline">
+        {entries.map((entry, index) => (
+          // Deux modifications d'une même transaction ont la même date : la place suffit, la liste est relue en entier.
+          <li key={index}>
+            <span className="timeline-when">
+              {t(entry.kind === 'created' ? 'scenario.historyCreated' : 'scenario.historyUpdated', {
+                date: formatDateTime(locale, entry.changedAt),
+                name: memberName(entry.changedBy),
+              })}
+            </span>
+            {entry.changes.length > 0 && (
+              <table className="change-table">
+                <thead>
+                  <tr>
+                    <td />
+                    <th scope="col">{t('requirement.historyBefore')}</th>
+                    <th scope="col">{t('requirement.historyAfter')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entry.changes.map((change) =>
+                    change.field === 'text' ? (
+                      <tr key={change.field}>
+                        <th scope="row">{t('scenario.text')}</th>
+                        <td colSpan={2}>
+                          <details>
+                            <summary>{t('scenario.historyShowText')}</summary>
+                            <div className="change-statement">
+                              <pre className="gherkin-text change-before">{change.from || empty}</pre>
+                              <pre className="gherkin-text">{change.to || empty}</pre>
+                            </div>
+                          </details>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={change.field}>
+                        <th scope="row">{t('scenario.title')}</th>
+                        <td className="change-before">{change.from}</td>
+                        <td>{change.to}</td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

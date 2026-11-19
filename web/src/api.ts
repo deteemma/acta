@@ -59,12 +59,14 @@ import type {
   RequirementDto,
   RequirementStatusDto,
   RequirementVersionDto,
+  BackgroundHistoryDto,
   CreateScenarioInput,
   FeatureDto,
   ReorderScenariosInput,
   SaveBackgroundInput,
   SetFeatureLanguageInput,
   ScenarioDto,
+  ScenarioHistoryDto,
   UpdateScenarioInput,
   UpdateRequirementInput,
   UpdateRequirementStatusInput,
@@ -366,6 +368,11 @@ export const api = {
     }),
   deleteScenario: (id: string, requirementId: string, scenarioId: string) =>
     request<void>(`/initiatives/${id}/requirements/${requirementId}/scenarios/${scenarioId}`, { method: 'DELETE' }),
+  // Historiques d'un scénario et du Contexte (phase 3, ticket 03).
+  scenarioHistory: (id: string, requirementId: string, scenarioId: string) =>
+    request<ScenarioHistoryDto>(`/initiatives/${id}/requirements/${requirementId}/scenarios/${scenarioId}/history`),
+  backgroundHistory: (id: string, requirementId: string) =>
+    request<BackgroundHistoryDto>(`/initiatives/${id}/requirements/${requirementId}/feature/background/history`),
   // Langue et Contexte de la Fonctionnalité (phase 3, ticket 02).
   getFeature: (id: string, requirementId: string) => request<FeatureDto>(`/initiatives/${id}/requirements/${requirementId}/feature`),
   setFeatureLanguage: (id: string, requirementId: string, input: SetFeatureLanguageInput) =>
