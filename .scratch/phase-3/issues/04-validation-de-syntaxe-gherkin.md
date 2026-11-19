@@ -4,15 +4,15 @@
 
 **Blocked by:** 02 — Contexte et langue de la fonctionnalité
 
-**Status:** ready-for-agent
+**Status:** done (validé par la responsable fonctionnelle le 19.11.2026)
 
 Règles : [spécification](../spec.md), décisions D7, D11, D15, D17.
 
-- [ ] Contrôles : grammaire Gherkin ; mots-clés français ou anglais, même mélangés, quelle que soit la langue de la fonctionnalité (D15 modifiée le 19.11.2026) ; pour un scénario, au moins un « Quand » et un « Alors » ; pour un plan de scénario, chaque `<paramètre>` présent dans les Exemples (D15). Les éléments exclus par D7 sont des erreurs.
-- [ ] Résultat : « Syntaxe correcte », ou chaque erreur avec son numéro de ligne et un message dans la langue de l'utilisateur ; rien n'est conservé (D15).
-- [ ] La validation n'empêche jamais d'enregistrer (D11). Elle porte sur le texte affiché, même non enregistré.
-- [ ] Bulle d'aide qui énonce ces règles, dans les deux langues (D15).
-- [ ] Disponible pour tout membre, y compris lecteur et sur une initiative archivée (D17).
-- [ ] Règles dans `shared/`, avec tests (un cas par règle, en français et en anglais). Si une bibliothèque d'analyse Gherkin est retenue, le dire dans la réalisation.
+- [x] Contrôles : grammaire Gherkin ; mots-clés français ou anglais, même mélangés, quelle que soit la langue de la fonctionnalité (D15 modifiée le 19.11.2026) ; pour un scénario, au moins un « Quand » et un « Alors » ; pour un plan de scénario, chaque `<paramètre>` présent dans les Exemples (D15). Les éléments exclus par D7 sont des erreurs.
+- [x] Résultat : « Syntaxe correcte », ou chaque erreur avec son numéro de ligne et un message dans la langue de l'utilisateur ; rien n'est conservé (D15).
+- [x] La validation n'empêche jamais d'enregistrer (D11). Elle porte sur le texte affiché, même non enregistré.
+- [x] Bulle d'aide qui énonce ces règles, dans les deux langues (D15).
+- [x] Disponible pour tout membre, y compris lecteur et sur une initiative archivée (D17).
+- [x] Règles dans `shared/`, avec tests (un cas par règle, en français et en anglais). Si une bibliothèque d'analyse Gherkin est retenue, le dire dans la réalisation.
 
 **Réalisation :** aucune bibliothèque d'analyse Gherkin retenue. Le contrôle (`shared/src/gherkin-check.ts`) suit la grammaire et les mots-clés officiels de Gherkin (cucumber/gherkin), restreints au corps d'un scénario ou du Contexte. Raisons : messages dans la langue de l'utilisateur, règles D7 et D15 propres à ACTA, et pas de dépendance ajoutée à `shared/`, que le téléphone importe aussi.
