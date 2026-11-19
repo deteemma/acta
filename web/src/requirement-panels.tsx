@@ -40,6 +40,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { NewActionButton } from './action-panels';
 import { LinkedTickets } from './link-panels';
 import { api, ApiError } from './api';
+import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-panels';
@@ -120,16 +121,11 @@ export function ExportRequirementsButton({
         api.requirementStatuses(),
       ]);
       setRequirementStatuses(statuses);
-      const bytes = requirementsWorkbook(requirements, statuses, locale);
-      const blob = new Blob([bytes], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = requirementsFileName(initiative.code, locale, localDate(new Date().toISOString()));
-      link.click();
-      URL.revokeObjectURL(url);
+      saveFile(
+        requirementsWorkbook(requirements, statuses, locale),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        requirementsFileName(initiative.code, locale, localDate(new Date().toISOString())),
+      );
     } catch (e) {
       onError(toUiError(e));
     } finally {

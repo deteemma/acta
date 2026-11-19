@@ -31,6 +31,7 @@ import {
 import { ArrowDown, ArrowUp, Download } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { api, ApiError } from './api';
+import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { GherkinCheck } from './gherkin-check';
@@ -100,7 +101,7 @@ export function ScenariosSection({
         {t('scenario.section')} {scenarios.length > 0 && <span className="count">{scenarios.length}</span>}
       </h3>
       <ErrorMessage error={error} />
-      <ExportFeatureButton initiativeId={initiativeId} requirementId={requirementId} onError={setError} />
+      <ExportFeatureButton initiativeId={initiativeId} requirementId={requirementId} language={language} onError={setError} />
       {feature.language && (
         <FeatureLanguage
           initiativeId={initiativeId}
@@ -174,13 +175,15 @@ export function ScenariosSection({
 function ExportFeatureButton({
   initiativeId,
   requirementId,
+  language,
   onError,
 }: {
   initiativeId: string;
   requirementId: string;
+  language: Locale;
   onError: (error: UiError) => void;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   async function exportFeature() {
@@ -193,16 +196,12 @@ function ExportFeatureButton({
       ]);
       const content = featureFile({
         requirement,
-        language: feature.language ?? newFeatureLanguage(locale, null),
+        // Relue : un autre membre a pu la fixer ou la changer entre-temps.
+        language: feature.language ?? language,
         background: feature.background?.text ?? null,
         scenarios,
       });
-      const url = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = featureFileName(requirement.reference);
-      link.click();
-      URL.revokeObjectURL(url);
+      saveFile(content, 'text/plain;charset=utf-8', featureFileName(requirement.reference));
     } catch (e) {
       onError(toUiError(e));
     } finally {
