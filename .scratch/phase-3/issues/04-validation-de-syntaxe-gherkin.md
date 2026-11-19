@@ -14,3 +14,5 @@ Règles : [spécification](../spec.md), décisions D7, D11, D15, D17.
 - [ ] Bulle d'aide qui énonce ces règles, dans les deux langues (D15).
 - [ ] Disponible pour tout membre, y compris lecteur et sur une initiative archivée (D17).
 - [ ] Règles dans `shared/`, avec tests (un cas par règle, en français et en anglais). Si une bibliothèque d'analyse Gherkin est retenue, le dire dans la réalisation.
+
+**Réalisation :** aucune bibliothèque d'analyse Gherkin retenue. Le contrôle (`shared/src/gherkin-check.ts`) suit la grammaire et les mots-clés officiels de Gherkin (cucumber/gherkin), restreints au corps d'un scénario ou du Contexte. Raisons : messages dans la langue de l'utilisateur, règles D7 et D15 propres à ACTA, et pas de dépendance ajoutée à `shared/`, que le téléphone importe aussi.

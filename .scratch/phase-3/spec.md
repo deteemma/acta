@@ -60,7 +60,7 @@ Chaque ticket de réalisation renvoie à ces décisions : **les lire avant de co
   3. pour un scénario, au moins une étape « Quand » et une étape « Alors » ;
   4. pour un plan de scénario (texte qui contient des Exemples), que chaque `<paramètre>` des étapes a sa colonne dans les Exemples.
 
-  Elle affiche « Syntaxe correcte » ou la liste des erreurs, chacune avec son numéro de ligne et un message dans la langue de l'utilisateur. Le résultat n'est pas conservé. Une bulle d'aide présente ces règles à l'utilisateur. (Q5, Q12, Q13, Q15, Q27)
+  Elle affiche « Syntaxe correcte » ou la liste des erreurs, chacune avec son numéro de ligne et un message dans la langue de l'utilisateur. Le résultat n'est pas conservé. Une bulle d'aide présente ces règles à l'utilisateur. (Q5, Q12, Q13, Q15, Q27 ; précisé le 19.11.2026 : le texte libre est admis là où Gherkin l'admet, avant la première étape et juste après « Exemples » ; les synonymes officiels comptent pour « Quand » (Lorsque) et « Alors » (Donc), pas « Et », « Mais » ni « * » ; une erreur sans ligne propre, comme une étape manquante, porte le numéro de la dernière ligne du texte, 1 s'il est vide)
 
 ### Export
 

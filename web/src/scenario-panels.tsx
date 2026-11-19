@@ -1,6 +1,6 @@
-// Scénarios Gherkin (phase 3, tickets 01 à 03) : section « Scénarios » de la
+// Scénarios Gherkin (phase 3, tickets 01 à 04) : section « Scénarios » de la
 // fiche d'une exigence de solution fonctionnelle, avec en tête la langue et le
-// Contexte de sa Fonctionnalité, et l'historique de chacun. Règles dans
+// Contexte de sa Fonctionnalité, l'historique et la validation de syntaxe de chacun. Règles dans
 // @app/shared (scenarios.ts, roles.ts) ; décisions D1 à D19 de
 // .scratch/phase-3/spec.md. Web seulement (D19).
 import {
@@ -16,6 +16,7 @@ import {
   LOCALES,
   memberName,
   moveScenario,
+  newFeatureLanguage,
   saveBackgroundSchema,
   SCENARIO_TEXT_MAX_LENGTH,
   SCENARIO_TITLE_MAX_LENGTH,
@@ -30,6 +31,7 @@ import { useEffect, useId, useState } from 'react';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
+import { GherkinCheck } from './gherkin-check';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -67,6 +69,8 @@ export function ScenariosSection({
   const { t, locale } = useI18n();
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
+  // Langue de la validation (D15) : celle de la Fonctionnalité, sinon celle que lui donnera l'auteur (D5).
+  const language = feature.language ?? newFeatureLanguage(locale, null);
 
   const replace = (next: ScenarioDto) => onChange(scenarios.map((s) => (s.id === next.id ? next : s)));
 
@@ -107,6 +111,7 @@ export function ScenariosSection({
         initiativeId={initiativeId}
         requirementId={requirementId}
         background={feature.background}
+        language={language}
         canEdit={canEdit}
         onChange={onFeatureChange}
       />
@@ -122,6 +127,7 @@ export function ScenariosSection({
               key={scenario.id}
               initiativeId={initiativeId}
               scenario={scenario}
+              language={language}
               canEdit={canEdit}
               first={index === 0}
               last={index === scenarios.length - 1}
@@ -138,6 +144,7 @@ export function ScenariosSection({
             legend={t('scenario.new')}
             submitLabel={t('scenario.create')}
             initial={{ title: '', text: '' }}
+            language={language}
             onSave={async (values) => {
               // Créé en dernier (D9) ; le premier fixe la langue à celle de son auteur (D5).
               onChange([...scenarios, await api.createScenario(initiativeId, requirementId, { ...values, language: locale })]);
@@ -217,12 +224,14 @@ function Background({
   initiativeId,
   requirementId,
   background,
+  language,
   canEdit,
   onChange,
 }: {
   initiativeId: string;
   requirementId: string;
   background: BackgroundDto | null;
+  language: Locale;
   canEdit: boolean;
   onChange: (feature: FeatureDto) => void;
 }) {
@@ -292,6 +301,7 @@ function Background({
           initiativeId={initiativeId}
           requirementId={requirementId}
           background={background}
+          language={language}
           onSaved={(next) => {
             onChange(next);
             setEditing(false);
@@ -300,7 +310,12 @@ function Background({
           onCancel={() => setEditing(false)}
         />
       ) : (
-        background && <pre className="gherkin-text">{background.text}</pre>
+        background && (
+          <>
+            <pre className="gherkin-text">{background.text}</pre>
+            <GherkinCheck text={background.text} subject="background" language={language} label={t('gherkinCheck.runBackgroundLabel')} />
+          </>
+        )
       )}
       {background && historyOpen && (
         <GherkinHistory initiativeId={initiativeId} requirementId={requirementId} rowVersion={background.rowVersion} labelledBy={titleId} />
@@ -330,6 +345,7 @@ function EditBackground({
   initiativeId,
   requirementId,
   background,
+  language,
   onSaved,
   onReloaded,
   onCancel,
@@ -337,6 +353,7 @@ function EditBackground({
   initiativeId: string;
   requirementId: string;
   background: BackgroundDto | null;
+  language: Locale;
   onSaved: (feature: FeatureDto) => void;
   onReloaded: (feature: FeatureDto) => void;
   onCancel: () => void;
@@ -353,6 +370,7 @@ function EditBackground({
         key={formKey}
         submitLabel={base ? t('background.save') : t('background.create')}
         initialText={base?.text ?? ''}
+        language={language}
         onSave={async (text) => {
           try {
             // Le premier Contexte fixe la langue à celle de son auteur s'il n'y a pas encore de scénario (D5).
@@ -387,11 +405,13 @@ function EditBackground({
 function BackgroundForm({
   submitLabel,
   initialText,
+  language,
   onSave,
   onCancel,
 }: {
   submitLabel: string;
   initialText: string;
+  language: Locale;
   /** Lève l'erreur de l'API : elle s'affiche sous le formulaire. */
   onSave: (text: string) => Promise<void>;
   onCancel: () => void;
@@ -433,6 +453,7 @@ function BackgroundForm({
         />
       </label>
       <small>{t('background.textHint')}</small>
+      <GherkinCheck text={text} subject="background" language={language} label={t('gherkinCheck.runBackgroundLabel')} />
       <div>
         <button type="submit">{submitLabel}</button>{' '}
         <button type="button" onClick={onCancel}>
@@ -447,6 +468,7 @@ function BackgroundForm({
 function ScenarioItem({
   initiativeId,
   scenario,
+  language,
   canEdit,
   first,
   last,
@@ -456,6 +478,7 @@ function ScenarioItem({
 }: {
   initiativeId: string;
   scenario: ScenarioDto;
+  language: Locale;
   canEdit: boolean;
   first: boolean;
   last: boolean;
@@ -535,18 +558,24 @@ function ScenarioItem({
         <EditScenario
           initiativeId={initiativeId}
           scenario={scenario}
+          language={language}
           onSaved={(next) => {
             onSaved(next);
             setEditing(false);
           }}
           onCancel={() => setEditing(false)}
         />
-      ) : scenario.text ? (
-        <pre className="gherkin-text">{scenario.text}</pre>
       ) : (
-        <p>
-          <small>{t('scenario.textEmpty')}</small>
-        </p>
+        <>
+          {scenario.text ? (
+            <pre className="gherkin-text">{scenario.text}</pre>
+          ) : (
+            <p>
+              <small>{t('scenario.textEmpty')}</small>
+            </p>
+          )}
+          <GherkinCheck text={scenario.text} subject="scenario" language={language} label={t('gherkinCheck.runScenarioLabel', { reference })} />
+        </>
       )}
       {historyOpen && (
         <GherkinHistory
@@ -581,11 +610,13 @@ function ScenarioItem({
 function EditScenario({
   initiativeId,
   scenario,
+  language,
   onSaved,
   onCancel,
 }: {
   initiativeId: string;
   scenario: ScenarioDto;
+  language: Locale;
   onSaved: (scenario: ScenarioDto) => void;
   onCancel: () => void;
 }) {
@@ -602,6 +633,7 @@ function EditScenario({
         legend={t('scenario.edit')}
         submitLabel={t('scenario.save')}
         initial={{ title: base.title, text: base.text }}
+        language={language}
         onSave={async (values) => {
           try {
             const parsed = updateScenarioSchema.parse({ baseRowVersion: base.rowVersion, ...values });
@@ -636,12 +668,14 @@ function ScenarioForm({
   legend,
   submitLabel,
   initial,
+  language,
   onSave,
   onCancel,
 }: {
   legend: string;
   submitLabel: string;
   initial: { title: string; text: string };
+  language: Locale;
   /** Lève l'erreur de l'API : elle s'affiche sous le formulaire. */
   onSave: (values: { title: string; text: string }) => Promise<void>;
   onCancel: () => void;
@@ -689,6 +723,7 @@ function ScenarioForm({
           />
         </label>
         <small>{t('scenario.textHint')}</small>
+        <GherkinCheck text={text} subject="scenario" language={language} label={t('gherkinCheck.run')} />
       </fieldset>
       <div>
         <button type="submit">{submitLabel}</button>{' '}

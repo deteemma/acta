@@ -5,6 +5,7 @@ export * from './attachments.js';
 export * from './babok.js';
 export * from './comments.js';
 export * from './dashboard.js';
+export * from './gherkin-check.js';
 export * from './design-tokens.js';
 export * from './i18n.js';
 export * from './links.js';
