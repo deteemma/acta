@@ -2,7 +2,7 @@
 
 **What to build:** La nouvelle coque du web : sélecteur d'initiative, arborescence complète de l'initiative à gauche, écran de données à onglets à droite. L'initiative, son tableau de bord et son équipe s'y affichent ; les autres éléments s'ouvrent encore dans leur panneau actuel jusqu'à leur ticket.
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 Règles : [spec](../spec.md) N1 à N5, N10 à N13, N15 (création d'une initiative), N16 ; [ADR-0021](../../../docs/adr/0021-navigation-par-arborescence.md). Référence visuelle : variante A du prototype (branche `prototype/navigation-arborescence`).
 

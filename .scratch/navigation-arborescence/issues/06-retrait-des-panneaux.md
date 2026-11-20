@@ -4,7 +4,7 @@
 
 **Blocked by:** 02, 03, 04, 05
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 Règles : [spec](../spec.md) N1, N3, N12, N13.
 

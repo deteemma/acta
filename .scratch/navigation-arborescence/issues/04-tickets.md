@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Coque, arborescence et fiche de l'initiative
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
 Règles : [spec](../spec.md) N8, N11 à N13, N15, N16.
 
