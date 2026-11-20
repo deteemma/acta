@@ -20,6 +20,7 @@ import { NeedPanel } from './need-panels';
 import { StakeholderPanel, StakeholdersPanel } from './stakeholder-panels';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
 import { PagesScreen } from './pages-screen';
+import { NavigationPrototype } from './prototype-navigation/NavigationPrototype';
 import { FabContext, PanelHost, type PanelContent, PanelsProvider, ScreenForms, usePanels } from './panels';
 import { ReferencesProvider } from './references';
 import { RequirementPanel } from './requirement-panels';
@@ -93,6 +94,8 @@ function LoginIllustration() {
 }
 
 function SignedIn({ user }: { user: User }) {
+  // PROTOTYPE jetable (branche prototype/navigation-arborescence) : nouvelle navigation par arborescence.
+  if (window.location.pathname.startsWith('/prototype/navigation')) return <NavigationPrototype />;
   return (
     <PanelsProvider>
       <ScreensProvider>
