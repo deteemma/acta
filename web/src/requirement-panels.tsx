@@ -183,6 +183,7 @@ export function RequirementPanel({
   const [loadedScenarios, setScenarios] = useState<ScenarioDto[]>([]);
   // Langue et Contexte de la Fonctionnalité (phase 3, ticket 02).
   const [loadedFeature, setFeature] = useState<FeatureDto>(NO_FEATURE);
+  const [featureLoaded, setFeatureLoaded] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
@@ -216,7 +217,13 @@ export function RequirementPanel({
   useEffect(() => {
     if (!requirementId || !hasScenarios) return;
     api.listScenarios(initiativeId, requirementId).then(setScenarios, (e: unknown) => setError(toUiError(e)));
-    api.getFeature(initiativeId, requirementId).then(setFeature, (e: unknown) => setError(toUiError(e)));
+    api.getFeature(initiativeId, requirementId).then(
+      (next) => {
+        setFeature(next);
+        setFeatureLoaded(true);
+      },
+      (e: unknown) => setError(toUiError(e)),
+    );
   }, [initiativeId, requirementId, hasScenarios]);
   const featureContent = { scenarioCount: scenarios.length, hasBackground: feature.background != null };
 
@@ -274,7 +281,7 @@ export function RequirementPanel({
               requirementId={requirement.id}
               scenarios={scenarios}
               feature={feature}
-              highlightedId={scenarioId}
+              highlightedId={featureLoaded ? scenarioId : undefined}
               canEdit={can(initiative.myRole, 'editScenarios', { archived: initiative.archivedAt != null })}
               onChange={setScenarios}
               onFeatureChange={setFeature}

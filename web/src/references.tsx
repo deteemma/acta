@@ -2,7 +2,7 @@
 // (rich-text.ts), reliées à leur objet si elles existent dans une initiative
 // dont je suis membre, avec un aperçu au survol ; un clic ouvre la fiche, ou la
 // page en pleine page (ticket 22).
-import type { ReferenceCategory, ReferenceDto } from '@app/shared';
+import { isCitableReference, type ReferenceCategory, type ReferenceDto } from '@app/shared';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useId, useState } from 'react';
 import { api } from './api';
 import { useTicketLabels } from './ticket-types';
@@ -18,10 +18,9 @@ const ReferencesContext = createContext<ReadonlyMap<string, ReferenceDto>>(new M
 export function ReferencesProvider({ version, children }: { version: number; children: ReactNode }) {
   const [references, setReferences] = useState<ReadonlyMap<string, ReferenceDto>>(new Map());
   useEffect(() => {
-    // Scénarios exclus : ni liés ni proposés à la saisie de `#`, seulement trouvés par la palette (D20).
     api
       .listReferences()
-      .then((list) => setReferences(new Map(list.filter((r) => !r.scenario).map((r) => [r.reference, r]))), () => undefined);
+      .then((list) => setReferences(new Map(list.filter(isCitableReference).map((r) => [r.reference, r]))), () => undefined);
   }, [version]);
   return <ReferencesContext.Provider value={references}>{children}</ReferencesContext.Provider>;
 }
@@ -43,6 +42,7 @@ export function useOpenReference(): (item: ReferenceDto, options?: { replace?: b
         return;
       }
       const target = referenceTarget({ ...item, category: item.category });
+      if (!target) return;
       if (options?.replace) replace(target);
       else open(target);
     },
@@ -51,15 +51,15 @@ export function useOpenReference(): (item: ReferenceDto, options?: { replace?: b
 }
 
 /** Fiche d'un objet référencé, autre qu'une page. */
-function referenceTarget(item: ReferenceDto & { category: Exclude<ReferenceCategory, 'page'> }): PanelContent {
+function referenceTarget(item: ReferenceDto & { category: Exclude<ReferenceCategory, 'page'> }): PanelContent | null {
   switch (item.category) {
     case 'need':
       return { kind: 'need', initiativeId: item.initiativeId, needId: item.id };
     case 'requirement':
       return { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.id };
     case 'scenario':
-      // La fiche de son exigence, sur lui (D20).
-      return { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.scenario?.requirementId, scenarioId: item.id };
+      // La fiche de son exigence, sur lui (D20) ; jamais une création d'exigence.
+      return item.scenario && { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.scenario.requirementId, scenarioId: item.id };
     default:
       return ticketTarget(item.initiativeId, { id: item.id, type: item.category });
   }

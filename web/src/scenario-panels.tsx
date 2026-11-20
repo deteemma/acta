@@ -66,7 +66,10 @@ export function ScenariosSection({
   requirementId: string;
   scenarios: ScenarioDto[];
   feature: FeatureDto;
-  /** Scénario ouvert depuis la palette (D20) : mis en évidence et amené à l'écran. */
+  /**
+   * Scénario ouvert depuis la palette (D20) : mis en évidence et amené à l'écran.
+   * Donné une fois la Fonctionnalité chargée, pour que le Contexte au-dessus ne le repousse pas.
+   */
   highlightedId?: string;
   canEdit: boolean;
   onChange: (scenarios: ScenarioDto[]) => void;
@@ -556,10 +559,10 @@ function ScenarioItem({
   const [error, setError] = useState<UiError | null>(null);
   const titleId = useId();
   const { reference } = scenario;
-  const ref = useRef<HTMLLIElement>(null);
+  const itemRef = useRef<HTMLLIElement>(null);
   // Une fois, à l'affichage : le scénario ouvert depuis la palette vient à l'écran (D20).
   useEffect(() => {
-    if (highlighted) ref.current?.scrollIntoView({ block: 'center' });
+    if (highlighted) itemRef.current?.scrollIntoView({ block: 'center' });
   }, [highlighted]);
 
   async function remove() {
@@ -574,7 +577,7 @@ function ScenarioItem({
 
   return (
     <li
-      ref={ref}
+      ref={itemRef}
       className={highlighted ? 'scenario highlighted' : 'scenario'}
       aria-labelledby={titleId}
       aria-current={highlighted || undefined}

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkAcronymChange, DEFAULT_ACRONYMS, deliveredAcronym, formatReference, type ReferenceCategoryDto, type ReferenceDto, searchReferences } from './references.js';
+import { checkAcronymChange, DEFAULT_ACRONYMS, deliveredAcronym, formatReference, type ReferenceCategoryDto, type ReferenceDto, isCitableReference, searchReferences } from './references.js';
 
 test('une référence s’écrit CODE-ACRONYME-NUMÉRO, le numéro sur 3 chiffres au moins', () => {
   assert.equal(formatReference('CRM', 'BE', 1), 'CRM-BE-001');
@@ -72,4 +72,10 @@ test('un scénario porte par défaut l’acronyme SC, repli sur SCE puis SCEN s�
   assert.equal(deliveredAcronym('scenario', ['SC', 'SCE']), 'SCEN');
   // Les trois pris : rien n'est inventé, la question revient à la responsable fonctionnelle.
   assert.equal(deliveredAcronym('scenario', ['SC', 'SCE', 'SCEN']), null);
+});
+
+test('un scénario est trouvé par la palette, mais ne se cite pas dans un texte (D20)', () => {
+  assert.equal(isCitableReference({ category: 'scenario' }), false);
+  assert.equal(isCitableReference({ category: 'requirement' }), true);
+  assert.equal(isCitableReference({ category: 'page' }), true);
 });
