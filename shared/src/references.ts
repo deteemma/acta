@@ -112,12 +112,6 @@ export interface ReferenceDto {
   scenario: { requirementId: string } | null;
 }
 
-/**
- * Référence qu'un texte peut citer (lien et suggestion à la saisie de `#`). Un
- * scénario est seulement trouvé par la palette (D20) : sa citation n'a pas été demandée.
- */
-export const isCitableReference = (item: { category: ReferenceCategory }): boolean => item.category !== 'scenario';
-
 /** Par code, acronyme puis numéro (CRM-BE-999 avant CRM-BE-1000). */
 export function sortByReference<T extends { reference: string }>(list: readonly T[]): T[] {
   return [...list].sort((a, b) => a.reference.localeCompare(b.reference, 'en', { numeric: true }));

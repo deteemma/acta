@@ -67,7 +67,8 @@ export function ScenariosSection({
   scenarios: ScenarioDto[];
   feature: FeatureDto;
   /**
-   * Scénario ouvert depuis la palette (D20) : mis en évidence et amené à l'écran.
+   * Scénario ouvert depuis la palette ou une citation (D20, D21) : mis en évidence
+   * tant que la fiche est ouverte (D22) et amené à l'écran.
    * Donné une fois la Fonctionnalité chargée, pour que le Contexte au-dessus ne le repousse pas.
    */
   highlightedId?: string;

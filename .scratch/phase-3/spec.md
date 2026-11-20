@@ -80,6 +80,8 @@ Chaque ticket de réalisation renvoie à ces décisions : **les lire avant de co
 - **D18** — Les scénarios apparaissent dans une section « Scénarios » de la fiche de l'exigence, présente seulement pour une exigence de solution fonctionnelle. Pas d'écran à l'échelle de l'initiative, pas d'action suggérée. (Q23)
 - **D19** — Web seulement. (Q10)
 - **D20** — La palette de recherche trouve un scénario par sa référence ou son titre et ouvre la fiche de son exigence sur ce scénario. (Q30)
+- **D21** — Un scénario se cite dans un texte comme les autres références : proposé à la saisie de `#`, lien vers la fiche de son exigence sur ce scénario, aperçu au survol. (Réponse de la responsable fonctionnelle du 20.11.2026)
+- **D22** — Le scénario ouvert depuis la palette ou une citation reste mis en évidence tant que la fiche est ouverte. (Réponse de la responsable fonctionnelle du 20.11.2026)
 
 ## Contraintes techniques
 
@@ -102,3 +104,4 @@ Chaque ticket livre quelque chose de visible et se valide seul.
 | 04 | [Validation de syntaxe Gherkin](issues/04-validation-de-syntaxe-gherkin.md) | 02 |
 | 05 | [Export .feature](issues/05-export-feature.md) | 02 |
 | 06 | [Scénarios dans la palette de recherche](issues/06-scenarios-dans-la-palette.md) | 01 |
+| 07 | [Citer un scénario dans un texte](issues/07-citer-un-scenario.md) | 06 |
