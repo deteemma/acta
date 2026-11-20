@@ -2697,6 +2697,12 @@ details.ticket-type h5 {
   border-top: 1px solid var(--border);
   padding: var(--space-2) 0;
 }
+/* Scénario ouvert depuis la palette (phase 3, ticket 06). */
+.scenario.highlighted {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding-inline: var(--space-2);
+}
 .scenario-header {
   display: flex;
   flex-wrap: wrap;

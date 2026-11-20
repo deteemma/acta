@@ -56,8 +56,11 @@ export type PanelContent =
   | { kind: 'stakeholder'; initiativeId: string; stakeholderId?: string }
   /** Sans `needId`, création d'un besoin. */
   | { kind: 'need'; initiativeId: string; needId?: string }
-  /** Sans `requirementId`, création d'une exigence. */
-  | { kind: 'requirement'; initiativeId: string; requirementId?: string };
+  /**
+   * Sans `requirementId`, création d'une exigence. Avec `scenarioId`, ouverte
+   * sur ce scénario, mis en évidence (palette, D20).
+   */
+  | { kind: 'requirement'; initiativeId: string; requirementId?: string; scenarioId?: string };
 
 interface Entry {
   id: number;

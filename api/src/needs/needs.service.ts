@@ -31,7 +31,7 @@ export class NeedsService {
 
   /**
    * Palette et aperçu des références citées dans un texte : besoins, exigences,
-   * tickets et pages de toutes les initiatives dont je suis membre (RLS).
+   * tickets, pages et scénarios (D20) de toutes les initiatives dont je suis membre (RLS).
    */
   listReferences(userId: string): Promise<ReferenceDto[]> {
     return this.database.asUser(userId, async (tx) => {
@@ -55,6 +55,11 @@ export class NeedsService {
         .innerJoin('initiative as i', 'i.id', 'p.initiative_id')
         .select(['p.id', 'p.initiative_id', 'i.archived_at', 'p.reference', 'p.title'])
         .execute();
+      const scenarios = await tx
+        .selectFrom('gherkin_scenario as s')
+        .innerJoin('initiative as i', 'i.id', 's.initiative_id')
+        .select(['s.id', 's.initiative_id', 's.requirement_id', 'i.archived_at', 's.reference', 's.title'])
+        .execute();
       return sortByReference([
         ...needs.map((r) => ({
           category: 'need' as const,
@@ -64,6 +69,7 @@ export class NeedsService {
           reference: r.reference,
           title: r.title,
           requirement: null,
+          scenario: null,
         })),
         ...requirements.map((r) => ({
           category: 'requirement' as const,
@@ -73,6 +79,7 @@ export class NeedsService {
           reference: r.reference,
           title: r.title,
           requirement: { type: r.type, subtype: r.subtype, status: r.status },
+          scenario: null,
         })),
         ...tickets.map((r) => ({
           category: r.type,
@@ -82,6 +89,7 @@ export class NeedsService {
           reference: r.reference,
           title: r.title,
           requirement: null,
+          scenario: null,
         })),
         ...pages.map((r) => ({
           category: 'page' as const,
@@ -91,6 +99,17 @@ export class NeedsService {
           reference: r.reference,
           title: r.title,
           requirement: null,
+          scenario: null,
+        })),
+        ...scenarios.map((r) => ({
+          category: 'scenario' as const,
+          id: r.id,
+          initiativeId: r.initiative_id,
+          initiativeArchived: r.archived_at != null,
+          reference: r.reference,
+          title: r.title,
+          requirement: null,
+          scenario: { requirementId: r.requirement_id },
         })),
       ]);
     });

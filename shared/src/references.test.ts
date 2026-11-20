@@ -41,6 +41,7 @@ const ref = (reference: string, title: string): ReferenceDto => ({
   initiativeId: reference.split('-')[0]!,
   initiativeArchived: false,
   requirement: null,
+  scenario: null,
   reference,
   title,
 });

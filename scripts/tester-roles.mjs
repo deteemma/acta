@@ -37,6 +37,7 @@ const SECTIONS = [
   '27-scenarios',
   '28-contexte-et-langue',
   '29-historique-des-scenarios',
+  '30-scenarios-dans-la-palette',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);
@@ -67,8 +68,12 @@ const { lpInitiativeId, lpOtherInitiativeId } = run['26-limite-de-pieces-jointes
 const { scInitiativeId } = run['27-scenarios'];
 const { clInitiativeId } = run['28-contexte-et-langue'];
 const { hsInitiativeId } = run['29-historique-des-scenarios'];
+const { spInitiativeId } = run['30-scenarios-dans-la-palette'];
 
 console.log('\nNettoyage');
+await check('alice supprime l’initiative des scénarios dans la palette : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${spInitiativeId}`)).status, 204);
+});
 await check('alice supprime l’initiative de l’historique des scénarios : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${hsInitiativeId}`)).status, 204);
 });

@@ -1,6 +1,6 @@
-// Scénarios Gherkin (phase 3, tickets 01 à 04) : section « Scénarios » de la
+// Scénarios Gherkin (phase 3, tickets 01 à 05) : section « Scénarios » de la
 // fiche d'une exigence de solution fonctionnelle, avec en tête la langue et le
-// Contexte de sa Fonctionnalité, l'historique et la validation de syntaxe de chacun. Règles dans
+// Contexte de sa Fonctionnalité, l'historique et la validation de syntaxe de chacun, et l'export .feature. Règles dans
 // @app/shared (scenarios.ts, roles.ts) ; décisions D1 à D19 de
 // .scratch/phase-3/spec.md. Web seulement (D19).
 import {
@@ -9,6 +9,8 @@ import {
   type BackgroundDto,
   backgroundHistory,
   createScenarioSchema,
+  featureFile,
+  featureFileName,
   type FeatureDto,
   type GherkinChange,
   type GherkinHistoryEntry,
@@ -26,9 +28,10 @@ import {
   type ScenarioSnapshot,
   updateScenarioSchema,
 } from '@app/shared';
-import { ArrowDown, ArrowUp } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { ArrowDown, ArrowUp, Download } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { api, ApiError } from './api';
+import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { GherkinCheck } from './gherkin-check';
@@ -54,6 +57,7 @@ export function ScenariosSection({
   requirementId,
   scenarios,
   feature,
+  highlightedId,
   canEdit,
   onChange,
   onFeatureChange,
@@ -62,6 +66,12 @@ export function ScenariosSection({
   requirementId: string;
   scenarios: ScenarioDto[];
   feature: FeatureDto;
+  /**
+   * Scénario ouvert depuis la palette ou une citation (D20, D21) : mis en évidence
+   * tant que la fiche est ouverte (D22) et amené à l'écran.
+   * Donné une fois la Fonctionnalité chargée, pour que le Contexte au-dessus ne le repousse pas.
+   */
+  highlightedId?: string;
   canEdit: boolean;
   onChange: (scenarios: ScenarioDto[]) => void;
   onFeatureChange: (feature: FeatureDto) => void;
@@ -98,6 +108,7 @@ export function ScenariosSection({
         {t('scenario.section')} {scenarios.length > 0 && <span className="count">{scenarios.length}</span>}
       </h3>
       <ErrorMessage error={error} />
+      <ExportFeatureButton initiativeId={initiativeId} requirementId={requirementId} language={language} onError={setError} />
       {feature.language && (
         <FeatureLanguage
           initiativeId={initiativeId}
@@ -128,6 +139,7 @@ export function ScenariosSection({
               initiativeId={initiativeId}
               scenario={scenario}
               language={language}
+              highlighted={scenario.id === highlightedId}
               canEdit={canEdit}
               first={index === 0}
               last={index === scenarios.length - 1}
@@ -159,6 +171,59 @@ export function ScenariosSection({
           </button>
         ))}
     </section>
+  );
+}
+
+/**
+ * Export .feature (ticket 05, D16), pour tout membre, même sur une initiative
+ * archivée (D17) : l'exigence, sa Fonctionnalité et ses scénarios relus au clic,
+ * enregistrés par le navigateur. Tant que la langue n'est pas fixée (ni scénario
+ * ni Contexte), celle que la section affiche : celle de l'utilisateur (D5).
+ */
+function ExportFeatureButton({
+  initiativeId,
+  requirementId,
+  language,
+  onError,
+}: {
+  initiativeId: string;
+  requirementId: string;
+  language: Locale;
+  onError: (error: UiError) => void;
+}) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+
+  async function exportFeature() {
+    setBusy(true);
+    try {
+      const [requirement, feature, scenarios] = await Promise.all([
+        api.getRequirement(initiativeId, requirementId),
+        api.getFeature(initiativeId, requirementId),
+        api.listScenarios(initiativeId, requirementId),
+      ]);
+      const content = featureFile({
+        requirement,
+        // Relue : un autre membre a pu la fixer ou la changer entre-temps.
+        language: feature.language ?? language,
+        background: feature.background?.text ?? null,
+        scenarios,
+      });
+      saveFile(content, 'text/plain;charset=utf-8', featureFileName(requirement.reference));
+    } catch (e) {
+      onError(toUiError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <p>
+      <button type="button" className="ghost" disabled={busy} onClick={() => void exportFeature()}>
+        <Download />
+        {t('feature.export')}
+      </button>
+    </p>
   );
 }
 
@@ -469,6 +534,7 @@ function ScenarioItem({
   initiativeId,
   scenario,
   language,
+  highlighted,
   canEdit,
   first,
   last,
@@ -479,6 +545,7 @@ function ScenarioItem({
   initiativeId: string;
   scenario: ScenarioDto;
   language: Locale;
+  highlighted: boolean;
   canEdit: boolean;
   first: boolean;
   last: boolean;
@@ -493,6 +560,11 @@ function ScenarioItem({
   const [error, setError] = useState<UiError | null>(null);
   const titleId = useId();
   const { reference } = scenario;
+  const itemRef = useRef<HTMLLIElement>(null);
+  // Une fois, à l'affichage : le scénario ouvert depuis la palette vient à l'écran (D20).
+  useEffect(() => {
+    if (highlighted) itemRef.current?.scrollIntoView({ block: 'center' });
+  }, [highlighted]);
 
   async function remove() {
     try {
@@ -505,7 +577,12 @@ function ScenarioItem({
   }
 
   return (
-    <li className="scenario" aria-labelledby={titleId}>
+    <li
+      ref={itemRef}
+      className={highlighted ? 'scenario highlighted' : 'scenario'}
+      aria-labelledby={titleId}
+      aria-current={highlighted || undefined}
+    >
       <div className="scenario-header">
         <h4 id={titleId} className="scenario-title">
           <span className="code">{reference}</span> {scenario.title}

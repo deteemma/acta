@@ -40,6 +40,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { NewActionButton } from './action-panels';
 import { LinkedTickets } from './link-panels';
 import { api, ApiError } from './api';
+import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-panels';
@@ -120,16 +121,11 @@ export function ExportRequirementsButton({
         api.requirementStatuses(),
       ]);
       setRequirementStatuses(statuses);
-      const bytes = requirementsWorkbook(requirements, statuses, locale);
-      const blob = new Blob([bytes], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = requirementsFileName(initiative.code, locale, localDate(new Date().toISOString()));
-      link.click();
-      URL.revokeObjectURL(url);
+      saveFile(
+        requirementsWorkbook(requirements, statuses, locale),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        requirementsFileName(initiative.code, locale, localDate(new Date().toISOString())),
+      );
     } catch (e) {
       onError(toUiError(e));
     } finally {
@@ -149,6 +145,7 @@ export function ExportRequirementsButton({
 export function RequirementPanel({
   initiativeId,
   requirementId,
+  scenarioId,
   actionsVersion,
   stakeholdersVersion,
   needsVersion,
@@ -158,6 +155,8 @@ export function RequirementPanel({
 }: {
   initiativeId: string;
   requirementId?: string;
+  /** Scénario mis en évidence à l'ouverture (palette, D20). */
+  scenarioId?: string;
   /** Change à chaque écriture sur un ticket ou un lien : les tickets liés se rechargent. */
   actionsVersion: number;
   /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
@@ -184,6 +183,7 @@ export function RequirementPanel({
   const [loadedScenarios, setScenarios] = useState<ScenarioDto[]>([]);
   // Langue et Contexte de la Fonctionnalité (phase 3, ticket 02).
   const [loadedFeature, setFeature] = useState<FeatureDto>(NO_FEATURE);
+  const [featureLoaded, setFeatureLoaded] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
@@ -217,7 +217,13 @@ export function RequirementPanel({
   useEffect(() => {
     if (!requirementId || !hasScenarios) return;
     api.listScenarios(initiativeId, requirementId).then(setScenarios, (e: unknown) => setError(toUiError(e)));
-    api.getFeature(initiativeId, requirementId).then(setFeature, (e: unknown) => setError(toUiError(e)));
+    api.getFeature(initiativeId, requirementId).then(
+      (next) => {
+        setFeature(next);
+        setFeatureLoaded(true);
+      },
+      (e: unknown) => setError(toUiError(e)),
+    );
   }, [initiativeId, requirementId, hasScenarios]);
   const featureContent = { scenarioCount: scenarios.length, hasBackground: feature.background != null };
 
@@ -275,6 +281,7 @@ export function RequirementPanel({
               requirementId={requirement.id}
               scenarios={scenarios}
               feature={feature}
+              highlightedId={featureLoaded ? scenarioId : undefined}
               canEdit={can(initiative.myRole, 'editScenarios', { archived: initiative.archivedAt != null })}
               onChange={setScenarios}
               onFeatureChange={setFeature}

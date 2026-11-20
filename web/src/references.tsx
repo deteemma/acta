@@ -40,6 +40,7 @@ export function useOpenReference(): (item: ReferenceDto, options?: { replace?: b
         return;
       }
       const target = referenceTarget({ ...item, category: item.category });
+      if (!target) return;
       if (options?.replace) replace(target);
       else open(target);
     },
@@ -48,12 +49,15 @@ export function useOpenReference(): (item: ReferenceDto, options?: { replace?: b
 }
 
 /** Fiche d'un objet référencé, autre qu'une page. */
-function referenceTarget(item: ReferenceDto & { category: Exclude<ReferenceCategory, 'page'> }): PanelContent {
+function referenceTarget(item: ReferenceDto & { category: Exclude<ReferenceCategory, 'page'> }): PanelContent | null {
   switch (item.category) {
     case 'need':
       return { kind: 'need', initiativeId: item.initiativeId, needId: item.id };
     case 'requirement':
       return { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.id };
+    case 'scenario':
+      // La fiche de son exigence, sur lui (D20) ; jamais une création d'exigence.
+      return item.scenario && { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.scenario.requirementId, scenarioId: item.id };
     default:
       return ticketTarget(item.initiativeId, { id: item.id, type: item.category });
   }

@@ -72,12 +72,16 @@ Chaque ticket de réalisation renvoie à ces décisions : **les lire avant de co
 
   L'export est proposé même sans scénario ni Contexte (précisé le 15.11.2026). Pas d'export groupé de l'initiative. L'export tableur des exigences est inchangé. (Q20, Q26)
 
+  Précisé le 19.11.2026 : le fichier commence par la ligne `# language: fr` ou `# language: en`, pour que les outils lisent les mots-clés dans la bonne langue ; tant que la langue n'est pas fixée (ni scénario ni Contexte), c'est celle de l'utilisateur qui exporte ; l'énoncé est repris en texte simple, comme dans l'export tableur ; un texte qui ne contient des Exemples que sous la forme mal écrite « Exemples : » (espace avant le deux-points) sort en `Scénario:`, comme le liraient les outils.
+
 ### Accès et écrans
 
 - **D17** — Propriétaires et contributeurs créent, modifient, ordonnent et suppriment les scénarios et le Contexte, et changent la langue. Tout membre les consulte. Sur une initiative archivée, tout est en lecture seule, mais la consultation, la validation et l'export restent possibles. (Q8, Q31)
 - **D18** — Les scénarios apparaissent dans une section « Scénarios » de la fiche de l'exigence, présente seulement pour une exigence de solution fonctionnelle. Pas d'écran à l'échelle de l'initiative, pas d'action suggérée. (Q23)
 - **D19** — Web seulement. (Q10)
 - **D20** — La palette de recherche trouve un scénario par sa référence ou son titre et ouvre la fiche de son exigence sur ce scénario. (Q30)
+- **D21** — Un scénario se cite dans un texte comme les autres références : proposé à la saisie de `#`, lien vers la fiche de son exigence sur ce scénario, aperçu au survol. (Réponse de la responsable fonctionnelle du 20.11.2026)
+- **D22** — Le scénario ouvert depuis la palette ou une citation reste mis en évidence tant que la fiche est ouverte. (Réponse de la responsable fonctionnelle du 20.11.2026)
 
 ## Contraintes techniques
 
@@ -100,3 +104,4 @@ Chaque ticket livre quelque chose de visible et se valide seul.
 | 04 | [Validation de syntaxe Gherkin](issues/04-validation-de-syntaxe-gherkin.md) | 02 |
 | 05 | [Export .feature](issues/05-export-feature.md) | 02 |
 | 06 | [Scénarios dans la palette de recherche](issues/06-scenarios-dans-la-palette.md) | 01 |
+| 07 | [Citer un scénario dans un texte](issues/07-citer-un-scenario.md) | 06 |
