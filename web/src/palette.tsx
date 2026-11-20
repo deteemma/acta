@@ -1,5 +1,5 @@
 // Palette de commandes (Ctrl+K / Cmd+K) : accès direct à la fiche d'une
-// initiative, d'un objet référencé (ticket 09) ou d'un élément du référentiel BABOK.
+// initiative, d'un objet référencé (ticket 09, scénarios compris : phase 3, ticket 06) ou d'un élément du référentiel BABOK.
 import {
   type BabokDto,
   type BabokElementDto,

@@ -18,7 +18,10 @@ const ReferencesContext = createContext<ReadonlyMap<string, ReferenceDto>>(new M
 export function ReferencesProvider({ version, children }: { version: number; children: ReactNode }) {
   const [references, setReferences] = useState<ReadonlyMap<string, ReferenceDto>>(new Map());
   useEffect(() => {
-    api.listReferences().then((list) => setReferences(new Map(list.map((r) => [r.reference, r]))), () => undefined);
+    // Scénarios exclus : ni liés ni proposés à la saisie de `#`, seulement trouvés par la palette (D20).
+    api
+      .listReferences()
+      .then((list) => setReferences(new Map(list.filter((r) => !r.scenario).map((r) => [r.reference, r]))), () => undefined);
   }, [version]);
   return <ReferencesContext.Provider value={references}>{children}</ReferencesContext.Provider>;
 }
@@ -54,6 +57,9 @@ function referenceTarget(item: ReferenceDto & { category: Exclude<ReferenceCateg
       return { kind: 'need', initiativeId: item.initiativeId, needId: item.id };
     case 'requirement':
       return { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.id };
+    case 'scenario':
+      // La fiche de son exigence, sur lui (D20).
+      return { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.scenario?.requirementId, scenarioId: item.id };
     default:
       return ticketTarget(item.initiativeId, { id: item.id, type: item.category });
   }

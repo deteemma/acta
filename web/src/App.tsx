@@ -444,6 +444,7 @@ function Shell({ user }: { user: User }) {
                   <RequirementPanel
                     initiativeId={content.initiativeId}
                     requirementId={content.requirementId}
+                    scenarioId={content.scenarioId}
                     actionsVersion={actionsVersion}
                     stakeholdersVersion={stakeholdersVersion}
                     needsVersion={needsVersion}

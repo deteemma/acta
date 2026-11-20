@@ -29,7 +29,7 @@ import {
   updateScenarioSchema,
 } from '@app/shared';
 import { ArrowDown, ArrowUp, Download } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
@@ -57,6 +57,7 @@ export function ScenariosSection({
   requirementId,
   scenarios,
   feature,
+  highlightedId,
   canEdit,
   onChange,
   onFeatureChange,
@@ -65,6 +66,8 @@ export function ScenariosSection({
   requirementId: string;
   scenarios: ScenarioDto[];
   feature: FeatureDto;
+  /** Scénario ouvert depuis la palette (D20) : mis en évidence et amené à l'écran. */
+  highlightedId?: string;
   canEdit: boolean;
   onChange: (scenarios: ScenarioDto[]) => void;
   onFeatureChange: (feature: FeatureDto) => void;
@@ -132,6 +135,7 @@ export function ScenariosSection({
               initiativeId={initiativeId}
               scenario={scenario}
               language={language}
+              highlighted={scenario.id === highlightedId}
               canEdit={canEdit}
               first={index === 0}
               last={index === scenarios.length - 1}
@@ -526,6 +530,7 @@ function ScenarioItem({
   initiativeId,
   scenario,
   language,
+  highlighted,
   canEdit,
   first,
   last,
@@ -536,6 +541,7 @@ function ScenarioItem({
   initiativeId: string;
   scenario: ScenarioDto;
   language: Locale;
+  highlighted: boolean;
   canEdit: boolean;
   first: boolean;
   last: boolean;
@@ -550,6 +556,11 @@ function ScenarioItem({
   const [error, setError] = useState<UiError | null>(null);
   const titleId = useId();
   const { reference } = scenario;
+  const ref = useRef<HTMLLIElement>(null);
+  // Une fois, à l'affichage : le scénario ouvert depuis la palette vient à l'écran (D20).
+  useEffect(() => {
+    if (highlighted) ref.current?.scrollIntoView({ block: 'center' });
+  }, [highlighted]);
 
   async function remove() {
     try {
@@ -562,7 +573,12 @@ function ScenarioItem({
   }
 
   return (
-    <li className="scenario" aria-labelledby={titleId}>
+    <li
+      ref={ref}
+      className={highlighted ? 'scenario highlighted' : 'scenario'}
+      aria-labelledby={titleId}
+      aria-current={highlighted || undefined}
+    >
       <div className="scenario-header">
         <h4 id={titleId} className="scenario-title">
           <span className="code">{reference}</span> {scenario.title}

@@ -108,6 +108,8 @@ export interface ReferenceDto {
   title: string;
   /** Exigence : son type et son statut, montrés par l'aperçu au survol ; null pour les autres catégories. */
   requirement: { type: RequirementType; subtype: RequirementSubtype | null; status: RequirementStatus } | null;
+  /** Scénario : l'exigence dont la fiche l'affiche (D20) ; null pour les autres catégories. */
+  scenario: { requirementId: string } | null;
 }
 
 /** Par code, acronyme puis numéro (CRM-BE-999 avant CRM-BE-1000). */

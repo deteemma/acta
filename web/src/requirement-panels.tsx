@@ -145,6 +145,7 @@ export function ExportRequirementsButton({
 export function RequirementPanel({
   initiativeId,
   requirementId,
+  scenarioId,
   actionsVersion,
   stakeholdersVersion,
   needsVersion,
@@ -154,6 +155,8 @@ export function RequirementPanel({
 }: {
   initiativeId: string;
   requirementId?: string;
+  /** Scénario mis en évidence à l'ouverture (palette, D20). */
+  scenarioId?: string;
   /** Change à chaque écriture sur un ticket ou un lien : les tickets liés se rechargent. */
   actionsVersion: number;
   /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
@@ -271,6 +274,7 @@ export function RequirementPanel({
               requirementId={requirement.id}
               scenarios={scenarios}
               feature={feature}
+              highlightedId={scenarioId}
               canEdit={can(initiative.myRole, 'editScenarios', { archived: initiative.archivedAt != null })}
               onChange={setScenarios}
               onFeatureChange={setFeature}
