@@ -1,6 +1,5 @@
-// Largeur réglable de la barre latérale et du panneau ancré (validé le
-// 01.11.2026) : poignée glissée à la souris, flèches au clavier, double-clic
-// pour revenir à la largeur par défaut. Retenue sur ce navigateur seulement.
+// Largeur réglable de la barre latérale (validé le 01.11.2026) : poignée glissée
+// à la souris, flèches au clavier, double-clic pour revenir à la largeur par défaut. Retenue sur ce navigateur seulement.
 import { type KeyboardEvent, type PointerEvent, useRef, useState } from 'react';
 
 const REM = 16;
@@ -15,8 +14,6 @@ export interface ResizableArea {
   minPx: number;
   /** Largeur maximale, selon la largeur de la fenêtre. */
   maxPx: () => number;
-  /** Bord que la poignée déplace : la barre latérale s'élargit vers la droite, le panneau vers la gauche. */
-  grows: 'right' | 'left';
 }
 
 export const SIDEBAR: ResizableArea = {
@@ -25,16 +22,6 @@ export const SIDEBAR: ResizableArea = {
   defaultPx: 15 * REM,
   minPx: 12 * REM,
   maxPx: () => 24 * REM,
-  grows: 'right',
-};
-
-export const DOCKED_PANEL: ResizableArea = {
-  property: '--docked-panel-width',
-  storageKey: 'acta.panelWidth',
-  defaultPx: 32 * REM,
-  minPx: 24 * REM,
-  maxPx: () => Math.round(window.innerWidth * 0.6),
-  grows: 'left',
 };
 
 const clamp = (area: ResizableArea, px: number) => Math.round(Math.min(Math.max(px, area.minPx), area.maxPx()));
@@ -60,12 +47,10 @@ function apply(area: ResizableArea, px: number | null) {
   }
 }
 
-/** Au démarrage : reprend les largeurs retenues sur ce navigateur. */
-export function restoreWidths() {
-  for (const area of [SIDEBAR, DOCKED_PANEL]) {
-    const stored = readStored(area);
-    if (stored !== null) document.documentElement.style.setProperty(area.property, `${stored}px`);
-  }
+/** Au démarrage : reprend la largeur retenue sur ce navigateur. */
+export function restoreWidth() {
+  const stored = readStored(SIDEBAR);
+  if (stored !== null) document.documentElement.style.setProperty(SIDEBAR.property, `${stored}px`);
 }
 
 /** Poignée sur le bord intérieur d'une zone (séparateur réglable, au sens de l'accessibilité). */
@@ -88,7 +73,8 @@ export function ResizeHandle({ area, label, className }: { area: ResizableArea; 
   function move(event: PointerEvent<HTMLDivElement>) {
     if (!drag.current) return;
     const dx = event.clientX - drag.current.startX;
-    set(drag.current.startWidth + (area.grows === 'right' ? dx : -dx));
+    // La zone s'élargit vers la droite.
+    set(drag.current.startWidth + dx);
   }
 
   function end() {
@@ -97,10 +83,8 @@ export function ResizeHandle({ area, label, className }: { area: ResizableArea; 
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const wider = area.grows === 'right' ? 'ArrowRight' : 'ArrowLeft';
-    const narrower = area.grows === 'right' ? 'ArrowLeft' : 'ArrowRight';
-    if (event.key === wider) set(width + KEY_STEP);
-    else if (event.key === narrower) set(width - KEY_STEP);
+    if (event.key === 'ArrowRight') set(width + KEY_STEP);
+    else if (event.key === 'ArrowLeft') set(width - KEY_STEP);
     else if (event.key === 'Home') set(area.minPx);
     else if (event.key === 'End') set(area.maxPx());
     else return;

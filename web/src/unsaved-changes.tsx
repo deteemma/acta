@@ -1,6 +1,6 @@
-// Modifications non enregistrées (ticket 15) : déclaration des formulaires d'un
-// panneau et alerte. Règles dans @app/shared (unsaved-changes.ts) ; la pile de
-// panneaux (panels.tsx) garde les sorties.
+// Modifications non enregistrées (ticket 15) : déclaration des formulaires de
+// l'écran de données ou d'une fenêtre de dialogue, et alerte. Règles dans
+// @app/shared (unsaved-changes.ts) ; dialogs.tsx garde les sorties.
 import { type FormValues, type GuardedForm, type SaveOutcome, TrackedForm, type UnsavedChoice } from '@app/shared';
 import {
   createContext,
@@ -16,7 +16,7 @@ import {
 } from 'react';
 import { useI18n } from './i18n';
 
-/** Inscrit un formulaire auprès du panneau qui le contient ; renvoie sa désinscription. */
+/** Inscrit un formulaire auprès de l'écran ou de la fenêtre qui le contient ; renvoie sa désinscription. */
 export const FormRegistryContext = createContext<((form: GuardedForm) => () => void) | null>(null);
 
 /**
@@ -63,13 +63,13 @@ export function useUnsavedForm<V extends FormValues>(values: V, save: () => Prom
   );
 }
 
-/** Alerte : au-dessus de tous les panneaux ; Échap ou un clic hors de l'alerte valent « Continuer la saisie ». */
+/** Alerte : au-dessus de toutes les fenêtres ; Échap ou un clic hors de l'alerte valent « Continuer la saisie ». */
 export function UnsavedChangesAlert({
   title,
   saving,
   onChoice,
 }: {
-  /** Panneau concerné : avec plusieurs panneaux, il peut être masqué par un autre. */
+  /** Écran ou fenêtre concerné : une fenêtre peut en masquer un autre. */
   title: string;
   saving: boolean;
   onChoice: (choice: UnsavedChoice) => void;

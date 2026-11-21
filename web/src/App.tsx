@@ -1,7 +1,6 @@
 import {
   type AnalysisObjectRef,
   type BabokDto,
-  findBabokElement,
   type InitiativeDto,
   type InitiativeTreeNode,
   type MeDto,
@@ -11,19 +10,20 @@ import {
 } from '@app/shared';
 import type { User } from 'oidc-client-ts';
 import { BookOpen, ListChecks, LogOut, PanelLeft, Plus, Search, Settings2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { CreateActionDialog } from './actions';
-import { AdminPanel } from './admin-panel';
-import { PageTemplatePanel } from './admin-page-templates';
-import { AlertsButton, AlertsPanel, useMyAlerts } from './alerts';
+import { PageTemplateScreen } from './admin-page-templates';
+import { AdminScreen } from './admin-screen';
+import { AlertsButton, AlertsScreen, useMyAlerts } from './alerts';
 import { api } from './api';
-import { BabokElementPanel, BabokPanel } from './babok-panels';
+import { BabokElementScreen, BabokScreen } from './babok-screens';
+import { DialogHost, DialogsProvider, SCREEN_TITLE_ID, ScreenForms, useDialogs } from './dialogs';
 import { EmptyState } from './empty-state';
 import { login, loginErrorFromUrl, logout, shouldRedirectToLogin } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
 import { Logotype } from './logotype';
-import { CreateInitiativeDialog, MemberPanel } from './initiative-panels';
+import { CreateInitiativeDialog } from './initiative-sheet';
 import { InitiativeDataScreen } from './initiative-screens';
 import { InitiativeTree, nodeDestination, type PageMoves, useInitiativeData } from './initiative-tree';
 import { MyActions } from './my-actions';
@@ -31,10 +31,9 @@ import { CreateNeedDialog } from './need-screen';
 import { CreateStakeholderDialog } from './stakeholder-screen';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
 import { canEditPages, CreatePageDialog } from './page-screen';
-import { FabContext, PanelHost, type PanelContent, PanelsProvider, SCREEN_TITLE_ID, ScreenForms, usePanels } from './panels';
 import { ReferencesProvider } from './references';
 import { CreateRequirementDialog } from './requirement-screen';
-import { CreateScenarioDialog } from './scenario-panels';
+import { CreateScenarioDialog } from './scenario-section';
 import { ResizeHandle, SIDEBAR } from './resize';
 import { ScreensProvider, useScreens } from './screens';
 import { CreateTicketDialog } from './ticket-screen';
@@ -105,11 +104,11 @@ function LoginIllustration() {
 
 function SignedIn({ user }: { user: User }) {
   return (
-    <PanelsProvider>
+    <DialogsProvider>
       <ScreensProvider>
         <Shell user={user} />
       </ScreensProvider>
-    </PanelsProvider>
+    </DialogsProvider>
   );
 }
 
@@ -119,14 +118,16 @@ const NARROW_SHELL = '(max-width: 60rem)';
 /**
  * Coque (ADR-0021) : à gauche le sélecteur d'initiative, son arborescence et, en
  * bas, « Mes actions », le référentiel et l'administration ; à droite l'écran de
- * données. Palette (Ctrl+K), bouton « + Action » et panneaux pas encore repris.
+ * données (N1, N3). Palette (Ctrl+K) et créations en fenêtres de dialogue,
+ * bouton « + Action ».
  */
 function Shell({ user }: { user: User }) {
   const { t } = useI18n();
-  const { stack, open, leaveScreen } = usePanels();
+  const { open, leaveScreen } = useDialogs();
   const { screen, goTo, replaceScreen, initiativeGone } = useScreens();
   const [initiatives, setInitiatives] = useState<InitiativeDto[] | null>(null);
   const [me, setMe] = useState<MeDto | null>(null);
+  const [meError, setMeError] = useState<UiError | null>(null);
   const [babok, setBabok] = useState<BabokDto | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   // Incrémenté à chaque écriture sur un ticket, de tout type, ou sur un lien : les listes se rechargent.
@@ -166,7 +167,7 @@ function Shell({ user }: { user: User }) {
   useEffect(() => {
     api.listInitiatives().then(setInitiatives, (e: unknown) => setError(toUiError(e)));
     // Sans réponse, pas d'accès à l'administration : l'API la refuse de toute façon.
-    api.me().then(setMe, () => undefined);
+    api.me().then(setMe, (e: unknown) => setMeError(toUiError(e)));
     api.babok().then(setBabok, (e: unknown) => setError(toUiError(e)));
   }, []);
 
@@ -228,11 +229,8 @@ function Shell({ user }: { user: User }) {
     initiativeGone(id);
   };
 
-  // Panneau le plus haut qui montre un objet d'une initiative : la création rapide
-  // propose cette initiative, et part de cet objet (ticket 13) ; sans panneau,
-  // l'élément de l'écran.
-  const fabOrigin =
-    stack.map((e) => actionOrigin(e.content)).findLast((origin) => origin !== undefined) ?? screenActionOrigin(screen);
+  // La création rapide propose l'initiative de l'écran, et part de son élément (ticket 13).
+  const fabOrigin = screenActionOrigin(screen);
   const fab = (
     <button
       type="button"
@@ -247,16 +245,39 @@ function Shell({ user }: { user: User }) {
     </button>
   );
 
+  // Administration : réservée à l'administrateur, comme son entrée dans le menu.
+  const adminOnly = (content: () => ReactNode) =>
+    !me ? (
+      meError ? <ErrorMessage error={meError} /> : <p>{t('common.loading')}</p>
+    ) : me.isAdmin ? (
+      content()
+    ) : (
+      <p className="error" role="alert">
+        {t('admin.forbidden')}
+      </p>
+    );
+
   const dataZone = (() => {
-    if (screen.kind === 'myActions') {
-      return (
-        <>
-          <h1 id={SCREEN_TITLE_ID} tabIndex={-1}>
-            {t('actions.title')}
-          </h1>
-          <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
-        </>
-      );
+    switch (screen.kind) {
+      case 'myActions':
+        return (
+          <>
+            <h1 id={SCREEN_TITLE_ID} tabIndex={-1}>
+              {t('actions.title')}
+            </h1>
+            <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
+          </>
+        );
+      case 'alerts':
+        return <AlertsScreen alerts={alerts} onSeen={setMe} />;
+      case 'babok':
+        return <BabokScreen babok={babok} tab={screen.tab} />;
+      case 'babokElement':
+        return <BabokElementScreen babok={babok} elementId={screen.elementId} />;
+      case 'admin':
+        return adminOnly(() => <AdminScreen myId={me!.id} babok={babok} tab={screen.tab} />);
+      case 'pageTemplate':
+        return adminOnly(() => <PageTemplateScreen babok={babok} templateId={screen.templateId} />);
     }
     if (!data || data.initiative.id !== screen.initiativeId) {
       // Tickets ou pages d'une initiative dont je ne suis pas membre, ou disparue :
@@ -272,10 +293,7 @@ function Shell({ user }: { user: User }) {
       return dataError ? <ErrorMessage error={dataError} /> : <p>{t('common.loading')}</p>;
     }
     return (
-      <ScreenForms>
         <InitiativeDataScreen
-          // Autre élément ou autre initiative : les formulaires repartent de l'élément affiché.
-          key={`${screen.initiativeId}:${screenNodeKey(screen)}`}
           screen={screen}
           data={data}
           pending={dataPending}
@@ -300,14 +318,13 @@ function Shell({ user }: { user: User }) {
           onPageEditStarted={() => setEditPageId(null)}
           onLinksChanged={actionsChanged}
         />
-      </ScreenForms>
     );
   })();
 
   return (
     // Les références citées dans un texte suivent les besoins, exigences, tickets et pages créés, modifiés ou supprimés.
     <ReferencesProvider version={needsVersion + requirementsVersion + actionsVersion + pagesVersion}>
-      <FabContext.Provider value={fab}>
+      <>
         <div className={`shell${narrow ? ' shell-narrow' : ''}`}>
           {navShown && narrow && <div className="sidebar-backdrop" aria-hidden="true" onClick={() => setTreeOpen(false)} />}
           {navShown && (
@@ -377,12 +394,28 @@ function Shell({ user }: { user: User }) {
                   <ListChecks />
                   {t('actions.title')}
                 </button>
-                <button type="button" className="nav-item" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
+                <button
+                  type="button"
+                  className="nav-item"
+                  aria-current={screen.kind === 'babok' || screen.kind === 'babokElement' ? 'page' : undefined}
+                  onClick={() => {
+                    setTreeOpen(false);
+                    void goTo({ kind: 'babok', tab: 'areas' });
+                  }}
+                >
                   <BookOpen />
                   {t('babok.open')}
                 </button>
                 {me?.isAdmin && (
-                  <button type="button" className="nav-item" onClick={() => open({ kind: 'admin' })}>
+                  <button
+                    type="button"
+                    className="nav-item"
+                    aria-current={screen.kind === 'admin' || screen.kind === 'pageTemplate' ? 'page' : undefined}
+                    onClick={() => {
+                      setTreeOpen(false);
+                      void goTo({ kind: 'admin', tab: 'accounts' });
+                    }}
+                  >
                     <Settings2 />
                     {t('admin.open')}
                   </button>
@@ -411,7 +444,7 @@ function Shell({ user }: { user: User }) {
                 <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
               </button>
               <span className="topbar-end">
-                <AlertsButton alerts={alerts} />
+                <AlertsButton alerts={alerts} current={screen.kind === 'alerts'} />
                 <small>{user.profile.name ?? user.profile.preferred_username}</small>
                 <LanguageSelector />
                 <button type="button" className="ghost" onClick={() => void leaveScreen().then((left) => (left ? logout() : undefined))}>
@@ -422,12 +455,13 @@ function Shell({ user }: { user: User }) {
             </header>
             <main className="page">
               <ErrorMessage error={error} />
-              {dataZone}
+              {/* Autre élément ou autre initiative : les formulaires repartent de l'élément affiché. */}
+              <ScreenForms key={screenElementKey(screen)}>{dataZone}</ScreenForms>
             </main>
           </div>
           {fab}
         </div>
-        <PanelHost
+        <DialogHost
           render={(content, close) => {
             switch (content.kind) {
               case 'palette':
@@ -443,20 +477,6 @@ function Shell({ user }: { user: User }) {
                     onClose={close}
                   />
                 );
-              case 'alerts':
-                return <AlertsPanel alerts={alerts} onSeen={setMe} onClose={close} />;
-              case 'member':
-                return <MemberPanel member={content.member} onClose={close} />;
-              case 'admin':
-                return me && <AdminPanel myId={me.id} babok={babok} onClose={close} />;
-              case 'pageTemplate':
-                return babok && <PageTemplatePanel babok={babok} templateId={content.templateId} onClose={close} />;
-              case 'babok':
-                return babok && <BabokPanel babok={babok} onClose={close} />;
-              case 'babokElement': {
-                const element = babok && findBabokElement(babok, content.elementId);
-                return element && <BabokElementPanel babok={babok} element={element} onClose={close} />;
-              }
               case 'createAction':
                 return (
                   babok && (
@@ -576,7 +596,7 @@ function Shell({ user }: { user: User }) {
             }
           }}
         />
-      </FabContext.Provider>
+      </>
     </ReferencesProvider>
   );
 }
@@ -607,27 +627,9 @@ function refusalMessage(screen: Screen): 'tickets.refused' | 'pages.refused' | n
 const isRefusal = (error: UiError) =>
   'key' in error && error.key === 'error.http' && (error.params?.status === 403 || error.params?.status === 404);
 
-/** Initiative, et objet éventuel, d'où le bouton « + Action » crée l'action depuis ce panneau. */
-function actionOrigin(content: PanelContent): { initiativeId: string; from?: AnalysisObjectRef } | undefined {
-  switch (content.kind) {
-    case 'createTicket':
-    case 'createStakeholder':
-    case 'createNeed':
-    case 'createRequirement':
-    case 'createPage':
-      return { initiativeId: content.initiativeId };
-    case 'createScenario':
-      return { initiativeId: content.initiativeId, from: { kind: 'requirement', id: content.requirementId } };
-    default:
-      return undefined;
-  }
-}
-
 /** Initiative, et élément éventuel, d'où le bouton « + Action » crée l'action depuis l'écran de données. */
 function screenActionOrigin(screen: Screen): { initiativeId: string; from?: AnalysisObjectRef } | undefined {
   switch (screen.kind) {
-    case 'myActions':
-      return undefined;
     case 'stakeholder':
       return { initiativeId: screen.initiativeId, from: { kind: 'stakeholder', id: screen.stakeholderId } };
     case 'need':
@@ -635,17 +637,42 @@ function screenActionOrigin(screen: Screen): { initiativeId: string; from?: Anal
     case 'requirement':
     case 'scenario':
       return { initiativeId: screen.initiativeId, from: { kind: 'requirement', id: screen.requirementId } };
+    default: {
+      // Hors de toute initiative (« Mes actions », référentiel…) : rien n'est proposé.
+      const initiativeId = screenInitiativeId(screen);
+      return initiativeId ? { initiativeId } : undefined;
+    }
+  }
+}
+
+/**
+ * Élément affiché, quel que soit son onglet : en changer remet ses formulaires à
+ * zéro et déplace le focus sur son titre.
+ */
+function screenElementKey(screen: Screen): string {
+  switch (screen.kind) {
+    case 'myActions':
+    case 'alerts':
+    case 'babok':
+    case 'admin':
+      return screen.kind;
+    case 'babokElement':
+      return `babok:${screen.elementId}`;
+    case 'pageTemplate':
+      return `pageTemplate:${screen.templateId ?? 'new'}`;
+    case 'member':
+      return `${screen.initiativeId}:member:${screen.userId}`;
     default:
-      return { initiativeId: screen.initiativeId };
+      return `${screen.initiativeId}:${screenNodeKey(screen)}`;
   }
 }
 
 /**
  * Focus sur le titre de l'écran de données à chaque changement d'élément
- * (accessibilité), sauf au démarrage et quand un panneau vient de s'ouvrir par-dessus.
+ * (accessibilité), sauf au démarrage et quand une fenêtre de dialogue vient de s'ouvrir par-dessus.
  */
 function useTitleFocus(screen: Screen) {
-  const element = screen.kind === 'myActions' ? 'myActions' : `${screen.initiativeId}:${screenNodeKey(screen)}`;
+  const element = screenElementKey(screen);
   const previous = useRef(element);
   useEffect(() => {
     if (previous.current === element) return;

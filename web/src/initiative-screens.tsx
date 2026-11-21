@@ -13,6 +13,7 @@ import {
   type InitiativeDto,
   type InitiativeScreen,
   type InitiativeTreeNode,
+  memberName,
   type MessageKey,
   NEED_TABS,
   type OwnerDesignationDto,
@@ -35,10 +36,10 @@ import { DataScreen, type Tab } from './data-screen';
 import { EmptyState } from './empty-state';
 import { ErrorMessage, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { formatDate, InitiativeCode, InitiativeDetails, InitiativeForm, OwnerActions } from './initiative-panels';
+import { formatDate, InitiativeCode, InitiativeDetails, InitiativeForm, MemberDetails, OwnerActions } from './initiative-sheet';
 import type { InitiativeData } from './initiative-tree';
 import { canEditNeeds, NeedLinks, NeedList, NeedRequirements, NeedSheet, requirementsOfNeed } from './need-screen';
-import { usePanels } from './panels';
+import { useDialogs } from './dialogs';
 import {
   canEditRequirements,
   ExportRequirementsButton,
@@ -122,7 +123,7 @@ export function InitiativeDataScreen({
   onLinksChanged: () => void;
 }) {
   const { t, locale } = useI18n();
-  const { open } = usePanels();
+  const { open } = useDialogs();
   const [error, setError] = useState<UiError | null>(null);
   const { initiative, members, tree } = data;
   const initiativeId = initiative.id;
@@ -241,6 +242,24 @@ export function InitiativeDataScreen({
           <TeamTab tab={screen.tab} data={data} onTeamChanged={onTeamChanged} onLeft={() => onInitiativeGone(initiativeId)} />
         </DataScreen>
       );
+    case 'member': {
+      // Sous l'équipe : le fil d'Ariane va jusqu'à elle.
+      const member = members.find((m) => m.userId === screen.userId);
+      if (!member) {
+        return <MissingElement kind={t('member.kicker')} pending={pending} crumbs={path} onCrumb={onSelectNode} message={t('member.notFound')} />;
+      }
+      return (
+        <DataScreen
+          crumbs={path}
+          onCrumb={onSelectNode}
+          kind={t('member.kicker')}
+          title={memberName(member)}
+          badges={member.isMe && <span className="badge">{t('member.you')}</span>}
+        >
+          <MemberDetails member={member} />
+        </DataScreen>
+      );
+    }
     case 'stakeholders':
       return (
         <DataScreen

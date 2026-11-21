@@ -17,10 +17,10 @@ plus récent. Exemple ci-dessous : `requirement` / « exigence ».
 | API | `api/src/<entités>/<entités>.controller.ts` et `.service.ts`, `api/src/app.module.ts` | Contrôleur sous `initiatives/:initiativeId/<entités>`, chaque route avec `@RequireInitiativeRole(...)` ; service par `this.database.asUser(...)`. |
 | Entités liées | services et `shared/src/<autre>.ts` des entités reliées (actions, besoins…) | Liens dans les DTO, refus de suppression d'un objet encore lié. |
 | Client web | `web/src/api.ts`, `web/src/errors.tsx` | Appels de l'API ; `is<Entité>Refusal` → clé `<entité>.refusal.*`. |
-| Panneaux | `web/src/<entité>-panels.tsx`, `web/src/panels.tsx` | Liste et fiche ; nouveau `kind` dans `PanelContent`. |
-| Shell | `web/src/App.tsx` | Compteur `<entités>Version` et `<entités>Changed`, transmis aux panneaux qui affichent l'entité. |
+| Écrans (ADR-0021) | `shared/src/screens.ts` + `screens.test.ts`, `shared/src/initiative-tree.ts`, `web/src/<entité>-screen.tsx`, `web/src/initiative-screens.tsx`, `web/src/dialogs.tsx` | Adresse de l'élément et de ses onglets ; branche et nœud de l'arborescence ; liste et fiche en onglets ; fenêtre de création : nouveau `kind` dans `DialogContent`. |
+| Shell | `web/src/App.tsx` | Compteur `<entités>Version` et `<entités>Changed`, transmis aux écrans qui affichent l'entité. |
 | Recherche, références | `web/src/palette.tsx`, `shared/src/references.ts` (`REFERENCE_CATEGORIES`) | Seulement si l'entité porte une référence (`CODE-ACRONYME-NUMÉRO`). |
-| Fiches liées | `web/src/initiative-panels.tsx` et panneaux des entités reliées | Section ou liste des objets liés. |
+| Fiches liées | `web/src/initiative-screens.tsx` et écrans des entités reliées | Section ou liste des objets liés. |
 | Permissions de bout en bout | `scripts/roles/NN-<entités>.mjs`, liste `SECTIONS` et nettoyage de `scripts/tester-roles.mjs` | Barrière 1 (API) et barrière 2 (base), pour propriétaire, contributeur, lecteur, non-membre et initiative archivée. |
 | Glossaire | `CONTEXT.md` | Le terme et sa définition. Les ADR ne sont pas modifiés. |
 

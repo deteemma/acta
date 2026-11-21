@@ -4,7 +4,7 @@
 
 **Blocked by:** 02, 03, 04, 05
 
-**Status:** ready-for-agent
+**Status:** ready-for-human (implémenté le 21.11.2026, à valider par la responsable fonctionnelle)
 
 Règles : [spec](../spec.md) N1, N3, N12, N13.
 

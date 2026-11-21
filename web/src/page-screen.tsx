@@ -42,18 +42,19 @@ import {
 import { ArrowDown, ArrowUp, FilePlus, IndentDecrease, IndentIncrease, Pencil, Plus } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from './api';
-import { BabokName } from './babok-panels';
+import { BabokName } from './babok-screens';
 import { PageComments } from './comments';
 import { DataScreen } from './data-screen';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { formatDate } from './initiative-panels';
-import { PageLinks, useLinkData } from './link-panels';
+import { formatDate } from './initiative-sheet';
+import { PageLinks, useLinkData } from './link-sections';
 import { FileError, PageAttachments } from './attachments';
 import { PageContent } from './page-content';
 import { forgetAttachmentImages, PageImageSource, PendingImages } from './page-images';
 import { PageComparison, PageDiff, PageHistory, PageRevisionView, type PageShown, VersionNoteField } from './page-history';
-import { Panel, useCloseSilently, usePanels } from './panels';
+import { Dialog, useCloseSilently, useDialogs } from './dialogs';
+import { useScreens } from './screens';
 import { useOpenNode, useReferences } from './references';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
@@ -285,7 +286,7 @@ function PageContentTab({
   onDeleted: () => void;
 }) {
   const { t, locale } = useI18n();
-  const { open } = usePanels();
+  const { goTo } = useScreens();
   const [editing, setEditing] = useState(startEditing);
   const [error, setError] = useState<UiError | null>(null);
   const [status, setStatus] = useState('');
@@ -349,7 +350,7 @@ function PageContentTab({
               <>
                 {' · '}
                 {t('page.task')}{' '}
-                <button type="button" className="link" onClick={() => open({ kind: 'babokElement', elementId: task.id })}>
+                <button type="button" className="link" onClick={() => void goTo({ kind: 'babokElement', elementId: task.id })}>
                   <span className="code">{task.section}</span> <BabokName element={task} />
                 </button>
               </>
@@ -538,7 +539,7 @@ function PageEditForm({
   onTakeTheirs: (latest: PageDto) => void;
 }) {
   const { t, locale } = useI18n();
-  const { settleScreen } = usePanels();
+  const { settleScreen } = useDialogs();
   // Modification simultanée (ticket 24) : la page telle qu'enregistrée entre-temps,
   // quand l'API a refusé l'enregistrement ; null tant qu'il n'y a pas eu de refus.
   const [latest, setLatest] = useState<PageDto | null>(null);
@@ -791,9 +792,8 @@ export function CreatePageDialog({
 
   const groups = babok && templates ? pageTemplateGroups(babok, templates, locale) : [];
   return (
-    <Panel
+    <Dialog
       title={parent ? t('pages.newChildOf', { title: parent.title }) : t('pages.new')}
-      variant="dialog"
       kicker={
         <>
           {t('initiative.kicker')} <span className="code">{initiative.code}</span> · {initiative.name}
@@ -864,6 +864,6 @@ export function CreatePageDialog({
           <ErrorMessage error={error} />
         </form>
       )}
-    </Panel>
+    </Dialog>
   );
 }

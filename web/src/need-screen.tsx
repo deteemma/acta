@@ -17,11 +17,11 @@ import {
 } from '@app/shared';
 import { useState } from 'react';
 import { NewActionButton } from './actions';
-import { LinkedTickets } from './link-panels';
+import { LinkedTickets } from './link-sections';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { Panel, useCloseSilently } from './panels';
+import { Dialog, useCloseSilently } from './dialogs';
 import { useOpenNode } from './references';
 import { RequirementList } from './requirement-screen';
 import { RichText, RichTextEditor } from './rich-text';
@@ -149,7 +149,7 @@ export function CreateNeedDialog({
   const { t } = useI18n();
   const closeSilently = useCloseSilently();
   return (
-    <Panel title={t('needs.new')} variant="dialog" onClose={onClose}>
+    <Dialog title={t('needs.new')} onClose={onClose}>
       <NeedForm
         initiativeId={initiativeId}
         stakeholders={stakeholders}
@@ -159,7 +159,7 @@ export function CreateNeedDialog({
           onCreated(created);
         }}
       />
-    </Panel>
+    </Dialog>
   );
 }
 

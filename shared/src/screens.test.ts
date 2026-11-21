@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseScreenPath, sameScreen, screenPath } from './screens.js';
+import { parseScreenPath, sameScreen, screenInitiativeId, screenPath } from './screens.js';
 
 const ID = '3f2b8c1e-5a7d-4e21-9c44-0d1e2f3a4b5c';
 
@@ -80,7 +80,7 @@ test('le tableau de bord, l’équipe et les branches ont leur adresse, onglets 
 });
 
 test('un onglet inconnu ou en trop mène à l’accueil', () => {
-  for (const path of [`/initiatives/${ID}/dashboard/inconnu`, `/initiatives/${ID}/team/members/x`, `/initiatives/${ID}/needs/x`, `/initiatives/${ID}/members/settings`]) {
+  for (const path of [`/initiatives/${ID}/dashboard/inconnu`, `/initiatives/${ID}/team/designations/x`, `/initiatives/${ID}/needs/x`, `/initiatives/${ID}/members/settings`]) {
     assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
   }
 });
@@ -182,6 +182,75 @@ test('un onglet inconnu d’un ticket ou un identifiant mal formé mène à l’
     `/initiatives/${ID}/tickets/${ELEMENT}/links/x`,
     `/initiatives/${ID}/tickets/pas-un-id`,
   ]) {
+    assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
+  }
+});
+
+test('les alertes et le référentiel BABOK ont leur adresse, hors de toute initiative ; Domaines et tâches est l’onglet de l’adresse nue', () => {
+  const cases = [
+    [{ kind: 'alerts' }, '/alerts'],
+    [{ kind: 'babok', tab: 'areas' }, '/babok'],
+    [{ kind: 'babok', tab: 'techniques' }, '/babok/techniques'],
+  ] as const;
+  for (const [screen, path] of cases) {
+    assert.equal(screenPath(screen), path);
+    assert.deepEqual(parseScreenPath(path), screen, path);
+    assert.equal(screenInitiativeId(screen), null);
+  }
+});
+
+test('un domaine, une tâche ou une technique du référentiel a sa propre adresse, par sa section', () => {
+  for (const elementId of ['3', '3.1', '10.12']) {
+    const screen = { kind: 'babokElement', elementId } as const;
+    assert.equal(screenPath(screen), `/babok/${elementId}`);
+    assert.deepEqual(parseScreenPath(`/babok/${elementId}`), screen);
+    assert.equal(screenInitiativeId(screen), null);
+  }
+  for (const path of ['/babok/inconnu', '/babok/3.1/x', '/babok/3.', '/babok/techniques/x', '/alerts/x']) {
+    assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
+  }
+});
+
+test('l’administration a son adresse, et chacun de ses onglets ; Comptes est l’onglet de l’adresse nue', () => {
+  const cases = [
+    [{ kind: 'admin', tab: 'accounts' }, '/admin'],
+    [{ kind: 'admin', tab: 'orphans' }, '/admin/orphans'],
+    [{ kind: 'admin', tab: 'references' }, '/admin/references'],
+    [{ kind: 'admin', tab: 'statuses' }, '/admin/statuses'],
+    [{ kind: 'admin', tab: 'ticket-types' }, '/admin/ticket-types'],
+    [{ kind: 'admin', tab: 'page-templates' }, '/admin/page-templates'],
+    [{ kind: 'admin', tab: 'attachments' }, '/admin/attachments'],
+  ] as const;
+  for (const [screen, path] of cases) {
+    assert.equal(screenPath(screen), path);
+    assert.deepEqual(parseScreenPath(path), screen, path);
+    assert.equal(screenInitiativeId(screen), null);
+  }
+});
+
+test('un modèle de page de l’administration a son adresse, et l’ajout d’un modèle la sienne', () => {
+  const existing = { kind: 'pageTemplate', templateId: ELEMENT } as const;
+  const added = { kind: 'pageTemplate', templateId: null } as const;
+  assert.equal(screenPath(existing), `/admin/page-templates/${ELEMENT}`);
+  assert.equal(screenPath(added), '/admin/page-templates/new');
+  assert.deepEqual(parseScreenPath(`/admin/page-templates/${ELEMENT}`), existing);
+  assert.deepEqual(parseScreenPath('/admin/page-templates/new'), added);
+  assert.equal(sameScreen(existing, added), false);
+  for (const path of ['/admin/inconnu', '/admin/accounts/x', '/admin/page-templates/pas-un-id', `/admin/page-templates/${ELEMENT}/x`]) {
+    assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
+  }
+});
+
+test('un membre de l’équipe a son adresse, sous l’onglet Membres de l’équipe', () => {
+  const screen = { kind: 'member', initiativeId: ID, userId: ELEMENT } as const;
+  assert.equal(screenPath(screen), `/initiatives/${ID}/team/members/${ELEMENT}`);
+  assert.deepEqual(parseScreenPath(`/initiatives/${ID}/team/members/${ELEMENT}`), screen);
+  assert.equal(screenInitiativeId(screen), ID);
+  assert.equal(sameScreen(screen, { kind: 'team', initiativeId: ID, tab: 'members' }), false);
+  // L'identifiant du compte vient de Keycloak : il est repris tel quel, encodé dans l'adresse.
+  const other = { kind: 'member', initiativeId: ID, userId: 'compte local/1' } as const;
+  assert.deepEqual(parseScreenPath(screenPath(other)), other);
+  for (const path of [`/initiatives/${ID}/team/designations/${ELEMENT}`, `/initiatives/${ID}/team/members/${ELEMENT}/x`]) {
     assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
   }
 });

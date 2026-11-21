@@ -172,15 +172,23 @@ export function pathToNode(root: InitiativeTreeNode, key: string): InitiativeTre
   return [];
 }
 
-/** Nœud que montre l'écran ; null pour « Mes actions », qui n'en sélectionne aucun (N3). */
+/** Nœud que montre l'écran ; null hors de l'initiative (« Mes actions », référentiel…), qui n'en sélectionne aucun (N3). */
 export function screenNodeKey(screen: Screen): string | null {
   switch (screen.kind) {
     case 'myActions':
+    case 'alerts':
+    case 'babok':
+    case 'babokElement':
+    case 'admin':
+    case 'pageTemplate':
       return null;
     case 'initiative':
     case 'dashboard':
     case 'team':
       return treeNodeKey({ kind: screen.kind });
+    case 'member':
+      // Sous l'équipe, qui reste choisie.
+      return treeNodeKey({ kind: 'team' });
     case 'stakeholders':
     case 'needs':
     case 'requirements':

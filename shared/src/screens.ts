@@ -37,12 +37,31 @@ export type TicketTab = (typeof TICKET_TABS)[number];
 /** Onglets d'une page : Contenu, Liens, Commentaires, Pièces jointes, Historique. */
 export const PAGE_TABS = ['content', 'links', 'comments', 'attachments', 'history'] as const;
 export type PageTab = (typeof PAGE_TABS)[number];
+/** Onglets du référentiel BABOK : Domaines et tâches, Techniques. */
+export const BABOK_TABS = ['areas', 'techniques'] as const;
+export type BabokTab = (typeof BABOK_TABS)[number];
+/**
+ * Onglets de l'administration : Comptes, Initiatives sans propriétaire,
+ * Acronymes, Statuts d'exigence, Types de ticket, Modèles de page, Pièces jointes.
+ */
+export const ADMIN_TABS = ['accounts', 'orphans', 'references', 'statuses', 'ticket-types', 'page-templates', 'attachments'] as const;
+export type AdminTab = (typeof ADMIN_TABS)[number];
 
 export type Screen =
   | { kind: 'myActions' }
+  /** Hors de l'arborescence, dans la zone de droite (N3). */
+  | { kind: 'alerts' }
+  | { kind: 'babok'; tab: BabokTab }
+  /** Domaine, tâche ou technique, désigné par sa section (ex. « 3.1 »). */
+  | { kind: 'babokElement'; elementId: string }
+  | { kind: 'admin'; tab: AdminTab }
+  /** Modèle de page de l'administration ; `null` : ajout d'un modèle. */
+  | { kind: 'pageTemplate'; templateId: string | null }
   | { kind: 'initiative'; initiativeId: string; tab: InitiativeTab }
   | { kind: 'dashboard'; initiativeId: string; tab: DashboardTab }
   | { kind: 'team'; initiativeId: string; tab: TeamTab }
+  /** Membre de l'équipe, par l'identifiant de son compte. */
+  | { kind: 'member'; initiativeId: string; userId: string }
   | { kind: 'stakeholders'; initiativeId: string; tab: StakeholdersTab }
   | { kind: 'stakeholder'; initiativeId: string; stakeholderId: string; tab: StakeholderTab }
   | { kind: 'need'; initiativeId: string; needId: string; tab: NeedTab }
@@ -58,18 +77,37 @@ export type Screen =
   | { kind: 'pages'; initiativeId: string }
   | { kind: 'page'; initiativeId: string; pageId: string; tab: PageTab };
 
+/** Écrans hors de toute initiative. */
+export type GlobalScreen = Extract<Screen, { kind: 'myActions' | 'alerts' | 'babok' | 'babokElement' | 'admin' | 'pageTemplate' }>;
 /** Écran d'une initiative, quel qu'il soit. */
-export type InitiativeScreen = Exclude<Screen, { kind: 'myActions' }>;
+export type InitiativeScreen = Exclude<Screen, GlobalScreen>;
 
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const ID = new RegExp(`^${UUID}$`, 'i');
 const INITIATIVE_PATH = new RegExp(`^/initiatives/(${UUID})((?:/[^/]+)*)/?$`, 'i');
+/** Segment de l'ajout d'un modèle de page. */
+const NEW_TEMPLATE = 'new';
+/** Identifiant d'un élément du référentiel : sa section. */
+const BABOK_ELEMENT = /^\d+(?:\.\d+)*$/;
 
 /** Segment d'onglet : absent pour le premier onglet. */
 const tabSegment = (tabs: readonly string[], tab: string) => (tab === tabs[0] ? '' : `/${tab}`);
 
 export function screenPath(screen: Screen): string {
-  if (screen.kind === 'myActions') return '/';
+  switch (screen.kind) {
+    case 'myActions':
+      return '/';
+    case 'alerts':
+      return '/alerts';
+    case 'babok':
+      return `/babok${tabSegment(BABOK_TABS, screen.tab)}`;
+    case 'babokElement':
+      return `/babok/${screen.elementId}`;
+    case 'admin':
+      return `/admin${tabSegment(ADMIN_TABS, screen.tab)}`;
+    case 'pageTemplate':
+      return `/admin/page-templates/${screen.templateId ?? NEW_TEMPLATE}`;
+  }
   const base = `/initiatives/${screen.initiativeId}`;
   switch (screen.kind) {
     case 'initiative':
@@ -78,6 +116,8 @@ export function screenPath(screen: Screen): string {
       return `${base}/dashboard${tabSegment(DASHBOARD_TABS, screen.tab)}`;
     case 'team':
       return `${base}/team${tabSegment(TEAM_TABS, screen.tab)}`;
+    case 'member':
+      return `${base}/team/members/${encodeURIComponent(screen.userId)}`;
     case 'stakeholders':
       return `${base}/stakeholders${tabSegment(STAKEHOLDERS_TABS, screen.tab)}`;
     case 'stakeholder':
@@ -109,7 +149,33 @@ function readTab<T extends string>(tabs: readonly T[], segments: readonly string
 
 /** Écran d'une adresse ; une adresse inconnue mène à l'accueil. */
 export function parseScreenPath(path: string): Screen {
-  return parseInitiativePath(path) ?? { kind: 'myActions' };
+  return parseGlobalPath(path) ?? parseInitiativePath(path) ?? { kind: 'myActions' };
+}
+
+function parseGlobalPath(path: string): Screen | null {
+  const [first, ...rest] = path.split('/').filter(Boolean);
+  switch (first) {
+    case 'alerts':
+      return rest.length === 0 ? { kind: 'alerts' } : null;
+    case 'babok': {
+      const [elementId, ...extra] = rest;
+      if (elementId && BABOK_ELEMENT.test(elementId)) return extra.length === 0 ? { kind: 'babokElement', elementId } : null;
+      const tab = readTab(BABOK_TABS, rest);
+      return tab && { kind: 'babok', tab };
+    }
+    case 'admin': {
+      const [tabName, templateId, ...extra] = rest;
+      if (tabName === 'page-templates' && templateId !== undefined) {
+        if (extra.length > 0) return null;
+        if (templateId === NEW_TEMPLATE) return { kind: 'pageTemplate', templateId: null };
+        return ID.test(templateId) ? { kind: 'pageTemplate', templateId } : null;
+      }
+      const tab = readTab(ADMIN_TABS, rest);
+      return tab && { kind: 'admin', tab };
+    }
+    default:
+      return null;
+  }
 }
 
 function parseInitiativePath(path: string): Screen | null {
@@ -124,6 +190,10 @@ function parseInitiativePath(path: string): Screen | null {
       return tab && { kind: 'dashboard', initiativeId, tab };
     }
     case 'team': {
+      const [tabName, userId, ...extra] = rest;
+      if (tabName === 'members' && userId !== undefined) {
+        return extra.length === 0 ? { kind: 'member', initiativeId, userId: decodeURIComponent(userId) } : null;
+      }
       const tab = readTab(TEAM_TABS, rest);
       return tab && { kind: 'team', initiativeId, tab };
     }
@@ -178,6 +248,6 @@ function parseInitiativePath(path: string): Screen | null {
 
 export const sameScreen = (a: Screen, b: Screen) => screenPath(a) === screenPath(b);
 
-/** Initiative que montre l'écran, null pour « Mes actions ». */
+/** Initiative que montre l'écran, null hors de toute initiative (« Mes actions », alertes…). */
 export const screenInitiativeId = (screen: Screen): string | null =>
-  screen.kind === 'myActions' ? null : screen.initiativeId;
+  'initiativeId' in screen ? screen.initiativeId : null;

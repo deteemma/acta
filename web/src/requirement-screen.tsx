@@ -41,17 +41,17 @@ import {
 import { Download } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { NewActionButton } from './actions';
-import { LinkedTickets } from './link-panels';
+import { LinkedTickets } from './link-sections';
 import { api, ApiError } from './api';
 import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-screen';
-import { Panel, useCloseSilently } from './panels';
+import { Dialog, useCloseSilently } from './dialogs';
 import { useOpenNode } from './references';
 import { setRequirementStatuses, StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
-import { NO_FEATURE, ScenariosSection } from './scenario-panels';
+import { NO_FEATURE, ScenariosSection } from './scenario-section';
 import { StakeholderLink } from './stakeholder-screen';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
@@ -294,7 +294,7 @@ export function CreateRequirementDialog({
   const { t } = useI18n();
   const closeSilently = useCloseSilently();
   return (
-    <Panel title={t('requirements.new')} variant="dialog" onClose={onClose}>
+    <Dialog title={t('requirements.new')} onClose={onClose}>
       <RequirementForm
         initiativeId={initiativeId}
         stakeholders={stakeholders}
@@ -307,7 +307,7 @@ export function CreateRequirementDialog({
           onCreated(created);
         }}
       />
-    </Panel>
+    </Dialog>
   );
 }
 

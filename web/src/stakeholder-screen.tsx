@@ -36,7 +36,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedList } from './need-screen';
 import { RequirementList } from './requirement-screen';
-import { Panel, useCloseSilently } from './panels';
+import { Dialog, useCloseSilently } from './dialogs';
 import { useOpenNode } from './references';
 import { RichText, RichTextEditor } from './rich-text';
 import { formatDateTime } from './team-section';
@@ -254,7 +254,7 @@ export function CreateStakeholderDialog({
   const { t } = useI18n();
   const closeSilently = useCloseSilently();
   return (
-    <Panel title={t('stakeholders.new')} variant="dialog" onClose={onClose}>
+    <Dialog title={t('stakeholders.new')} onClose={onClose}>
       <StakeholderForm
         initiativeId={initiativeId}
         linkable={linkableMembers(members, stakeholders, null)}
@@ -264,7 +264,7 @@ export function CreateStakeholderDialog({
           onCreated(created);
         }}
       />
-    </Panel>
+    </Dialog>
   );
 }
 

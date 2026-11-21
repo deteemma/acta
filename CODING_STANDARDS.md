@@ -19,8 +19,9 @@ et `pnpm test` n'est pas repris ici.
 - **Formulaire de saisie** (web et téléphone) : déclaré par `useUnsavedForm`
   (`web/src/unsaved-changes.tsx`, `mobile/src/unsaved-changes.tsx`), avec tous ses
   champs, pour que le quitter déclenche l'alerte de modification non enregistrée.
-  Une sortie passe par `usePanels()` : `close`, `open`, `replace`, ou `leaveAll`
-  pour un changement d'écran.
+  Sur le web, une sortie passe par `useScreens().goTo` (autre élément, onglet ou
+  initiative) ou par `useDialogs().close` (fenêtre de dialogue) ; jamais par un
+  changement d'état local qui contournerait l'alerte.
 
 ## Permissions (ADR-0006, double barrière)
 

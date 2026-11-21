@@ -41,7 +41,7 @@ export function useOpenReference(): (item: ReferenceDto) => void {
 
 /**
  * Ouvre le nœud d'un élément (lien vers une partie prenante, un besoin, un ticket…) :
- * ferme les panneaux, avec l'alerte, et l'affiche à droite.
+ * ferme les fenêtres de dialogue, avec l'alerte, et l'affiche à droite.
  */
 export function useOpenNode(): (initiativeId: string, ref: TreeNodeRef) => void {
   const { goTo } = useScreens();

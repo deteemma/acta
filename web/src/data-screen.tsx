@@ -1,46 +1,80 @@
 // Écran de données (ADR-0021, N11) : à droite de l'arborescence, le fil
 // d'Ariane depuis l'initiative, l'en-tête de l'élément (type, référence, titre,
-// badges), puis ses onglets ; un seul sous-écran affiché à la fois.
+// badges), puis ses onglets ; un seul sous-écran affiché à la fois. Les
+// alertes, le référentiel et l'administration (N3) suivent la même présentation.
 import type { InitiativeTreeNode } from '@app/shared';
 import { type KeyboardEvent, type ReactNode, useRef } from 'react';
 import { useI18n } from './i18n';
 import { useNodeLabel } from './initiative-tree';
-import { SCREEN_TITLE_ID } from './panels';
+import { SCREEN_TITLE_ID } from './dialogs';
 
 export interface Tab<T extends string> {
   id: T;
   label: string;
   count?: number;
+  /** Info-bulle du libellé (ex. terme anglais du BABOK). */
+  tooltip?: string;
 }
 
-export function DataScreen<T extends string>({
-  crumbs,
-  onCrumb,
-  kind,
-  reference,
-  title,
-  badges,
-  tabs = [],
-  tab,
-  onTab,
-  children,
-}: {
-  /** Nœuds de l'initiative jusqu'au parent de l'élément affiché. */
-  crumbs: InitiativeTreeNode[];
-  onCrumb: (node: InitiativeTreeNode) => void;
-  /** Type de l'élément, au-dessus du titre. */
-  kind: ReactNode;
+/** Étape du fil d'Ariane. */
+export interface Crumb {
+  key: string;
+  label: string;
+  onSelect: () => void;
+}
+
+type ScreenProps<T extends string> = {
+  /** Type de l'élément, au-dessus du titre ; absent pour un écran hors de l'initiative (alertes…). */
+  kind?: ReactNode;
   reference?: string | null;
   title: string;
+  /** Info-bulle du titre (ex. nom anglais d'un élément du BABOK). */
+  titleTooltip?: string;
   badges?: ReactNode;
   /** Onglets de l'élément ; sans eux, ou avec un seul, pas de barre d'onglets. */
   tabs?: Tab<T>[];
   tab?: T;
   onTab?: (tab: T) => void;
   children: ReactNode;
+};
+
+/** Écran d'un élément de l'initiative : le fil d'Ariane part de l'initiative. */
+export function DataScreen<T extends string>({
+  crumbs,
+  onCrumb,
+  ...props
+}: ScreenProps<T> & {
+  /** Nœuds de l'initiative jusqu'au parent de l'élément affiché. */
+  crumbs: InitiativeTreeNode[];
+  onCrumb: (node: InitiativeTreeNode) => void;
 }) {
-  const { t } = useI18n();
   const label = useNodeLabel();
+  return (
+    <ScreenLayout
+      {...props}
+      crumbs={crumbs.map((node, index) => ({
+        key: node.key,
+        label: index === 0 ? `${node.reference} · ${label(node)}` : label(node),
+        onSelect: () => onCrumb(node),
+      }))}
+    />
+  );
+}
+
+/** Fil d'Ariane, en-tête et onglets d'un écran de la zone de droite. */
+export function ScreenLayout<T extends string>({
+  crumbs,
+  kind,
+  reference,
+  title,
+  titleTooltip,
+  badges,
+  tabs = [],
+  tab,
+  onTab,
+  children,
+}: ScreenProps<T> & { crumbs: Crumb[] }) {
+  const { t } = useI18n();
   const tabRefs = useRef(new Map<string, HTMLButtonElement>());
 
   // Onglets : flèches pour se déplacer, Entrée ou Espace pour ouvrir (activation manuelle,
@@ -59,23 +93,27 @@ export function DataScreen<T extends string>({
 
   return (
     <section className="data-screen" aria-labelledby={SCREEN_TITLE_ID}>
-      <nav className="crumbs" aria-label={t('dataScreen.breadcrumb')}>
-        <ol>
-          {crumbs.map((node, index) => (
-            <li key={node.key}>
-              <button type="button" className="link" onClick={() => onCrumb(node)}>
-                {index === 0 ? `${node.reference} · ${label(node)}` : label(node)}
-              </button>
-            </li>
-          ))}
-        </ol>
-      </nav>
+      {crumbs.length > 0 && (
+        <nav className="crumbs" aria-label={t('dataScreen.breadcrumb')}>
+          <ol>
+            {crumbs.map((crumb) => (
+              <li key={crumb.key}>
+                <button type="button" className="link" onClick={crumb.onSelect}>
+                  {crumb.label}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
       <header className="data-head">
-        <small className="data-kind">
-          {kind} {reference && <span className="code">{reference}</span>}
-        </small>
+        {(kind || reference) && (
+          <small className="data-kind">
+            {kind} {reference && <span className="code">{reference}</span>}
+          </small>
+        )}
         {/* Reçoit le focus à chaque changement d'élément (useTitleFocus, App.tsx). */}
-        <h1 id={SCREEN_TITLE_ID} tabIndex={-1}>
+        <h1 id={SCREEN_TITLE_ID} tabIndex={-1} title={titleTooltip}>
           {title}
         </h1>
         {badges && <div className="data-badges">{badges}</div>}
@@ -98,7 +136,7 @@ export function DataScreen<T extends string>({
               onKeyDown={(e) => onTabKeyDown(e, index)}
               onClick={() => item.id !== tab && onTab?.(item.id)}
             >
-              {item.label}
+              {item.tooltip ? <span title={item.tooltip}>{item.label}</span> : item.label}
               {item.count !== undefined && <span className="tree-count">{item.count}</span>}
             </button>
           ))}

@@ -21,7 +21,7 @@ import { useState } from 'react';
 import { api } from './api';
 import { ErrorMessage, teamRefusalError, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { usePanels } from './panels';
+import { useScreens } from './screens';
 import { useUnsavedForm } from './unsaved-changes';
 
 /** Date et heure d'une désignation, dans la langue de l'interface. */
@@ -43,7 +43,7 @@ export function TeamMembers({
   onLeft: () => void;
 }) {
   const { t } = useI18n();
-  const { open } = usePanels();
+  const { goTo } = useScreens();
   const [error, setError] = useState<UiError | null>(null);
   const [confirmingRemoval, setConfirmingRemoval] = useState<InitiativeMemberDto | null>(null);
 
@@ -110,7 +110,7 @@ export function TeamMembers({
           const controls = controlsFor(member);
           return (
             <li key={member.userId}>
-              <button type="button" className="link" onClick={() => open({ kind: 'member', member })}>
+              <button type="button" className="link" onClick={() => void goTo({ kind: 'member', initiativeId: initiative.id, userId: member.userId })}>
                 {name}
               </button>
               {member.isMe && <small> ({t('member.you')})</small>}

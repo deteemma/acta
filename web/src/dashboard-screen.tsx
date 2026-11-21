@@ -5,7 +5,7 @@ import { type ActionDto, type BabokDto, initiativeDashboard } from '@app/shared'
 import { useEffect, useState } from 'react';
 import { ActionList, StatusLabel } from './actions';
 import { api } from './api';
-import { BabokName } from './babok-panels';
+import { BabokName } from './babok-screens';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { useTicketTypes } from './ticket-types';

@@ -38,8 +38,8 @@ import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { useTicketLabels, useTicketTypes } from './ticket-types';
-import { formatDate } from './initiative-panels';
-import { usePanels } from './panels';
+import { formatDate } from './initiative-sheet';
+import { useDialogs } from './dialogs';
 import { useOpenNode } from './references';
 import { TicketStatusLabel } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
@@ -300,7 +300,7 @@ function EpicGroupHeader({
   canCreate: boolean;
 }) {
   const { t } = useI18n();
-  const { open } = usePanels();
+  const { open } = useDialogs();
   const { epic, closed, total } = group;
   return (
     <div className="ticket-group">

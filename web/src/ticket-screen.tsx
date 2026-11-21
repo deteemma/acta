@@ -43,14 +43,14 @@ import { DataScreen } from './data-screen';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { useTicketLabels, useTicketTypes } from './ticket-types';
-import { formatDate } from './initiative-panels';
-import { Panel, useCloseSilently } from './panels';
+import { formatDate } from './initiative-sheet';
+import { Dialog, useCloseSilently } from './dialogs';
 import { useOpenNode } from './references';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-screen';
 import { TicketAttachments } from './attachments';
 import { TicketComments } from './comments';
-import { TicketLinks } from './link-panels';
+import { TicketLinks } from './link-sections';
 import { EpicLink, EpicSelect, TicketAudit, TicketHistory, TicketStatusLabel } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -688,9 +688,8 @@ export function CreateTicketDialog({
   }
 
   return (
-    <Panel
+    <Dialog
       title={t('tickets.new')}
-      variant="dialog"
       kicker={
         <>
           {t('initiative.kicker')} <span className="code">{initiative.code}</span> · {initiative.name}
@@ -763,6 +762,6 @@ export function CreateTicketDialog({
         <button type="submit">{t('ticket.create')}</button>
         <ErrorMessage error={error} />
       </form>
-    </Panel>
+    </Dialog>
   );
 }

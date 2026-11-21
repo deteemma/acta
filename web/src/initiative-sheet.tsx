@@ -1,7 +1,6 @@
 // Fiche d'une initiative (onglets Aperçu et Paramètres de l'écran de données,
 // ADR-0021), membre, création en fenêtre de dialogue.
 import {
-  memberName,
   ANALYSIS_APPROACHES,
   type AnalysisApproach,
   can,
@@ -19,7 +18,7 @@ import { useState } from 'react';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { Panel, useCloseSilently, useSettleUnsaved } from './panels';
+import { Dialog, useCloseSilently, useSettleUnsaved } from './dialogs';
 import { TextWithReferences } from './rich-text';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -281,19 +280,18 @@ export function OwnerActions({
   );
 }
 
-export function MemberPanel({ member, onClose }: { member: InitiativeMemberDto; onClose: () => void }) {
+/** Fiche d'un membre de l'équipe, en lecture. */
+export function MemberDetails({ member }: { member: InitiativeMemberDto }) {
   const { t } = useI18n();
   return (
-    <Panel title={memberName(member)} kicker={t('member.kicker')} onClose={onClose}>
-      <dl>
-        <dt>{t('member.email')}</dt>
-        <dd>{member.email ?? '—'}</dd>
-        <dt>{t('member.role')}</dt>
-        <dd>{t(`role.${member.role}`)}</dd>
-        <dt>{t('member.teamBa')}</dt>
-        <dd>{t(member.isTeamBa ? 'common.yes' : 'common.no')}</dd>
-      </dl>
-    </Panel>
+    <dl>
+      <dt>{t('member.email')}</dt>
+      <dd>{member.email ?? '—'}</dd>
+      <dt>{t('member.role')}</dt>
+      <dd>{t(`role.${member.role}`)}</dd>
+      <dt>{t('member.teamBa')}</dt>
+      <dd>{t(member.isTeamBa ? 'common.yes' : 'common.no')}</dd>
+    </dl>
   );
 }
 
@@ -334,7 +332,7 @@ export function CreateInitiativeDialog({
   }
 
   return (
-    <Panel title={t('initiatives.new')} variant="dialog" onClose={onClose}>
+    <Dialog title={t('initiatives.new')} onClose={onClose}>
       <form className="stacked" onSubmit={submit}>
         <label>
           {t('initiative.code')}
@@ -352,6 +350,6 @@ export function CreateInitiativeDialog({
         <button type="submit">{t('initiatives.create')}</button>
       </form>
       <ErrorMessage error={error} />
-    </Panel>
+    </Dialog>
   );
 }

@@ -76,7 +76,7 @@ function TicketButton({ initiativeId, ticket }: { initiativeId: string; ticket: 
   );
 }
 
-/** Une page s'ouvre dans l'écran de données, panneaux fermés (ticket 22, choix 6). */
+/** Une page s'ouvre dans l'écran de données (ticket 22, choix 6). */
 function PageButton({ initiativeId, page }: { initiativeId: string; page: PageRow }) {
   const { goTo } = useScreens();
   return (

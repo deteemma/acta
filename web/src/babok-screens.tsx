@@ -1,6 +1,10 @@
-// Référentiel BABOK (ticket 06, ADR-0012) : consultation en lecture seule.
+// Référentiel BABOK (ticket 06, ADR-0012) : consultation en lecture seule, dans
+// la zone de droite (navigation par arborescence, N3) ; ses deux onglets et
+// chacun de ses éléments ont leur adresse (N12).
 import {
+  BABOK_TABS,
   type BabokDto,
+  type BabokTab,
   type BabokElementDto,
   babokEnglishName,
   englishTermTooltip,
@@ -12,9 +16,9 @@ import {
 } from '@app/shared';
 import { useEffect, useState } from 'react';
 import { api } from './api';
+import { type Crumb, ScreenLayout, type Tab } from './data-screen';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { Panel, usePanels } from './panels';
 import { useScreens } from './screens';
 
 /** Nom dans la langue de l'interface ; en français, le nom anglais en info-bulle (ADR-0013). */
@@ -23,9 +27,9 @@ export function BabokName({ element }: { element: BabokElementDto }) {
   return <span title={babokEnglishName(element, locale)}>{element.name[locale]}</span>;
 }
 
-/** Lien vers la fiche d'un élément, ouverte dans un panneau superposé. */
+/** Lien vers la fiche d'un élément, qui s'ouvre dans la zone de droite. */
 function BabokLink({ element, pill = false }: { element: BabokElementDto; pill?: boolean }) {
-  const { open } = usePanels();
+  const { goTo } = useScreens();
   return (
     <button
       type="button"
@@ -33,7 +37,7 @@ function BabokLink({ element, pill = false }: { element: BabokElementDto; pill?:
       onClick={(event) => {
         // Dans un <summary>, ouvrir la fiche sans déplier la liste.
         event.preventDefault();
-        open({ kind: 'babokElement', elementId: element.id });
+        void goTo({ kind: 'babokElement', elementId: element.id });
       }}
     >
       {!pill && <span className="code">{element.section}</span>} <BabokName element={element} />
@@ -69,122 +73,133 @@ function BabokItem({ element, linked }: { element: BabokElementDto; linked: Babo
   );
 }
 
-/** Intitulé d'un terme du BABOK, l'anglais en info-bulle. */
-function Term({ as: Tag = 'h3', term }: { as?: 'h3' | 'dt'; term: 'babok.knowledgeArea' | 'babok.knowledgeAreas' | 'babok.tasks' | 'babok.techniques' }) {
-  const { t, locale } = useI18n();
-  return <Tag title={englishTermTooltip(locale, term)}>{t(term)}</Tag>;
-}
-
 /** Vue d'ensemble, en deux onglets (validé le 01.11.2026) : les domaines et leurs tâches, les techniques. */
-export function BabokPanel({ babok, onClose }: { babok: BabokDto; onClose: () => void }) {
+export function BabokScreen({ babok, tab }: { babok: BabokDto | null; tab: BabokTab }) {
   const { t, locale } = useI18n();
-  const [tab, setTab] = useState<'areas' | 'techniques'>('areas');
+  const { goTo } = useScreens();
+  const tabs: Tab<BabokTab>[] = BABOK_TABS.map((id) =>
+    id === 'areas'
+      ? { id, label: t('babok.areasTab') }
+      : {
+          id,
+          label: t('babok.techniques'),
+          tooltip: englishTermTooltip(locale, 'babok.techniques'),
+          ...(babok && { count: babok.techniques.length }),
+        },
+  );
   return (
-    <Panel title={t('babok.title')} kicker={t('babok.kicker')} onClose={onClose}>
+    <ScreenLayout
+      crumbs={[]}
+      kind={t('babok.kicker')}
+      title={t('babok.title')}
+      tabs={tabs}
+      tab={tab}
+      onTab={(next) => void goTo({ kind: 'babok', tab: next })}
+    >
       <p className="notice">{t('babok.notice')}</p>
-      <div role="tablist" className="tabs">
-        <button type="button" role="tab" id="babok-tab-areas" aria-controls="babok-areas" aria-selected={tab === 'areas'} onClick={() => setTab('areas')}>
-          {t('babok.areasTab')}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="babok-tab-techniques"
-          aria-controls="babok-techniques"
-          aria-selected={tab === 'techniques'}
-          onClick={() => setTab('techniques')}
-        >
-          <span title={englishTermTooltip(locale, 'babok.techniques')}>{t('babok.techniques')}</span>
-          <span className="count">{babok.techniques.length}</span>
-        </button>
-      </div>
-      <div role="tabpanel" id="babok-areas" aria-labelledby="babok-tab-areas" hidden={tab !== 'areas'}>
-        {babok.knowledgeAreas.map((area) => (
+      {!babok ? (
+        <p>{t('common.loading')}</p>
+      ) : tab === 'areas' ? (
+        babok.knowledgeAreas.map((area) => (
           <section key={area.id} className="babok-area">
-            <h4>
+            <h2>
               <BabokLink element={area} />
-            </h4>
+            </h2>
             <div className="disclosure-list">
               {tasksOfKnowledgeArea(babok, area.id).map((task) => (
                 <BabokItem key={task.id} element={task} linked={techniquesOfTask(babok, task)} />
               ))}
             </div>
           </section>
-        ))}
-      </div>
-      <div role="tabpanel" id="babok-techniques" aria-labelledby="babok-tab-techniques" hidden={tab !== 'techniques'}>
+        ))
+      ) : (
         <div className="disclosure-list">
           {babok.techniques.map((technique) => (
             <BabokItem key={technique.id} element={technique} linked={tasksUsingTechnique(babok, technique.id)} />
           ))}
         </div>
-      </div>
-    </Panel>
+      )}
+    </ScreenLayout>
   );
 }
 
 /** Fiche d'un élément : nom, renvoi de section, résumé et éléments liés. */
-export function BabokElementPanel({
-  babok,
-  element,
-  onClose,
-}: {
-  babok: BabokDto;
-  element: BabokElementDto;
-  onClose: () => void;
-}) {
+export function BabokElementScreen({ babok, elementId }: { babok: BabokDto | null; elementId: string }) {
   const { t, locale } = useI18n();
+  const { goTo } = useScreens();
+  const element = babok ? findBabokElement(babok, elementId) : undefined;
+  const crumbs: Crumb[] = [{ key: 'babok', label: t('babok.title'), onSelect: () => void goTo({ kind: 'babok', tab: 'areas' }) }];
+  if (!babok || !element) {
+    // Section inconnue (adresse ancienne ou mal saisie).
+    return (
+      <ScreenLayout crumbs={crumbs} kind={t('babok.kicker')} title={babok ? elementId : t('common.loading')}>
+        {babok && (
+          <p className="error" role="alert">
+            {t('babok.notFound')}
+          </p>
+        )}
+      </ScreenLayout>
+    );
+  }
+  if (element.kind === 'technique') {
+    crumbs.push({ key: 'techniques', label: t('babok.techniques'), onSelect: () => void goTo({ kind: 'babok', tab: 'techniques' }) });
+  } else if (element.kind === 'task') {
+    const area = findBabokElement(babok, element.knowledgeAreaId);
+    if (area) {
+      crumbs.push({
+        key: area.id,
+        label: `${area.section} ${area.name[locale]}`,
+        onSelect: () => void goTo({ kind: 'babokElement', elementId: area.id }),
+      });
+    }
+  }
   return (
-    <Panel
+    <ScreenLayout
+      crumbs={crumbs}
+      kind={<span title={englishTermTooltip(locale, `babok.${element.kind}`)}>{t(`babok.${element.kind}`)}</span>}
+      reference={t('babok.section', { section: element.section })}
       title={element.name[locale]}
       titleTooltip={babokEnglishName(element, locale)}
-      kicker={
-        <>
-          <span title={englishTermTooltip(locale, `babok.${element.kind}`)}>{t(`babok.${element.kind}`)}</span>{' '}
-          <span className="code">{t('babok.section', { section: element.section })}</span>
-        </>
-      }
-      onClose={onClose}
     >
       <p className="babok-summary">{element.summary[locale]}</p>
       {element.kind === 'knowledgeArea' && (
         <>
-          <h3 className="group-title" title={englishTermTooltip(locale, 'babok.tasks')}>
+          <h2 className="group-title" title={englishTermTooltip(locale, 'babok.tasks')}>
             {t('babok.tasks')} <span className="count">{tasksOfKnowledgeArea(babok, element.id).length}</span>
-          </h3>
+          </h2>
           <BabokLinks elements={tasksOfKnowledgeArea(babok, element.id)} />
         </>
       )}
       {element.kind === 'task' && (
         <>
           <dl>
-            <Term as="dt" term="babok.knowledgeArea" />
+            <dt title={englishTermTooltip(locale, 'babok.knowledgeArea')}>{t('babok.knowledgeArea')}</dt>
             <dd>
               <BabokLink element={findBabokElement(babok, element.knowledgeAreaId)!} />
             </dd>
           </dl>
-          <h3 className="group-title">
+          <h2 className="group-title">
             {t('babok.techniquesOfTask')} <span className="count">{techniquesOfTask(babok, element).length}</span>
-          </h3>
+          </h2>
           <BabokLinks elements={techniquesOfTask(babok, element)} />
           <TaskPages taskId={element.id} />
         </>
       )}
       {element.kind === 'technique' && (
         <>
-          <h3 className="group-title">
+          <h2 className="group-title">
             {t('babok.tasksUsingTechnique')} <span className="count">{tasksUsingTechnique(babok, element.id).length}</span>
-          </h3>
+          </h2>
           <BabokLinks elements={tasksUsingTechnique(babok, element.id)} />
         </>
       )}
-    </Panel>
+    </ScreenLayout>
   );
 }
 
 /**
  * Pages créées depuis un modèle de la tâche (ticket 27, décision 09, point 8), dans
- * les initiatives dont je suis membre. Une référence ouvre l'écran Pages sur elle.
+ * les initiatives dont je suis membre. Une référence ouvre la page.
  */
 function TaskPages({ taskId }: { taskId: string }) {
   const { t } = useI18n();
@@ -198,9 +213,9 @@ function TaskPages({ taskId }: { taskId: string }) {
 
   return (
     <>
-      <h3 className="group-title">
+      <h2 className="group-title">
         {t('babok.taskPages')} {pages && <span className="count">{pages.length}</span>}
-      </h3>
+      </h2>
       <ErrorMessage error={error} />
       <p>
         <small>{t('babok.taskPagesHint')}</small>

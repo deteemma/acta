@@ -41,8 +41,9 @@ import { api, ApiError } from './api';
 import { useTicketLabels, useTicketTypes } from './ticket-types';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { formatDate } from './initiative-panels';
-import { Panel, useCloseSilently, usePanels } from './panels';
+import { formatDate } from './initiative-sheet';
+import { Dialog, useCloseSilently, useDialogs } from './dialogs';
+import { useScreens } from './screens';
 import { useOpenNode } from './references';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-screen';
@@ -58,7 +59,7 @@ const canEditActions = (action: Pick<ActionDto, 'initiative'>) =>
  */
 export function BabokPreview({ element }: { element: BabokElementDto }) {
   const { t, locale } = useI18n();
-  const { open } = usePanels();
+  const { goTo } = useScreens();
   const english = babokEnglishName(element, locale);
   // Une même tâche peut apparaître plusieurs fois dans une liste.
   const previewId = useId();
@@ -68,7 +69,7 @@ export function BabokPreview({ element }: { element: BabokElementDto }) {
         type="button"
         className="link"
         aria-describedby={previewId}
-        onClick={() => open({ kind: 'babokElement', elementId: element.id })}
+        onClick={() => void goTo({ kind: 'babokElement', elementId: element.id })}
       >
         <strong>{element.section}</strong> {element.name[locale]}
       </button>
@@ -476,7 +477,7 @@ function DeleteAction({ action, onDeleted }: { action: ActionDto; onDeleted: () 
 /** Bouton « Nouvelle action » d'une fiche : l'action est créée depuis cet objet et liée à lui (ticket 13). */
 export function NewActionButton({ initiative, from }: { initiative: InitiativeDto; from: AnalysisObjectRef }) {
   const { t } = useI18n();
-  const { open } = usePanels();
+  const { open } = useDialogs();
   if (!canCreateActionIn(initiative)) return null;
   return (
     <button type="button" onClick={() => open({ kind: 'createAction', initiativeId: initiative.id, from })}>
@@ -529,7 +530,7 @@ export function CreateActionDialog({
 }: {
   babok: BabokDto;
   initiatives: InitiativeDto[];
-  /** Initiative proposée d'abord (celle du panneau d'où l'on vient). */
+  /** Initiative proposée d'abord (celle de l'écran d'où l'on vient). */
   initiativeId?: string;
   /** Objet de l'initiative `initiativeId` depuis lequel l'action est créée. */
   from?: AnalysisObjectRef;
@@ -629,7 +630,7 @@ export function CreateActionDialog({
   );
 
   return (
-    <Panel title={t('actions.new')} variant="dialog" onClose={onClose}>
+    <Dialog title={t('actions.new')} onClose={onClose}>
       {editable.length === 0 ? (
         <p className="notice">{t('actions.noEditableInitiative')}</p>
       ) : (
@@ -701,6 +702,6 @@ export function CreateActionDialog({
         </form>
       )}
       <ErrorMessage error={error} />
-    </Panel>
+    </Dialog>
   );
 }

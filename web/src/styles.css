@@ -607,44 +607,12 @@ ul.dense-list > li {
   }
 }
 
-/* Coque de navigation (ticket 02) */
-:root {
-  --panel-width: min(32rem, 100%);
-}
 /*
- * Grand écran : le panneau latéral s'ancre à droite, la page se resserre à côté.
- * Le bouton « + Action » de la page passe sous le panneau : celui du panneau le remplace.
- */
-.panel-docked {
-  position: fixed;
-  inset: 0 0 0 auto;
-  z-index: 2;
-  /* Le navigateur ne fait défiler que les panneaux modaux. */
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-/* Plus précis que .panel-side, écrit plus bas. */
-.panel-side.panel-docked {
-  width: var(--docked-current-width);
-  max-width: none;
-}
-/* L'en-tête (titre, fermeture) reste visible au défilement. */
-.panel-side .panel-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--surface);
-}
-body:has(.panel-docked[open]) .shell-main {
-  margin-inline-end: var(--docked-current-width);
-}
-/*
- * Largeurs réglables (resize.tsx) : la poignée règle --sidebar-width et
- * --docked-panel-width ; les bornes valent aussi si la fenêtre change de taille.
+ * Largeur réglable de la barre latérale (resize.tsx) : la poignée règle
+ * --sidebar-width ; les bornes valent aussi si la fenêtre change de taille.
  */
 :root {
   --sidebar-current-width: clamp(14rem, var(--sidebar-width, 18rem), 28rem);
-  --docked-current-width: clamp(24rem, var(--docked-panel-width, 32rem), 60vw);
 }
 .resize-handle {
   position: fixed;
@@ -675,9 +643,6 @@ body.resizing .resize-handle::after {
 .sidebar-resize {
   left: calc(var(--sidebar-current-width) - 0.25rem);
 }
-.panel-resize {
-  right: calc(var(--docked-current-width) - 0.25rem);
-}
 body.resizing {
   cursor: col-resize;
   user-select: none;
@@ -686,9 +651,6 @@ body.resizing {
   .sidebar-resize {
     display: none;
   }
-}
-body:has(.panel-docked[open]) .shell > .fab {
-  display: none;
 }
 .links {
   list-style: none;
@@ -736,63 +698,49 @@ kbd {
   box-shadow: var(--shadow-fab);
 }
 
-.panel {
+/* Fenêtres de dialogue : palette et créations (navigation par arborescence, N15). */
+.modal {
   padding: 0;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-panel);
 }
-.panel::backdrop {
+.modal::backdrop {
   background: var(--backdrop);
 }
-/* Panneau latéral : à droite, la liste reste visible. */
-.panel-side {
-  margin: 0 0 0 auto;
-  width: var(--panel-width);
-  max-width: 100%;
-  height: 100dvh;
-  max-height: 100dvh;
-  animation: slide-in-right 0.15s ease-out;
-}
-.panel-palette {
+.modal-palette {
   margin: 12vh auto auto;
   width: min(36rem, calc(100% - var(--space-8)));
   border-radius: var(--radius-lg);
 }
-/* Création en fenêtre de dialogue centrée (navigation par arborescence, N15). */
-.panel-dialog {
+/* Création en fenêtre de dialogue centrée. */
+.modal-dialog {
   margin: auto;
   width: min(32rem, calc(100% - var(--space-8)));
   max-height: calc(100dvh - var(--space-8));
   border-radius: var(--radius-lg);
 }
-.panel-header {
+.modal-header {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-4) var(--space-3) var(--space-6);
   border-bottom: 1px solid var(--border);
 }
-.panel-title {
+.modal-title {
   flex: 1;
   min-width: 0;
 }
-.panel-header h2 {
+.modal-header h2 {
   margin: 0;
 }
-.panel-kicker {
+.modal-kicker {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
   color: var(--muted);
   font-size: var(--text-small);
-}
-.panel-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  margin-top: var(--space-2);
 }
 /* Fiche d'un objet (refonte du design, ticket 04) : groupes titrés, sections avec compteur. */
 .group-title {
@@ -805,8 +753,8 @@ kbd {
   text-transform: uppercase;
   color: var(--muted);
 }
-.panel-body > .group-title:first-child,
-.panel-body > .notice + .group-title {
+:is(.modal-body, .data-body) > .group-title:first-child,
+:is(.modal-body, .data-body) > .notice + .group-title {
   margin-top: 0;
 }
 .section-header h4 {
@@ -832,7 +780,7 @@ form.stacked .code-name {
   grid-template-columns: 8rem minmax(0, 1fr);
   gap: var(--space-3);
 }
-.panel-close {
+.modal-close {
   width: 2.25rem;
   padding: 0;
   background: none;
@@ -842,25 +790,18 @@ form.stacked .code-name {
   cursor: pointer;
   color: inherit;
 }
-.panel-handle {
-  display: none;
-}
-.panel-body {
+.modal-body {
   padding: var(--space-6) var(--space-6) var(--space-8);
 }
-/* Le bouton flottant ne recouvre pas le bas du contenu (ex. « Créer le compte »). */
-.panel:has(> .fab) > .panel-body {
-  padding-bottom: calc(3.5rem + 2 * var(--space-6));
-}
-.panel dl {
+:is(.modal, .data-body) dl {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: var(--space-1) var(--space-4);
 }
-.panel dt {
+:is(.modal, .data-body) dt {
   color: var(--muted);
 }
-.panel dd {
+:is(.modal, .data-body) dd {
   margin: 0;
 }
 form.stacked {
@@ -937,7 +878,7 @@ details.archived .links {
   color: var(--muted);
 }
 /* Référentiel BABOK (ticket 06) */
-.babok-area h4 {
+.babok-area h2 {
   margin: var(--space-4) 0 var(--space-1);
 }
 details.babok-item {
@@ -965,52 +906,15 @@ details.babok-item .links {
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
-.panel-palette input {
+.modal-palette input {
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Petit écran : plein écran, glissé depuis le bas, refermé en glissant vers le bas. */
 @media (max-width: 40rem) {
-  .panel-side {
-    margin: 0;
-    width: 100%;
-    height: 100dvh;
-    border: none;
-    animation: slide-up 0.2s ease-out;
-  }
-  .panel-side .panel-header {
-    padding-top: var(--space-6);
-    touch-action: none;
-  }
-  .panel-side .panel-handle {
-    display: block;
-    position: absolute;
-    top: var(--space-2);
-    left: calc(50% - 1.5rem);
-    width: 3rem;
-    height: 0.3rem;
-    border-radius: var(--radius-pill);
-    background: var(--border);
-  }
   .fab {
     right: var(--space-4);
     bottom: var(--space-4);
-  }
-}
-@keyframes slide-in-right {
-  from {
-    transform: translateX(100%);
-  }
-}
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .panel {
-    animation: none;
   }
 }
 /* Alerte de modifications non enregistrées (phase 2, ticket 15) */
@@ -1085,10 +989,10 @@ form.invite h4 {
   gap: var(--space-4);
   margin-top: var(--space-8);
 }
-.panel-body .section-header {
+.modal-body .section-header {
   margin-top: var(--space-6);
 }
-.panel-body .group-title + .section-header {
+.modal-body .group-title + .section-header {
   margin-top: 0;
 }
 .section-buttons {
@@ -1175,15 +1079,6 @@ form.invite h4 {
   /* L'aperçu de la tâche déborde de sa cellule. */
   .page .action-task:has(.babok-preview:is(:hover, :focus-within)) {
     overflow: visible;
-  }
-}
-/* Panneau ancré : la liste est plus étroite, les colonnes cèdent la place. */
-@media (min-width: 64rem) and (max-width: 100rem) {
-  body:has(.panel-docked[open]) .page .action-row {
-    display: flex;
-  }
-  body:has(.panel-docked[open]) .page .action-row.list-head {
-    display: none;
   }
 }
 .filter-chips {
@@ -1629,7 +1524,7 @@ button.icon-only {
   align-items: center;
   gap: var(--space-2);
 }
-.panel-close .lucide {
+.modal-close .lucide {
   width: 1.375rem;
   height: 1.375rem;
 }
@@ -1741,7 +1636,7 @@ main.signed-out {
     display: none;
   }
 }
-/* Champs côte à côte dans une fiche (ticket 04, lot 1) : passent à la ligne si le panneau est étroit. */
+/* Champs côte à côte dans une fiche (ticket 04, lot 1) : passent à la ligne si la place manque. */
 form.stacked .field-row {
   display: flex;
   flex-wrap: wrap;
@@ -1816,8 +1711,9 @@ button.link.pill:hover {
   border-color: var(--accent);
   text-decoration: none;
 }
-.babok-area h4 {
+.babok-area h2 {
   margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-section-title);
 }
 .babok-summary {
   max-width: 75ch;
@@ -1958,9 +1854,9 @@ button.link.pill:hover {
   vertical-align: -0.1em;
 }
 /*
- * Panneau ouvert : le titre reste sur une ligne (entier dans son info-bulle et dans
- * la fiche) et garde sa place ; les colonnes secondaires s'effacent une à une selon
- * la largeur disponible, celle que laissent la barre latérale et le panneau.
+ * Le titre reste sur une ligne (entier dans son info-bulle et dans la fiche) et
+ * garde sa place ; les colonnes secondaires s'effacent une à une selon la largeur
+ * que laisse la barre latérale.
  */
 .ticket-table-area {
   container-type: inline-size;
@@ -2069,7 +1965,7 @@ button.link.pill:hover {
     display: none;
   }
 }
-/* Panneau très élargi à la main : le titre garde encore sa place. */
+/* Barre latérale très élargie à la main : le titre garde encore sa place. */
 @container (max-width: 28rem) {
   .ticket-table .col-status {
     display: none;
@@ -2108,7 +2004,7 @@ button.link.pill:hover {
   gap: var(--space-1) var(--space-2);
   margin-top: var(--space-1);
 }
-/* Petit écran : liste compacte sur deux lignes ; la fiche prend toute la largeur (.panel-side). */
+/* Petit écran : liste compacte sur deux lignes. */
 @media (max-width: 40rem) {
   .ticket-table-area {
     display: none;

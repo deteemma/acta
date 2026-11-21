@@ -1,4 +1,5 @@
-// Administration (ticket 05, ADR-0005) : comptes de Keycloak, initiatives sans
+// Administration (ticket 05, ADR-0005), dans la zone de droite, un onglet par
+// adresse (navigation par arborescence, N3 et N12) : comptes de Keycloak, initiatives sans
 // propriétaire actif, acronymes des références (ticket 09), statuts d'exigence
 // (ticket 11), types de ticket et leurs statuts (ticket 29, admin-ticket-types.tsx),
 // modèles de page (ticket 30, admin-page-templates.tsx), limite de pièces jointes
@@ -8,6 +9,8 @@
 // page-template-admin.ts, attachments.ts).
 import {
   ACRONYM_MAX_LENGTH,
+  ADMIN_TABS,
+  type AdminTab,
   memberName,
   type AccountDto,
   type BabokDto,
@@ -30,15 +33,16 @@ import {
   type UpdateAccountInput,
   type UpdateRequirementStatusInput,
 } from '@app/shared';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import { adminRefusalError, ErrorMessage, toUiError, type UiError } from './errors';
 import { AttachmentQuotaSection } from './admin-attachment-quota';
 import { PageTemplatesSection } from './admin-page-templates';
 import { TicketTypesSection } from './admin-ticket-types';
 import { useTicketLabels, useTicketTypes } from './ticket-types';
+import { ScreenLayout, type Tab } from './data-screen';
 import { useI18n } from './i18n';
-import { Panel } from './panels';
+import { useScreens } from './screens';
 import { setRequirementStatuses } from './requirement-statuses';
 import { RevealFormContext, useUnsavedForm } from './unsaved-changes';
 
@@ -57,80 +61,80 @@ function adminError(error: unknown): UiError {
 const accountName = (account: AccountDto) =>
   [account.firstName, account.lastName].filter(Boolean).join(' ') || account.username;
 
-type AdminTab = 'accounts' | 'orphans' | 'references' | 'statuses' | 'ticketTypes' | 'pageTemplates' | 'attachments';
+const TAB_LABELS = {
+  accounts: 'admin.accounts',
+  orphans: 'admin.orphansTab',
+  references: 'admin.references',
+  statuses: 'admin.requirementStatuses',
+  'ticket-types': 'admin.ticketTypes',
+  'page-templates': 'admin.pageTemplates',
+  attachments: 'admin.attachments',
+} as const satisfies Record<AdminTab, string>;
 
 /**
  * Onglets (refonte du design, validé le 01.11.2026 ; « Types de ticket », « Modèles de page » et « Pièces jointes » : décision 14 de la phase 2). Toutes les sections
- * restent montées : elles se chargent à l'ouverture, ce qui donne les compteurs,
- * et une saisie en cours survit au changement d'onglet.
+ * restent montées d'un onglet à l'autre : elles se chargent à l'ouverture, ce qui
+ * donne les compteurs. Changer d'onglet passe par l'alerte des modifications non
+ * enregistrées (N13).
  */
-export function AdminPanel({ myId, babok, onClose }: { myId: string; babok: BabokDto | null; onClose: () => void }) {
+export function AdminScreen({ myId, babok, tab }: { myId: string; babok: BabokDto | null; tab: AdminTab }) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<AdminTab>('accounts');
+  const { goTo } = useScreens();
   const [accountCount, setAccountCount] = useState<number | null>(null);
   const [orphanCount, setOrphanCount] = useState<number | null>(null);
-  const tabs: { id: AdminTab; label: string; count: number | null; warn?: boolean }[] = [
-    { id: 'accounts', label: t('admin.accounts'), count: accountCount },
-    { id: 'orphans', label: t('admin.orphansTab'), count: orphanCount, warn: true },
-    { id: 'references', label: t('admin.references'), count: null },
-    { id: 'statuses', label: t('admin.requirementStatuses'), count: null },
-    { id: 'ticketTypes', label: t('admin.ticketTypes'), count: null },
-    { id: 'pageTemplates', label: t('admin.pageTemplates'), count: null },
-    { id: 'attachments', label: t('admin.attachments'), count: null },
-  ];
-  const panel = (id: AdminTab) => ({ role: 'tabpanel', id: `admin-${id}`, 'aria-labelledby': `admin-tab-${id}`, hidden: tab !== id });
+  // Enregistrement depuis l'alerte en échec : l'onglet du formulaire s'affiche,
+  // pour son erreur, sans changer l'adresse (une sortie est en cours).
+  const [revealed, setRevealed] = useState<{ tab: AdminTab; from: AdminTab } | null>(null);
+  const shown = revealed?.from === tab ? revealed.tab : tab;
+  const reveal = useCallback((id: AdminTab) => setRevealed({ tab: id, from: tab }), [tab]);
+  const counts: Partial<Record<AdminTab, number | null>> = { accounts: accountCount, orphans: orphanCount };
+  const tabs: Tab<AdminTab>[] = ADMIN_TABS.map((id) => {
+    const count = counts[id] ?? null;
+    // Initiatives sans propriétaire : le nombre n'apparaît que s'il y en a.
+    const showCount = count !== null && (count > 0 || id !== 'orphans');
+    return { id, label: t(TAB_LABELS[id]), ...(showCount && { count }) };
+  });
+  const section = (id: AdminTab) => ({ hidden: shown !== id });
   return (
-    <Panel title={t('admin.title')} onClose={onClose}>
-      <div role="tablist" className="tabs">
-        {tabs.map(({ id, label, count, warn }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            id={`admin-tab-${id}`}
-            aria-selected={tab === id}
-            aria-controls={`admin-${id}`}
-            onClick={() => setTab(id)}
-          >
-            {label}
-            {count !== null && (count > 0 || !warn) && (
-              <span className={`count${warn ? ' tone-negative' : ''}`}>{count}</span>
-            )}
-          </button>
-        ))}
-      </div>
-      <div {...panel('accounts')}>
-        <RevealFormContext.Provider value={() => setTab('accounts')}>
+    <ScreenLayout
+      crumbs={[]}
+      title={t('admin.title')}
+      tabs={tabs}
+      tab={shown}
+      onTab={(next) => void goTo({ kind: 'admin', tab: next }).then((left) => left && setRevealed(null))}
+    >
+      <div {...section('accounts')}>
+        <RevealFormContext.Provider value={() => reveal('accounts')}>
           <AccountsSection myId={myId} onCount={setAccountCount} />
         </RevealFormContext.Provider>
       </div>
-      <div {...panel('orphans')}>
+      <div {...section('orphans')}>
         <OrphanInitiativesSection onCount={setOrphanCount} />
       </div>
-      <div {...panel('references')}>
-        <RevealFormContext.Provider value={() => setTab('references')}>
+      <div {...section('references')}>
+        <RevealFormContext.Provider value={() => reveal('references')}>
           <ReferenceCategoriesSection />
         </RevealFormContext.Provider>
       </div>
-      <div {...panel('statuses')}>
-        <RevealFormContext.Provider value={() => setTab('statuses')}>
+      <div {...section('statuses')}>
+        <RevealFormContext.Provider value={() => reveal('statuses')}>
           <RequirementStatusesSection />
         </RevealFormContext.Provider>
       </div>
-      <div {...panel('ticketTypes')}>
-        <RevealFormContext.Provider value={() => setTab('ticketTypes')}>
+      <div {...section('ticket-types')}>
+        <RevealFormContext.Provider value={() => reveal('ticket-types')}>
           <TicketTypesSection />
         </RevealFormContext.Provider>
       </div>
-      <div {...panel('pageTemplates')}>
+      <div {...section('page-templates')}>
         <PageTemplatesSection babok={babok} />
       </div>
-      <div {...panel('attachments')}>
-        <RevealFormContext.Provider value={() => setTab('attachments')}>
+      <div {...section('attachments')}>
+        <RevealFormContext.Provider value={() => reveal('attachments')}>
           <AttachmentQuotaSection />
         </RevealFormContext.Provider>
       </div>
-    </Panel>
+    </ScreenLayout>
   );
 }
 
@@ -165,7 +169,7 @@ function AccountsSection({ myId, onCount }: { myId: string; onCount: (count: num
 
   return (
     <section>
-      <h3 className="visually-hidden">{t('admin.accounts')}</h3>
+      <h2 className="visually-hidden">{t('admin.accounts')}</h2>
       <p>
         <small>{t('admin.accountsHint')}</small>
       </p>
@@ -312,7 +316,7 @@ function OrphanInitiativesSection({ onCount }: { onCount: (count: number) => voi
 
   return (
     <section>
-      <h3 className="visually-hidden">{t('admin.orphans')}</h3>
+      <h2 className="visually-hidden">{t('admin.orphans')}</h2>
       <p>
         <small>{t('admin.orphansHint')}</small>
       </p>
@@ -383,7 +387,7 @@ function ReferenceCategoriesSection() {
 
   return (
     <section>
-      <h3 className="visually-hidden">{t('admin.references')}</h3>
+      <h2 className="visually-hidden">{t('admin.references')}</h2>
       <p>
         <small>{t('admin.referencesHint')}</small>
       </p>
@@ -514,7 +518,7 @@ function RequirementStatusesSection() {
 
   return (
     <section>
-      <h3 className="visually-hidden">{t('admin.requirementStatuses')}</h3>
+      <h2 className="visually-hidden">{t('admin.requirementStatuses')}</h2>
       <p>
         <small>{t('admin.requirementStatusesHint')}</small>
       </p>

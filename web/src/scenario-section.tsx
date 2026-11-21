@@ -35,7 +35,7 @@ import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { GherkinCheck } from './gherkin-check';
-import { Panel, useCloseSilently } from './panels';
+import { Dialog, useCloseSilently } from './dialogs';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -187,7 +187,7 @@ export function CreateScenarioDialog({
   const { t, locale } = useI18n();
   const closeSilently = useCloseSilently();
   return (
-    <Panel title={t('scenario.new')} variant="dialog" onClose={onClose}>
+    <Dialog title={t('scenario.new')} onClose={onClose}>
       <ScenarioForm
         submitLabel={t('scenario.create')}
         initial={{ title: '', text: '' }}
@@ -200,7 +200,7 @@ export function CreateScenarioDialog({
         }}
         onCancel={onClose}
       />
-    </Panel>
+    </Dialog>
   );
 }
 

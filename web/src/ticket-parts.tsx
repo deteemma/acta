@@ -17,7 +17,7 @@ import {
 import type { ReactNode } from 'react';
 import { useI18n } from './i18n';
 import { TicketStatusBadge, useTicketLabels } from './ticket-types';
-import { formatDate } from './initiative-panels';
+import { formatDate } from './initiative-sheet';
 import { useOpenNode } from './references';
 import { RichText } from './rich-text';
 import { formatDateTime } from './team-section';
