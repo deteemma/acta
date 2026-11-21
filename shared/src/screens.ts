@@ -4,6 +4,8 @@
 // revient à l'élément ou à l'onglet d'avant, et un lien peut être envoyé à un
 // membre. Les éléments pas encore repris dans l'écran de données s'ouvrent
 // encore dans leur panneau, sans adresse.
+// Un scénario n'a pas d'écran propre : son adresse ouvre l'onglet Scénarios de
+// son exigence, le scénario mis en évidence (N16).
 
 /** Onglets de l'initiative (N11) ; le premier est celui de l'adresse nue. */
 export const INITIATIVE_TABS = ['overview', 'members', 'designations', 'settings'] as const;
@@ -23,6 +25,9 @@ export type StakeholderTab = (typeof STAKEHOLDER_TABS)[number];
 /** Onglets d'un besoin : Fiche, Exigences, Liens. */
 export const NEED_TABS = ['sheet', 'requirements', 'links'] as const;
 export type NeedTab = (typeof NEED_TABS)[number];
+/** Onglets d'une exigence : Fiche, Scénarios (fonctionnelle seulement), Traçabilité, Liens, Historique. */
+export const REQUIREMENT_TABS = ['sheet', 'scenarios', 'trace', 'links', 'history'] as const;
+export type RequirementTab = (typeof REQUIREMENT_TABS)[number];
 
 export type Screen =
   | { kind: 'myActions' }
@@ -34,6 +39,9 @@ export type Screen =
   | { kind: 'need'; initiativeId: string; needId: string; tab: NeedTab }
   | { kind: 'needs'; initiativeId: string }
   | { kind: 'requirements'; initiativeId: string }
+  | { kind: 'requirement'; initiativeId: string; requirementId: string; tab: RequirementTab }
+  /** Onglet Scénarios de son exigence, le scénario mis en évidence (N16). */
+  | { kind: 'scenario'; initiativeId: string; requirementId: string; scenarioId: string }
   | { kind: 'tickets'; initiativeId: string }
   /** Arborescence des pages ; `pageId` : la page ouverte, null si aucune. */
   | { kind: 'pages'; initiativeId: string; pageId: string | null };
@@ -64,6 +72,10 @@ export function screenPath(screen: Screen): string {
       return `${base}/stakeholders/${screen.stakeholderId}${tabSegment(STAKEHOLDER_TABS, screen.tab)}`;
     case 'need':
       return `${base}/needs/${screen.needId}${tabSegment(NEED_TABS, screen.tab)}`;
+    case 'requirement':
+      return `${base}/requirements/${screen.requirementId}${tabSegment(REQUIREMENT_TABS, screen.tab)}`;
+    case 'scenario':
+      return `${base}/requirements/${screen.requirementId}/scenarios/${screen.scenarioId}`;
     case 'needs':
     case 'requirements':
     case 'tickets':
@@ -117,7 +129,17 @@ function parseInitiativePath(path: string): Screen | null {
       const tab = readTab(NEED_TABS, tabs);
       return tab && { kind: 'need', initiativeId, needId, tab };
     }
-    case 'requirements':
+    case 'requirements': {
+      const [requirementId, ...tabs] = rest;
+      if (!requirementId) return { kind: 'requirements', initiativeId };
+      if (!ID.test(requirementId)) return null;
+      const [tabName, scenarioId, ...extra] = tabs;
+      if (tabName === 'scenarios' && scenarioId !== undefined) {
+        return ID.test(scenarioId) && extra.length === 0 ? { kind: 'scenario', initiativeId, requirementId, scenarioId } : null;
+      }
+      const tab = readTab(REQUIREMENT_TABS, tabs);
+      return tab && { kind: 'requirement', initiativeId, requirementId, tab };
+    }
     case 'tickets':
       return rest.length === 0 ? { kind: first, initiativeId } : null;
     case 'pages': {

@@ -1,8 +1,9 @@
 // Écrans de données d'une initiative (ADR-0021, N11) : l'initiative elle-même
 // (Aperçu, Membres, Désignations, Paramètres), son tableau de bord, son équipe,
-// les listes des branches, les parties prenantes et les besoins. Les fiches gardent
+// les listes des branches, les parties prenantes, les besoins et les exigences. Les fiches gardent
 // leurs champs, droits et contrôles : seul leur conteneur change.
 import {
+  acceptsScenarios,
   type BabokDto,
   can,
   DASHBOARD_TABS,
@@ -14,6 +15,7 @@ import {
   NEED_TABS,
   type OwnerDesignationDto,
   pathToNode,
+  REQUIREMENT_TABS,
   screenNodeKey,
   STAKEHOLDER_TABS,
   STAKEHOLDERS_TABS,
@@ -33,7 +35,14 @@ import { formatDate, InitiativeCode, InitiativeDetails, InitiativeForm, OwnerAct
 import type { InitiativeData } from './initiative-tree';
 import { canEditNeeds, NeedLinks, NeedList, NeedRequirements, NeedSheet, requirementsOfNeed } from './need-screen';
 import { usePanels } from './panels';
-import { canEditRequirements, ExportRequirementsButton, RequirementList } from './requirement-panels';
+import {
+  canEditRequirements,
+  ExportRequirementsButton,
+  RequirementList,
+  RequirementTabContent,
+  TypeLabel,
+} from './requirement-screen';
+import { StatusLabel } from './requirement-statuses';
 import {
   canEditStakeholders,
   originatedBy,
@@ -64,6 +73,7 @@ export function InitiativeDataScreen({
   onActionCreated,
   onStakeholdersChanged,
   onNeedsChanged,
+  onRequirementsChanged,
   onLinksChanged,
 }: {
   screen: ElementScreen;
@@ -85,6 +95,8 @@ export function InitiativeDataScreen({
   onActionCreated: () => void;
   onStakeholdersChanged: () => void;
   onNeedsChanged: () => void;
+  /** Exigence ou scénario créé, modifié, supprimé ou déplacé : l'arborescence suit. */
+  onRequirementsChanged: () => void;
   /** Un lien avec un ticket a été créé ou retiré. */
   onLinksChanged: () => void;
 }) {
@@ -94,10 +106,12 @@ export function InitiativeDataScreen({
   const { initiative, members, tree } = data;
   const initiativeId = initiative.id;
   const state = { archived: initiative.archivedAt != null };
-  const path = pathToNode(tree, screenNodeKey(screen) ?? tree.key);
+  // Un scénario s'affiche dans son exigence : le fil d'Ariane va jusqu'à elle.
+  const shownKey = screen.kind === 'scenario' ? treeNodeKey({ kind: 'requirement', id: screen.requirementId }) : screenNodeKey(screen);
+  const path = pathToNode(tree, shownKey ?? tree.key);
   const crumbs = path.slice(0, -1);
   // Élément introuvable : le fil d'Ariane s'arrête à sa branche.
-  const branchCrumbs = (branch: 'stakeholders' | 'needs') => pathToNode(tree, treeNodeKey({ kind: 'branch', branch }));
+  const branchCrumbs = (branch: 'stakeholders' | 'needs' | 'requirements') => pathToNode(tree, treeNodeKey({ kind: 'branch', branch }));
   const childNode = (ref: TreeNodeRef) => tree.children.find((c) => c.key === treeNodeKey(ref));
   const me = members.find((m) => m.isMe);
   const archivedBadge = initiative.archivedAt && <span className="badge">{t('initiative.archived')}</span>;
@@ -322,6 +336,66 @@ export function InitiativeDataScreen({
         </DataScreen>
       );
     }
+    case 'requirement':
+    case 'scenario': {
+      const requirement = data.requirements.find((r) => r.id === screen.requirementId);
+      if (!requirement) {
+        return (
+          <MissingElement kind={t('requirement.kicker')} pending={pending} crumbs={branchCrumbs('requirements')} onCrumb={onSelectNode} />
+        );
+      }
+      const hasScenarios = acceptsScenarios(requirement);
+      // Scénarios : seulement pour une exigence de solution fonctionnelle ; sinon la Fiche.
+      const asked = screen.kind === 'scenario' ? 'scenarios' : screen.tab;
+      const tab = asked === 'scenarios' && !hasScenarios ? 'sheet' : asked;
+      const node = path.at(-1);
+      const scenarioCount = node?.children.filter((c) => c.ref.kind === 'scenario').length ?? 0;
+      const base = { kind: 'requirement', initiativeId, requirementId: requirement.id } as const;
+      return (
+        <DataScreen
+          {...common}
+          kind={t('requirement.kicker')}
+          reference={requirement.reference}
+          title={requirement.title}
+          badges={
+            <>
+              <StatusLabel status={requirement.status} />
+              <span className="badge">
+                <TypeLabel type={requirement.type} subtype={requirement.subtype} />
+              </span>
+            </>
+          }
+          tabs={tabsOf(
+            REQUIREMENT_TABS.filter((id) => id !== 'scenarios' || hasScenarios),
+            'requirementTab',
+            hasScenarios ? { scenarios: scenarioCount } : {},
+          )}
+          tab={tab}
+          onTab={(next) => onNavigate({ ...base, tab: next })}
+        >
+          {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
+          <RequirementTabContent
+            initiative={initiative}
+            requirement={requirement}
+            tab={tab}
+            scenarioId={screen.kind === 'scenario' ? screen.scenarioId : undefined}
+            stakeholders={data.stakeholders}
+            needs={data.needs}
+            requirements={data.requirements}
+            actionsVersion={actionsVersion}
+            onChanged={onRequirementsChanged}
+            onDeleted={() => {
+              onRequirementsChanged();
+              onReplace({ kind: 'requirements', initiativeId });
+            }}
+            onScenariosChanged={onRequirementsChanged}
+            onScenarioGone={() => onReplace({ ...base, tab: 'scenarios' })}
+            onAddScenario={(language) => open({ kind: 'createScenario', initiativeId, requirementId: requirement.id, language })}
+            onLinksChanged={onLinksChanged}
+          />
+        </DataScreen>
+      );
+    }
     case 'requirements':
       return (
         <DataScreen {...inInitiative} title={t('tree.requirements')}>
@@ -329,7 +403,7 @@ export function InitiativeDataScreen({
           <BranchToolbar>
             {data.requirements.length > 0 && <ExportRequirementsButton initiative={initiative} onError={setError} />}
             {canEditRequirements(initiative) && (
-              <button type="button" onClick={() => open({ kind: 'requirement', initiativeId })}>
+              <button type="button" onClick={() => open({ kind: 'createRequirement', initiativeId })}>
                 <Plus />
                 {t('requirements.new')}
               </button>

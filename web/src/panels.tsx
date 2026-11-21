@@ -22,6 +22,7 @@ import {
   hasDirtyForm,
   type InitiativeMemberDto,
   leavePanels,
+  type Locale,
   type UnsavedChoice,
 } from '@app/shared';
 import { useI18n } from './i18n';
@@ -52,11 +53,9 @@ export type PanelContent =
   /** Fenêtres de création (N15) ; l'élément créé s'ouvre ensuite dans l'écran de données. */
   | { kind: 'createStakeholder'; initiativeId: string }
   | { kind: 'createNeed'; initiativeId: string }
-  /**
-   * Sans `requirementId`, création d'une exigence. Avec `scenarioId`, ouverte
-   * sur ce scénario, mis en évidence (palette, D20).
-   */
-  | { kind: 'requirement'; initiativeId: string; requirementId?: string; scenarioId?: string };
+  | { kind: 'createRequirement'; initiativeId: string }
+  /** Avec la langue de la validation de syntaxe (D15). */
+  | { kind: 'createScenario'; initiativeId: string; requirementId: string; language: Locale };
 
 interface Entry {
   id: number;

@@ -25,6 +25,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-screen';
 import { usePanels } from './panels';
+import { RequirementLink } from './requirement-screen';
 import { useScreens } from './screens';
 import { TicketStatusLabel, ticketTarget } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
@@ -160,7 +161,6 @@ export function TicketLinks({
   onChanged: () => void;
 }) {
   const { t } = useI18n();
-  const { open } = usePanels();
   const { data, setLinks, error: loadError } = useLinkData(initiativeId, version, true);
   const { error, remove } = useRemove(onChanged);
   if (!data) return <ErrorMessage error={loadError} />;
@@ -199,9 +199,7 @@ export function TicketLinks({
         title={t('link.requirements')}
         items={shown.requirements}
         render={(requirement) => (
-          <button type="button" className="link" onClick={() => open({ kind: 'requirement', initiativeId, requirementId: requirement.id })}>
-            <strong>{requirement.reference}</strong> {requirement.title}
-          </button>
+          <RequirementLink initiativeId={initiativeId} requirement={requirement} />
         )}
         onRemove={canEdit ? (requirement) => remove(() => api.removeRequirementLink(initiativeId, ticketId, requirement.id)) : undefined}
       />
@@ -258,7 +256,6 @@ export function PageLinks({
   onChanged: () => void;
 }) {
   const { t } = useI18n();
-  const { open } = usePanels();
   const { error, remove } = useRemove(onChanged);
   const shown = linksOfPage(data.links, pageId, data);
   const empty = shown.tickets.length + shown.needs.length + shown.requirements.length === 0;
@@ -291,9 +288,7 @@ export function PageLinks({
         title={t('link.requirements')}
         items={shown.requirements}
         render={(requirement) => (
-          <button type="button" className="link" onClick={() => open({ kind: 'requirement', initiativeId, requirementId: requirement.id })}>
-            <strong>{requirement.reference}</strong> {requirement.title}
-          </button>
+          <RequirementLink initiativeId={initiativeId} requirement={requirement} />
         )}
         onRemove={canEdit ? (requirement) => removeLink('requirement', requirement.id) : undefined}
       />

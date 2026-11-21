@@ -35,7 +35,7 @@ import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedList } from './need-screen';
-import { RequirementList } from './requirement-panels';
+import { RequirementList } from './requirement-screen';
 import { Panel, useCloseSilently } from './panels';
 import { useOpenNode } from './references';
 import { RichText, RichTextEditor } from './rich-text';

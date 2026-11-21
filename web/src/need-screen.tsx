@@ -23,7 +23,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { Panel, useCloseSilently } from './panels';
 import { useOpenNode } from './references';
-import { RequirementList } from './requirement-panels';
+import { RequirementList } from './requirement-screen';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-screen';
 import { formatDateTime } from './team-section';

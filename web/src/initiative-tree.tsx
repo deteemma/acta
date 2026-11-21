@@ -155,12 +155,10 @@ export function nodeDestination(initiativeId: string, ref: TreeNodeRef): { scree
     case 'need':
       return { screen: { kind: 'need', initiativeId, needId: ref.id, tab: 'sheet' } };
     case 'requirement':
-      return { screen: { kind: 'requirements', initiativeId }, panel: { kind: 'requirement', initiativeId, requirementId: ref.id } };
+      return { screen: { kind: 'requirement', initiativeId, requirementId: ref.id, tab: 'sheet' } };
     case 'scenario':
-      return {
-        screen: { kind: 'requirements', initiativeId },
-        panel: { kind: 'requirement', initiativeId, requirementId: ref.requirementId, scenarioId: ref.id },
-      };
+      // L'onglet Scénarios de son exigence, le scénario mis en évidence (N16).
+      return { screen: { kind: 'scenario', initiativeId, requirementId: ref.requirementId, scenarioId: ref.id } };
     case 'ticket':
       return { screen: { kind: 'tickets', initiativeId }, panel: ticketTarget(initiativeId, ref) };
     case 'page':

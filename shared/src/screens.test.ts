@@ -111,3 +111,41 @@ test('un onglet inconnu d’une partie prenante ou d’un besoin mène à l’ac
     assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
   }
 });
+
+const SCENARIO = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+
+test('une exigence a son adresse, et chacun de ses onglets ; la Fiche est celle de l’adresse nue', () => {
+  const base = `/initiatives/${ID}/requirements/${ELEMENT}`;
+  const cases = [
+    [{ kind: 'requirement', initiativeId: ID, requirementId: ELEMENT, tab: 'sheet' }, base],
+    [{ kind: 'requirement', initiativeId: ID, requirementId: ELEMENT, tab: 'scenarios' }, `${base}/scenarios`],
+    [{ kind: 'requirement', initiativeId: ID, requirementId: ELEMENT, tab: 'trace' }, `${base}/trace`],
+    [{ kind: 'requirement', initiativeId: ID, requirementId: ELEMENT, tab: 'links' }, `${base}/links`],
+    [{ kind: 'requirement', initiativeId: ID, requirementId: ELEMENT, tab: 'history' }, `${base}/history`],
+  ] as const;
+  for (const [screen, path] of cases) {
+    assert.equal(screenPath(screen), path);
+    assert.deepEqual(parseScreenPath(path), screen, path);
+  }
+});
+
+test('un scénario a son adresse : l’onglet Scénarios de son exigence, le scénario mis en évidence', () => {
+  const screen = { kind: 'scenario', initiativeId: ID, requirementId: ELEMENT, scenarioId: SCENARIO } as const;
+  const path = `/initiatives/${ID}/requirements/${ELEMENT}/scenarios/${SCENARIO}`;
+  assert.equal(screenPath(screen), path);
+  assert.deepEqual(parseScreenPath(path), screen);
+  assert.equal(sameScreen(screen, { kind: 'requirement', initiativeId: ID, requirementId: ELEMENT, tab: 'scenarios' }), false);
+});
+
+test('un onglet inconnu d’une exigence ou un scénario mal formé mène à l’accueil', () => {
+  for (const path of [
+    `/initiatives/${ID}/requirements/${ELEMENT}/inconnu`,
+    `/initiatives/${ID}/requirements/${ELEMENT}/origin`,
+    `/initiatives/${ID}/requirements/${ELEMENT}/scenarios/pas-un-id`,
+    `/initiatives/${ID}/requirements/${ELEMENT}/scenarios/${SCENARIO}/x`,
+    `/initiatives/${ID}/requirements/${ELEMENT}/trace/${SCENARIO}`,
+    `/initiatives/${ID}/requirements/pas-un-id`,
+  ]) {
+    assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
+  }
+});

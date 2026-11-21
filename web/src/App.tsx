@@ -33,7 +33,8 @@ import { IS_MAC, Palette, usePaletteShortcut } from './palette';
 import { PagesScreen } from './pages-screen';
 import { FabContext, PanelHost, type PanelContent, PanelsProvider, SCREEN_TITLE_ID, ScreenForms, usePanels } from './panels';
 import { ReferencesProvider } from './references';
-import { RequirementPanel } from './requirement-panels';
+import { CreateRequirementDialog } from './requirement-screen';
+import { CreateScenarioDialog } from './scenario-panels';
 import { ResizeHandle, SIDEBAR } from './resize';
 import { ScreensProvider, useScreens } from './screens';
 import { CreateTicketPanel, TicketPanel } from './ticket-panels';
@@ -287,6 +288,7 @@ function Shell({ user }: { user: User }) {
           onActionCreated={actionsChanged}
           onStakeholdersChanged={stakeholdersChanged}
           onNeedsChanged={needsChanged}
+          onRequirementsChanged={requirementsChanged}
           onLinksChanged={actionsChanged}
         />
       </ScreenForms>
@@ -531,17 +533,37 @@ function Shell({ user }: { user: User }) {
                     />
                   )
                 );
-              case 'requirement':
+              case 'createRequirement':
                 return (
-                  <RequirementPanel
+                  data?.initiative.id === content.initiativeId && (
+                    <CreateRequirementDialog
+                      initiativeId={content.initiativeId}
+                      stakeholders={data.stakeholders}
+                      needs={data.needs}
+                      requirements={data.requirements}
+                      onCreated={(created) => {
+                        requirementsChanged();
+                        void goTo({ kind: 'requirement', initiativeId: created.initiativeId, requirementId: created.id, tab: 'sheet' });
+                      }}
+                      onClose={close}
+                    />
+                  )
+                );
+              case 'createScenario':
+                return (
+                  <CreateScenarioDialog
                     initiativeId={content.initiativeId}
                     requirementId={content.requirementId}
-                    scenarioId={content.scenarioId}
-                    actionsVersion={actionsVersion}
-                    stakeholdersVersion={stakeholdersVersion}
-                    needsVersion={needsVersion}
-                    onChanged={requirementsChanged}
-                    onLinksChanged={actionsChanged}
+                    language={content.language}
+                    onCreated={(created) => {
+                      requirementsChanged();
+                      void goTo({
+                        kind: 'scenario',
+                        initiativeId: content.initiativeId,
+                        requirementId: created.requirementId,
+                        scenarioId: created.id,
+                      });
+                    }}
                     onClose={close}
                   />
                 );
@@ -569,12 +591,10 @@ function actionOrigin(content: PanelContent): { initiativeId: string; from?: Ana
     case 'createTicket':
     case 'createStakeholder':
     case 'createNeed':
+    case 'createRequirement':
       return { initiativeId: content.initiativeId };
-    case 'requirement':
-      return {
-        initiativeId: content.initiativeId,
-        ...(content.requirementId && { from: { kind: 'requirement', id: content.requirementId } }),
-      };
+    case 'createScenario':
+      return { initiativeId: content.initiativeId, from: { kind: 'requirement', id: content.requirementId } };
     default:
       return undefined;
   }
@@ -589,6 +609,9 @@ function screenActionOrigin(screen: Screen): { initiativeId: string; from?: Anal
       return { initiativeId: screen.initiativeId, from: { kind: 'stakeholder', id: screen.stakeholderId } };
     case 'need':
       return { initiativeId: screen.initiativeId, from: { kind: 'need', id: screen.needId } };
+    case 'requirement':
+    case 'scenario':
+      return { initiativeId: screen.initiativeId, from: { kind: 'requirement', id: screen.requirementId } };
     default:
       return { initiativeId: screen.initiativeId };
   }

@@ -1,5 +1,6 @@
-// Exigences (ticket 10) : liste d'une initiative, fiche d'une exigence dans un
-// panneau latéral, avec son historique. Règles dans @app/shared
+// Exigences (ticket 10) : liste d'une initiative, onglets d'une exigence dans
+// l'écran de données (ADR-0021, N11 : Fiche, Scénarios, Traçabilité, Liens,
+// Historique) et fenêtre de création (N15). Règles dans @app/shared
 // (requirements.ts, requirement-statuses.ts, references.ts, roles.ts).
 import {
   acceptsScenarios,
@@ -25,11 +26,13 @@ import {
   requirementStatusLabel,
   type RequirementRefDto,
   type RequirementStatus,
+  type RequirementTab,
   type RequirementSubtype,
   type RequirementType,
   type RequirementVersionDto,
   type FeatureContent,
   type FeatureDto,
+  type Locale,
   type ScenarioDto,
   selectableStatuses,
   type StakeholderDto,
@@ -44,7 +47,8 @@ import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-screen';
-import { Panel, useCloseSilently, usePanels } from './panels';
+import { Panel, useCloseSilently } from './panels';
+import { useOpenNode } from './references';
 import { setRequirementStatuses, StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
 import { NO_FEATURE, ScenariosSection } from './scenario-panels';
@@ -57,20 +61,16 @@ export const canEditRequirements = (initiative: InitiativeDto) =>
 
 /** Bouton qui ouvre la fiche d'une exigence : sa référence et son titre. */
 export function RequirementLink({ initiativeId, requirement }: { initiativeId: string; requirement: RequirementRefDto }) {
-  const { open } = usePanels();
+  const openNode = useOpenNode();
   return (
-    <button
-      type="button"
-      className="link"
-      onClick={() => open({ kind: 'requirement', initiativeId, requirementId: requirement.id })}
-    >
+    <button type="button" className="link" onClick={() => openNode(initiativeId, { kind: 'requirement', id: requirement.id })}>
       <strong>{requirement.reference}</strong> {requirement.title}
     </button>
   );
 }
 
 /** Type d'exigence (terme du BABOK, l'anglais en info-bulle), avec son sous-type. */
-function TypeLabel({ type, subtype }: { type: RequirementType; subtype: RequirementSubtype | null }) {
+export function TypeLabel({ type, subtype }: { type: RequirementType; subtype: RequirementSubtype | null }) {
   const { t, locale } = useI18n();
   return (
     <span title={englishTermTooltip(locale, `requirementType.${type}`)}>
@@ -141,43 +141,54 @@ export function ExportRequirementsButton({
   );
 }
 
-/** Fiche d'une exigence ; sans `requirementId`, création. */
-export function RequirementPanel({
-  initiativeId,
-  requirementId,
+/**
+ * Contenu de l'onglet affiché d'une exigence. L'exigence et les listes de
+ * l'initiative viennent de l'écran de données ; les scénarios, la Fonctionnalité
+ * et l'historique sont lus ici : la Fiche en a besoin pour figer le type (D2) et
+ * confirmer la suppression (D3).
+ */
+export function RequirementTabContent({
+  initiative,
+  requirement,
+  tab,
   scenarioId,
+  stakeholders,
+  needs,
+  requirements,
   actionsVersion,
-  stakeholdersVersion,
-  needsVersion,
   onChanged,
+  onDeleted,
+  onScenariosChanged,
+  onScenarioGone,
+  onAddScenario,
   onLinksChanged,
-  onClose,
 }: {
-  initiativeId: string;
-  requirementId?: string;
-  /** Scénario mis en évidence à l'ouverture (palette, D20). */
+  initiative: InitiativeDto;
+  requirement: RequirementDto;
+  /** Onglet affiché ; Scénarios seulement pour une exigence de solution fonctionnelle. */
+  tab: RequirementTab;
+  /** Scénario mis en évidence (arborescence, palette, référence citée : N16, D20). */
   scenarioId?: string;
+  stakeholders: StakeholderDto[];
+  needs: NeedDto[];
+  /** Toutes les exigences de l'initiative : choix de la parente, exigences enfants. */
+  requirements: RequirementDto[];
   /** Change à chaque écriture sur un ticket ou un lien : les tickets liés se rechargent. */
   actionsVersion: number;
-  /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
-  stakeholdersVersion: number;
-  /** De même pour les besoins. */
-  needsVersion: number;
-  /** Une exigence a été créée, modifiée ou supprimée : les listes se rechargent. */
+  /** Modifiée : les listes et l'arborescence se rechargent. */
   onChanged: () => void;
+  onDeleted: () => void;
+  /** Un scénario a été modifié, supprimé ou déplacé : l'arborescence se recharge. */
+  onScenariosChanged: () => void;
+  /** Le scénario mis en évidence vient d'être supprimé : l'adresse n'est plus la sienne. */
+  onScenarioGone: () => void;
+  /** « + Ajouter un scénario » : la fenêtre de création. */
+  onAddScenario: (language: Locale) => void;
   /** Un lien avec un ticket a été créé ou retiré. */
   onLinksChanged: () => void;
-  onClose: () => void;
 }) {
-  const { t } = useI18n();
-  const { replaceSaved } = usePanels();
-  const closeSilently = useCloseSilently();
-  const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
-  const [requirement, setRequirement] = useState<RequirementDto | null>(null);
-  const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
-  const [needs, setNeeds] = useState<NeedDto[] | null>(null);
-  // Toutes les exigences de l'initiative : choix de la parente, exigences enfants.
-  const [requirements, setRequirements] = useState<RequirementDto[] | null>(null);
+  const initiativeId = initiative.id;
+  const requirementId = requirement.id;
   const [versions, setVersions] = useState<RequirementVersionDto[]>([]);
   // Scénarios Gherkin (phase 3), seulement pour une exigence de solution fonctionnelle (D1, D18).
   const [loadedScenarios, setScenarios] = useState<ScenarioDto[]>([]);
@@ -187,35 +198,15 @@ export function RequirementPanel({
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
-    api.getInitiative(initiativeId).then(setInitiative, (e: unknown) => setError(toUiError(e)));
-    if (requirementId) {
-      api.getRequirement(initiativeId, requirementId).then(setRequirement, (e: unknown) => setError(toUiError(e)));
-    }
-  }, [initiativeId, requirementId]);
-
-  useEffect(() => {
-    api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, stakeholdersVersion]);
-
-  useEffect(() => {
-    api.listNeeds(initiativeId).then(setNeeds, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, needsVersion]);
-
-  // Relue après chaque enregistrement de cette fiche : une parente ou un enfant a pu changer.
-  useEffect(() => {
-    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, requirement?.updatedAt]);
-
-  useEffect(() => {
-    if (!requirementId) return;
+    if (tab !== 'history') return;
     api.requirementHistory(initiativeId, requirementId).then(setVersions, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, requirementId, requirement?.updatedAt]);
+  }, [initiativeId, requirementId, requirement.updatedAt, tab]);
 
-  const hasScenarios = requirement != null && acceptsScenarios(requirement);
+  const hasScenarios = acceptsScenarios(requirement);
   const scenarios = hasScenarios ? loadedScenarios : [];
   const feature = hasScenarios ? loadedFeature : NO_FEATURE;
   useEffect(() => {
-    if (!requirementId || !hasScenarios) return;
+    if (!hasScenarios) return;
     api.listScenarios(initiativeId, requirementId).then(setScenarios, (e: unknown) => setError(toUiError(e)));
     api.getFeature(initiativeId, requirementId).then(
       (next) => {
@@ -226,118 +217,106 @@ export function RequirementPanel({
     );
   }, [initiativeId, requirementId, hasScenarios]);
   const featureContent = { scenarioCount: scenarios.length, hasBackground: feature.background != null };
-
-  const children = (requirements ?? []).filter((r) => r.parent?.id === requirementId);
-  const ready = initiative && stakeholders && needs && requirements && (!requirementId || requirement);
+  const editable = canEditRequirements(initiative);
+  const children = requirements.filter((r) => r.parent?.id === requirementId);
 
   return (
-    <Panel
-      title={requirement ? requirement.title : requirementId ? t('common.loading') : t('requirements.new')}
-      kicker={
-        requirement && (
-          <>
-            {t('requirement.kicker')} <span className="code">{requirement.reference}</span>
-          </>
-        )
-      }
-      badges={
-        requirement && (
-          <>
-            <StatusLabel status={requirement.status} />
-            <span className="badge">
-              <TypeLabel type={requirement.type} subtype={requirement.subtype} />
-            </span>
-          </>
-        )
-      }
-      onClose={onClose}
-    >
+    <>
       <ErrorMessage error={error} />
-      {ready && (
+      {tab === 'sheet' && (
         <>
-          {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
-          {/* Groupes Fiche, Traçabilité, Historique (refonte du design, validé le 01.11.2026). */}
-          <h3 className="group-title">{t('initiative.groupSheet')}</h3>
-          {canEditRequirements(initiative) ? (
+          {editable ? (
             <RequirementForm
               initiativeId={initiativeId}
-              requirement={requirement ?? undefined}
+              requirement={requirement}
               stakeholders={stakeholders}
               needs={needs}
               requirements={requirements}
               typeLocked={isRequirementTypeLocked(featureContent)}
-              onSaved={(next) => {
-                setRequirement(next);
-                onChanged();
-                if (!requirement) replaceSaved({ kind: 'requirement', initiativeId, requirementId: next.id });
-              }}
+              onSaved={onChanged}
             />
           ) : (
-            requirement && <RequirementDetails requirement={requirement} />
+            <RequirementDetails requirement={requirement} />
           )}
-          {requirement && hasScenarios && (
-            <ScenariosSection
-              initiativeId={initiativeId}
-              requirementId={requirement.id}
-              scenarios={scenarios}
-              feature={feature}
-              highlightedId={featureLoaded ? scenarioId : undefined}
-              canEdit={can(initiative.myRole, 'editScenarios', { archived: initiative.archivedAt != null })}
-              onChange={setScenarios}
-              onFeatureChange={setFeature}
-            />
-          )}
-          {requirement && (
-            <>
-              <h3 className="group-title">{t('requirement.groupTrace')}</h3>
-              <h4 className="section-title">
-                {t('requirement.children')} <span className="count">{children.length}</span>
-              </h4>
-              <RequirementList requirements={children} />
-              {children.length === 0 && <p>{t('requirement.noChildren')}</p>}
-              <LinkedTickets
-                initiativeId={initiativeId}
-                end={{ kind: 'requirement', id: requirement.id }}
-                canEdit={can(initiative.myRole, 'editLinks', { archived: initiative.archivedAt != null })}
-                version={actionsVersion}
-                onChanged={onLinksChanged}
-                actions={<NewActionButton initiative={initiative} from={{ kind: 'requirement', id: requirement.id }} />}
-              />
-              <History versions={versions} />
-              {canEditRequirements(initiative) && (
-                <DeleteRequirement
-                  requirement={requirement}
-                  featureContent={featureContent}
-                  onDeleted={() => {
-                    onChanged();
-                    closeSilently();
-                  }}
-                />
-              )}
-            </>
-          )}
+          {editable && <DeleteRequirement requirement={requirement} featureContent={featureContent} onDeleted={onDeleted} />}
         </>
       )}
+      {tab === 'scenarios' && hasScenarios && (
+        <ScenariosSection
+          initiativeId={initiativeId}
+          requirementId={requirementId}
+          scenarios={scenarios}
+          feature={feature}
+          highlightedId={featureLoaded ? scenarioId : undefined}
+          canEdit={can(initiative.myRole, 'editScenarios', { archived: initiative.archivedAt != null })}
+          onChange={(next) => {
+            setScenarios(next);
+            onScenariosChanged();
+            if (scenarioId && !next.some((s) => s.id === scenarioId)) onScenarioGone();
+          }}
+          onFeatureChange={setFeature}
+          onAdd={onAddScenario}
+        />
+      )}
+      {tab === 'trace' && <RequirementTrace requirement={requirement} derived={children} />}
+      {tab === 'links' && (
+        <LinkedTickets
+          initiativeId={initiativeId}
+          end={{ kind: 'requirement', id: requirementId }}
+          canEdit={can(initiative.myRole, 'editLinks', { archived: initiative.archivedAt != null })}
+          version={actionsVersion}
+          onChanged={onLinksChanged}
+          actions={<NewActionButton initiative={initiative} from={{ kind: 'requirement', id: requirementId }} />}
+        />
+      )}
+      {tab === 'history' && <History versions={versions} />}
+    </>
+  );
+}
+
+/** Nouvelle exigence, en fenêtre de dialogue (N15) : les champs de création actuels. */
+export function CreateRequirementDialog({
+  initiativeId,
+  stakeholders,
+  needs,
+  requirements,
+  onCreated,
+  onClose,
+}: {
+  initiativeId: string;
+  stakeholders: StakeholderDto[];
+  needs: NeedDto[];
+  requirements: RequirementDto[];
+  /** Créée : les listes se rechargent, l'écran de données l'affiche. */
+  onCreated: (requirement: RequirementDto) => void;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const closeSilently = useCloseSilently();
+  return (
+    <Panel title={t('requirements.new')} variant="dialog" onClose={onClose}>
+      <RequirementForm
+        initiativeId={initiativeId}
+        stakeholders={stakeholders}
+        needs={needs}
+        requirements={requirements}
+        typeLocked={false}
+        onSaved={(created) => {
+          // Saisie enregistrée : pas d'alerte.
+          closeSilently();
+          onCreated(created);
+        }}
+      />
     </Panel>
   );
 }
 
-/** Fiche en lecture seule : lecteur, ou initiative archivée. */
-function RequirementDetails({ requirement }: { requirement: RequirementDto }) {
+/** Onglet Traçabilité : besoins, exigence parente, exigences enfants et sources. */
+function RequirementTrace({ requirement, derived }: { requirement: RequirementDto; derived: RequirementDto[] }) {
   const { t } = useI18n();
   const none = (key: Parameters<typeof t>[0]) => <small>{t(key)}</small>;
   return (
     <dl>
-      <dt>{t('requirement.reference')}</dt>
-      <dd>{requirement.reference}</dd>
-      <dt>{t('requirement.type')}</dt>
-      <dd>
-        <TypeLabel type={requirement.type} subtype={requirement.subtype} />
-      </dd>
-      <dt>{t('requirement.status')}</dt>
-      <dd>
-        <StatusLabel status={requirement.status} />
-      </dd>
       <dt>{t('requirement.needs')}</dt>
       <dd>
         {requirement.needs.length === 0 ? (
@@ -360,6 +339,10 @@ function RequirementDetails({ requirement }: { requirement: RequirementDto }) {
           none('requirement.noParent')
         )}
       </dd>
+      <dt>
+        {t('requirement.children')} <span className="count">{derived.length}</span>
+      </dt>
+      <dd>{derived.length === 0 ? none('requirement.noChildren') : <RequirementList requirements={derived} />}</dd>
       <dt>{t('requirement.stakeholders')}</dt>
       <dd>
         {requirement.stakeholders.length === 0 ? (
@@ -373,6 +356,25 @@ function RequirementDetails({ requirement }: { requirement: RequirementDto }) {
             ))}
           </ul>
         )}
+      </dd>
+    </dl>
+  );
+}
+
+/** Fiche en lecture seule : lecteur, ou initiative archivée ; besoins, parente et sources sont dans la Traçabilité. */
+function RequirementDetails({ requirement }: { requirement: RequirementDto }) {
+  const { t } = useI18n();
+  return (
+    <dl>
+      <dt>{t('requirement.reference')}</dt>
+      <dd>{requirement.reference}</dd>
+      <dt>{t('requirement.type')}</dt>
+      <dd>
+        <TypeLabel type={requirement.type} subtype={requirement.subtype} />
+      </dd>
+      <dt>{t('requirement.status')}</dt>
+      <dd>
+        <StatusLabel status={requirement.status} />
       </dd>
       <dt>{t('requirement.statement')}</dt>
       <dd>
@@ -586,8 +588,7 @@ function History({ versions }: { versions: RequirementVersionDto[] }) {
   const { t, locale } = useI18n();
   return (
     // Frise chronologique, tableau Avant / Après par modification (validé le 01.11.2026).
-    <section className="requirement-history">
-      <h3 className="group-title">{t('requirement.history')}</h3>
+    <section className="requirement-history" aria-label={t('requirement.history')}>
       <ol className="timeline">
         {requirementHistory(versions).map((entry) => (
           <li key={entry.changedAt + entry.kind}>

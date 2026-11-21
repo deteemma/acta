@@ -1,5 +1,5 @@
-// Scénarios Gherkin (phase 3, tickets 01 à 05) : section « Scénarios » de la
-// fiche d'une exigence de solution fonctionnelle, avec en tête la langue et le
+// Scénarios Gherkin (phase 3, tickets 01 à 05) : onglet « Scénarios » d'une
+// exigence de solution fonctionnelle (ADR-0021, N11), avec en tête la langue et le
 // Contexte de sa Fonctionnalité, l'historique et la validation de syntaxe de chacun, et l'export .feature. Règles dans
 // @app/shared (scenarios.ts, roles.ts) ; décisions D1 à D19 de
 // .scratch/phase-3/spec.md. Web seulement (D19).
@@ -28,13 +28,14 @@ import {
   type ScenarioSnapshot,
   updateScenarioSchema,
 } from '@app/shared';
-import { ArrowDown, ArrowUp, Download } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, Plus } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { GherkinCheck } from './gherkin-check';
+import { Panel, useCloseSilently } from './panels';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -49,7 +50,7 @@ export const NO_FEATURE: FeatureDto = { language: null, background: null };
  * Scénarios d'une exigence, dans leur ordre (D9), précédés de la langue et du
  * Contexte de la Fonctionnalité (D5, D12) : tout membre lit ; propriétaires et
  * contributeurs écrivent, ordonnent, suppriment et changent la langue (D17). La
- * liste et la Fonctionnalité sont tenues par la fiche, qui en a besoin pour figer
+ * liste et la Fonctionnalité sont tenues par l'écran de l'exigence, qui en a besoin pour figer
  * le type (D2) et confirmer la suppression (D3).
  */
 export function ScenariosSection({
@@ -61,6 +62,7 @@ export function ScenariosSection({
   canEdit,
   onChange,
   onFeatureChange,
+  onAdd,
 }: {
   initiativeId: string;
   requirementId: string;
@@ -75,9 +77,10 @@ export function ScenariosSection({
   canEdit: boolean;
   onChange: (scenarios: ScenarioDto[]) => void;
   onFeatureChange: (feature: FeatureDto) => void;
+  /** « + Ajouter un scénario » : ouvre la fenêtre de création, avec la langue de la validation. */
+  onAdd: (language: Locale) => void;
 }) {
   const { t, locale } = useI18n();
-  const [adding, setAdding] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
   // Langue de la validation (D15) : celle de la Fonctionnalité, sinon celle que lui donnera l'auteur (D5).
   const language = feature.language ?? newFeatureLanguage(locale, null);
@@ -150,27 +153,54 @@ export function ScenariosSection({
           ))}
         </ol>
       )}
-      {canEdit &&
-        (adding ? (
-          <ScenarioForm
-            legend={t('scenario.new')}
-            submitLabel={t('scenario.create')}
-            initial={{ title: '', text: '' }}
-            language={language}
-            onSave={async (values) => {
-              // Créé en dernier (D9) ; le premier fixe la langue à celle de son auteur (D5).
-              onChange([...scenarios, await api.createScenario(initiativeId, requirementId, { ...values, language: locale })]);
-              setAdding(false);
-              if (!feature.language) api.getFeature(initiativeId, requirementId).then(onFeatureChange, () => undefined);
-            }}
-            onCancel={() => setAdding(false)}
-          />
-        ) : (
-          <button type="button" onClick={() => setAdding(true)}>
-            {t('scenario.add')}
-          </button>
-        ))}
+      {canEdit && (
+        // Création en fenêtre de dialogue (N15) : CreateScenarioDialog.
+        <button type="button" onClick={() => onAdd(language)}>
+          <Plus />
+          {t('scenario.add')}
+        </button>
+      )}
     </section>
+  );
+}
+
+/**
+ * Nouveau scénario, en fenêtre de dialogue (N15) : titre et texte, avec la
+ * validation de syntaxe. Créé en dernier (D9) ; le premier fixe la langue de la
+ * Fonctionnalité à celle de son auteur (D5).
+ */
+export function CreateScenarioDialog({
+  initiativeId,
+  requirementId,
+  language,
+  onCreated,
+  onClose,
+}: {
+  initiativeId: string;
+  requirementId: string;
+  /** Langue de la validation : celle de la Fonctionnalité, ou celle qu'elle prendra. */
+  language: Locale;
+  /** Créé : l'arborescence se recharge, l'écran de données l'affiche. */
+  onCreated: (scenario: ScenarioDto) => void;
+  onClose: () => void;
+}) {
+  const { t, locale } = useI18n();
+  const closeSilently = useCloseSilently();
+  return (
+    <Panel title={t('scenario.new')} variant="dialog" onClose={onClose}>
+      <ScenarioForm
+        submitLabel={t('scenario.create')}
+        initial={{ title: '', text: '' }}
+        language={language}
+        onSave={async (values) => {
+          const created = await api.createScenario(initiativeId, requirementId, { ...values, language: locale });
+          // Saisie enregistrée : pas d'alerte.
+          closeSilently();
+          onCreated(created);
+        }}
+        onCancel={onClose}
+      />
+    </Panel>
   );
 }
 
@@ -749,7 +779,8 @@ function ScenarioForm({
   onSave,
   onCancel,
 }: {
-  legend: string;
+  /** Absente dans la fenêtre de création, dont le titre tient lieu de légende. */
+  legend?: string;
   submitLabel: string;
   initial: { title: string; text: string };
   language: Locale;
@@ -783,7 +814,7 @@ function ScenarioForm({
   return (
     <form className="stacked scenario-form" onSubmit={submit}>
       <fieldset>
-        <legend>{legend}</legend>
+        {legend && <legend>{legend}</legend>}
         <label>
           {t('scenario.title')}
           <input data-autofocus value={title} maxLength={SCENARIO_TITLE_MAX_LENGTH} onChange={(e) => setTitle(e.target.value)} />

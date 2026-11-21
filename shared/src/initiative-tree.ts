@@ -190,6 +190,10 @@ export function screenNodeKey(screen: Screen): string | null {
       return treeNodeKey({ kind: 'stakeholder', id: screen.stakeholderId });
     case 'need':
       return treeNodeKey({ kind: 'need', id: screen.needId });
+    case 'requirement':
+      return treeNodeKey({ kind: 'requirement', id: screen.requirementId });
+    case 'scenario':
+      return treeNodeKey({ kind: 'scenario', id: screen.scenarioId, requirementId: screen.requirementId });
     case 'pages':
       return screen.pageId ? treeNodeKey({ kind: 'page', id: screen.pageId }) : treeNodeKey({ kind: 'branch', branch: 'pages' });
   }
