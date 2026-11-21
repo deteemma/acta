@@ -45,9 +45,6 @@ export type PanelContent =
    * vient. Avec `from`, l'action est créée depuis cet objet et liée à lui (ticket 13).
    */
   | { kind: 'createAction'; initiativeId?: string; from?: AnalysisObjectRef }
-  | { kind: 'action'; initiativeId: string; actionId: string }
-  /** Ticket d'un autre type que l'Action (ticket 18). */
-  | { kind: 'ticket'; initiativeId: string; ticketId: string }
   /** « Nouveau ticket » ; avec `epicId`, ouvert depuis le « + Ticket » de cet Epic. */
   | { kind: 'createTicket'; initiativeId: string; epicId?: string }
   /** Fenêtres de création (N15) ; l'élément créé s'ouvre ensuite dans l'écran de données. */

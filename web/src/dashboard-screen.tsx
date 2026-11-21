@@ -3,7 +3,7 @@
 // BABOK ; onglet Actions suggérées. Règles dans @app/shared (dashboard.ts).
 import { type ActionDto, type BabokDto, initiativeDashboard } from '@app/shared';
 import { useEffect, useState } from 'react';
-import { ActionList, StatusLabel } from './action-panels';
+import { ActionList, StatusLabel } from './actions';
 import { api } from './api';
 import { BabokName } from './babok-panels';
 import { ErrorMessage, toUiError, type UiError } from './errors';

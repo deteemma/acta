@@ -1102,10 +1102,6 @@ form.invite h4 {
 .action-row.list-head {
   display: none;
 }
-.action-row.selected,
-.action-row.selected:hover {
-  background: var(--accent-soft);
-}
 .action-title {
   font-weight: 500;
 }
@@ -1879,9 +1875,8 @@ button.link.pill:hover {
   color: var(--muted);
   white-space: nowrap;
 }
-/* Pas au-dessus de la ligne ouverte, mise en évidence (.selected). */
-.ticket-table tbody tr.ticket-group-row:not(.selected),
-.ticket-compact li.ticket-group-row:not(.selected) {
+.ticket-table tbody tr.ticket-group-row,
+.ticket-compact li.ticket-group-row {
   background: var(--bg);
 }
 .ticket-table .ticket-group-row td {
@@ -1892,9 +1887,6 @@ button.link.pill:hover {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-2);
-}
-.tickets .panel-kicker {
-  margin-bottom: var(--space-1);
 }
 .ticket-filters {
   display: flex;
@@ -1991,11 +1983,6 @@ button.link.pill:hover {
 }
 .ticket-table tbody tr:hover {
   background: var(--bg);
-}
-.ticket-table tr.selected,
-.ticket-table tr.selected:hover,
-.ticket-compact li.selected {
-  background: var(--accent-soft);
 }
 .ticket-table small {
   display: block;

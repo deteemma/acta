@@ -1,5 +1,6 @@
-// Actions (ticket 07) : fiche d'une action dans un panneau latéral, création
-// rapide, liste. Règles dans @app/shared (actions.ts, roles.ts).
+// Actions (ticket 07) : fiche d'une action, affichée dans l'écran de son ticket
+// (ticket-screen.tsx), création rapide en fenêtre de dialogue (N15), liste.
+// Règles dans @app/shared (actions.ts, roles.ts).
 import {
   memberName,
   ACTION_DESCRIPTION_MAX_LENGTH,
@@ -33,7 +34,6 @@ import {
   ticketEpicOptions,
   type TicketRow,
   ticketStatusTone,
-  type TicketVersionDto,
   updateActionSchema,
 } from '@app/shared';
 import { useEffect, useId, useState } from 'react';
@@ -43,12 +43,10 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
+import { useOpenNode } from './references';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-screen';
-import { TicketAttachments } from './attachments';
-import { TicketComments } from './comments';
-import { TicketLinks } from './link-panels';
-import { EpicLink, EpicSelect, TicketAudit, TicketHistory } from './ticket-parts';
+import { EpicLink, EpicSelect, TicketAudit } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
 
 const canEditActions = (action: Pick<ActionDto, 'initiative'>) =>
@@ -108,10 +106,7 @@ export function ActionList({
   showInitiative?: boolean;
 }) {
   const { t, locale } = useI18n();
-  const { stack, open } = usePanels();
-  // Action ouverte dans le dernier panneau : sa ligne est mise en évidence (refonte, ticket 04).
-  const top = stack.at(-1)?.content;
-  const openedId = top?.kind === 'action' ? top.actionId : undefined;
+  const openNode = useOpenNode();
   if (actions.length === 0) return null;
   return (
     <ul className={`links dense-list action-list${showInitiative ? ' with-initiative' : ''}`}>
@@ -127,12 +122,12 @@ export function ActionList({
       {actions.map((a) => {
         const task = babok && findBabokElement(babok, a.taskId);
         return (
-          <li key={a.id} className={`action-row${a.id === openedId ? ' selected' : ''}`}>
+          <li key={a.id} className="action-row">
             {showInitiative && <span className="code">{a.initiative.code}</span>}
             <button
               type="button"
               className="link action-title"
-              onClick={() => open({ kind: 'action', initiativeId: a.initiative.id, actionId: a.id })}
+              onClick={() => openNode(a.initiative.id, { kind: 'ticket', id: a.id })}
             >
               <span className="code">{a.reference}</span> {a.title}
             </button>
@@ -200,112 +195,37 @@ export function TermLabel({ term }: { term: 'babok.task' | 'babok.technique' }) 
   );
 }
 
-export function ActionPanel({
+/**
+ * Onglet Fiche d'une Action : champs modifiables, ou en lecture seule (lecteur,
+ * initiative archivée), auteurs et dates, suppression.
+ */
+export function ActionSheet({
   babok,
-  initiativeId,
-  actionId,
-  ticketsVersion,
-  stakeholdersVersion,
-  myId,
-  onChanged,
-  onClose,
+  action,
+  members,
+  stakeholders,
+  rows,
+  onSaved,
+  onDeleted,
 }: {
   babok: BabokDto;
-  initiativeId: string;
-  actionId: string;
-  /** Change à chaque écriture sur un ticket ou un lien : les liens se rechargent. */
-  ticketsVersion: number;
-  /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
-  stakeholdersVersion: number;
-  /** Pour savoir quels commentaires sont les miens. */
-  myId: string | null;
-  /** Une action a été modifiée ou supprimée : les listes se rechargent. */
-  onChanged: () => void;
-  onClose: () => void;
+  action: ActionDto;
+  members: InitiativeMemberDto[];
+  stakeholders: StakeholderDto[];
+  rows: TicketRow[];
+  onSaved: (action: ActionDto) => void;
+  onDeleted: () => void;
 }) {
-  const { t } = useI18n();
-  const closeSilently = useCloseSilently();
-  const [action, setAction] = useState<ActionDto | null>(null);
-  const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
-  const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
-  const [rows, setRows] = useState<TicketRow[] | null>(null);
-  const [versions, setVersions] = useState<TicketVersionDto[]>([]);
-  // Augmente à chaque enregistrement : l'historique se recharge.
-  const [saveCount, setSaveCount] = useState(0);
-  const [error, setError] = useState<UiError | null>(null);
-
-  useEffect(() => {
-    api.getAction(initiativeId, actionId).then(setAction, (e: unknown) => setError(toUiError(e)));
-    api.listMembers(initiativeId).then(setMembers, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, actionId]);
-
-  useEffect(() => {
-    api.listTickets(initiativeId).then(setRows, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId]);
-
-  useEffect(() => {
-    api.actionHistory(initiativeId, actionId).then(setVersions, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, actionId, saveCount]);
-
-  useEffect(() => {
-    api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, stakeholdersVersion]);
-
   return (
-    <Panel
-      title={action ? action.title : t('common.loading')}
-      kicker={
-        action && (
-          <>
-            {t('action.kicker')} <span className="code">{action.reference}</span>
-          </>
-        )
-      }
-      onClose={onClose}
-    >
-      <ErrorMessage error={error} />
-      {action && (
-        <>
-          {action.initiative.archived && <p className="notice">{t('initiative.archived')}</p>}
-          {canEditActions(action) && members && stakeholders && rows ? (
-            <ActionForm
-              babok={babok}
-              action={action}
-              members={members}
-              stakeholders={stakeholders}
-              rows={rows}
-              onSaved={(saved) => {
-                setAction(saved);
-                setSaveCount((count) => count + 1);
-                onChanged();
-              }}
-            />
-          ) : (
-            <ActionDetails babok={babok} action={action} />
-          )}
-          <TicketAudit ticket={action} />
-          <TicketLinks
-            initiativeId={initiativeId}
-            ticketId={action.id}
-            canEdit={can(action.initiative.myRole, 'editLinks', { archived: action.initiative.archived })}
-            version={ticketsVersion}
-            onChanged={onChanged}
-          />
-          <TicketComments initiativeId={initiativeId} ticketId={action.id} initiative={action.initiative} myId={myId} />
-          <TicketAttachments initiativeId={initiativeId} ticketId={action.id} initiative={action.initiative} />
-          <TicketHistory type="action" babok={babok} versions={versions} />
-          {canEditActions(action) && (
-            <DeleteAction
-              action={action}
-              onDeleted={() => {
-                onChanged();
-                closeSilently();
-              }}
-            />
-          )}
-        </>
+    <>
+      {canEditActions(action) ? (
+        <ActionForm babok={babok} action={action} members={members} stakeholders={stakeholders} rows={rows} onSaved={onSaved} />
+      ) : (
+        <ActionDetails babok={babok} action={action} />
       )}
-    </Panel>
+      <TicketAudit ticket={action} />
+      {canEditActions(action) && <DeleteAction action={action} onDeleted={onDeleted} />}
+    </>
   );
 }
 
@@ -596,9 +516,10 @@ async function loadOriginObject(initiativeId: string, from: AnalysisObjectRef): 
  * « Nouvelle action » d'une fiche : initiative, titre, tâche BABOK, technique ;
  * la personne qui crée en est responsable. Tâches proposées selon l'origine et
  * techniques classées par usage : @app/shared (suggestions.ts) ; la première
- * tâche proposée est présélectionnée. La fiche créée remplace le panneau.
+ * tâche proposée est présélectionnée. En fenêtre de dialogue (N15) : l'action
+ * créée s'ouvre ensuite dans l'écran de données.
  */
-export function CreateActionPanel({
+export function CreateActionDialog({
   babok,
   initiatives,
   initiativeId,
@@ -612,11 +533,12 @@ export function CreateActionPanel({
   initiativeId?: string;
   /** Objet de l'initiative `initiativeId` depuis lequel l'action est créée. */
   from?: AnalysisObjectRef;
-  onCreated: () => void;
+  /** Créée : les listes se rechargent, l'écran de données l'affiche. */
+  onCreated: (action: ActionDto) => void;
   onClose: () => void;
 }) {
   const { t, locale } = useI18n();
-  const { replaceSaved } = usePanels();
+  const closeSilently = useCloseSilently();
   const editable = initiatives.filter(canCreateActionIn);
   const proposed = editable.find((i) => i.id === initiativeId);
   // Sans droit d'écriture sur l'initiative de l'objet, on ne part pas de cet objet.
@@ -689,8 +611,9 @@ export function CreateActionPanel({
     }
     try {
       const action = await api.createAction(chosenInitiative, parsed.data);
-      onCreated();
-      replaceSaved({ kind: 'action', initiativeId: action.initiative.id, actionId: action.id });
+      // Saisie enregistrée : pas d'alerte.
+      closeSilently();
+      onCreated(action);
       return true;
     } catch (e) {
       setError(toUiError(e));
@@ -706,7 +629,7 @@ export function CreateActionPanel({
   );
 
   return (
-    <Panel title={t('actions.new')} showFab={false} onClose={onClose}>
+    <Panel title={t('actions.new')} variant="dialog" onClose={onClose}>
       {editable.length === 0 ? (
         <p className="notice">{t('actions.noEditableInitiative')}</p>
       ) : (

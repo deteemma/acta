@@ -15,6 +15,7 @@ import {
   type Screen,
   type ScenarioDto,
   type StakeholderDto,
+  type TicketRow,
   type TreeNodeRef,
 } from '@app/shared';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -22,8 +23,6 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState }
 import { api } from './api';
 import { toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import type { PanelContent } from './panels';
-import { ticketTarget } from './ticket-parts';
 import { useTicketTypes } from './ticket-types';
 
 /** Ce que l'écran de données et l'arborescence montrent d'une initiative. */
@@ -34,6 +33,8 @@ export interface InitiativeData {
   stakeholders: StakeholderDto[];
   needs: NeedDto[];
   requirements: RequirementDto[];
+  /** Tous les tickets, ouverts et fermés ; l'arborescence ne montre que les ouverts (N8). */
+  tickets: TicketRow[];
   tree: InitiativeTreeNode;
 }
 
@@ -73,6 +74,7 @@ export function useInitiativeData(initiativeId: string | null, version: string) 
         stakeholders: shown.lists.stakeholders,
         needs: shown.lists.needs,
         requirements: shown.lists.requirements,
+        tickets: shown.lists.tickets,
         tree: buildInitiativeTree({ ...shown.lists, initiative: shown.initiative, ticketTypes, memberCount: shown.members.length }),
       },
     [shown, ticketTypes],
@@ -127,42 +129,40 @@ export function useNodeLabel() {
   );
 }
 
-/**
- * Où mène un nœud : l'écran à afficher à droite et, pour un élément pas encore
- * repris dans l'écran de données, son panneau actuel (ouvert par-dessus sa branche).
- */
-export function nodeDestination(initiativeId: string, ref: TreeNodeRef): { screen: Screen; panel?: PanelContent } {
+/** Où mène un nœud : l'écran à afficher à droite. */
+export function nodeDestination(initiativeId: string, ref: TreeNodeRef): Screen {
   switch (ref.kind) {
     case 'initiative':
-      return { screen: { kind: 'initiative', initiativeId, tab: 'overview' } };
+      return { kind: 'initiative', initiativeId, tab: 'overview' };
     case 'dashboard':
-      return { screen: { kind: 'dashboard', initiativeId, tab: 'tasks' } };
+      return { kind: 'dashboard', initiativeId, tab: 'tasks' };
     case 'team':
-      return { screen: { kind: 'team', initiativeId, tab: 'members' } };
+      return { kind: 'team', initiativeId, tab: 'members' };
     case 'branch':
       switch (ref.branch) {
         case 'stakeholders':
-          return { screen: { kind: 'stakeholders', initiativeId, tab: 'list' } };
+          return { kind: 'stakeholders', initiativeId, tab: 'list' };
         case 'pages':
-          return { screen: { kind: 'pages', initiativeId, pageId: null } };
+          return { kind: 'pages', initiativeId, pageId: null };
         default:
-          return { screen: { kind: ref.branch, initiativeId } };
+          return { kind: ref.branch, initiativeId };
       }
     case 'noEpic':
-      return { screen: { kind: 'tickets', initiativeId } };
+      return { kind: 'tickets', initiativeId };
     case 'stakeholder':
-      return { screen: { kind: 'stakeholder', initiativeId, stakeholderId: ref.id, tab: 'sheet' } };
+      return { kind: 'stakeholder', initiativeId, stakeholderId: ref.id, tab: 'sheet' };
     case 'need':
-      return { screen: { kind: 'need', initiativeId, needId: ref.id, tab: 'sheet' } };
+      return { kind: 'need', initiativeId, needId: ref.id, tab: 'sheet' };
     case 'requirement':
-      return { screen: { kind: 'requirement', initiativeId, requirementId: ref.id, tab: 'sheet' } };
+      return { kind: 'requirement', initiativeId, requirementId: ref.id, tab: 'sheet' };
     case 'scenario':
       // L'onglet Scénarios de son exigence, le scénario mis en évidence (N16).
-      return { screen: { kind: 'scenario', initiativeId, requirementId: ref.requirementId, scenarioId: ref.id } };
+      return { kind: 'scenario', initiativeId, requirementId: ref.requirementId, scenarioId: ref.id };
     case 'ticket':
-      return { screen: { kind: 'tickets', initiativeId }, panel: ticketTarget(initiativeId, ref) };
+      // De tout type, ouvert ou fermé (N8).
+      return { kind: 'ticket', initiativeId, ticketId: ref.id, tab: 'sheet' };
     case 'page':
-      return { screen: { kind: 'pages', initiativeId, pageId: ref.id } };
+      return { kind: 'pages', initiativeId, pageId: ref.id };
   }
 }
 

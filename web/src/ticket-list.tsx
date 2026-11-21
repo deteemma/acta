@@ -1,7 +1,8 @@
-// Écran Tickets d'une initiative (ticket 17, décision 11) : tableau filtrable et
-// triable, liste compacte sur petit écran ; la fiche s'ouvre en panneau à côté.
-// « Nouveau ticket », création rapide et regroupement par Epic : ticket 18. Règles
-// de filtre, de tri et de regroupement dans @app/shared (tickets.ts).
+// Liste du nœud Tickets (ticket 17, décision 11 ; ADR-0021, N8) : tableau
+// filtrable et triable, liste compacte sur petit écran, état « ouverts » par
+// défaut ; c'est là que se retrouvent les tickets fermés. La fiche s'ouvre dans
+// l'écran de données. Création rapide et regroupement par Epic : ticket 18.
+// Règles de filtre, de tri et de regroupement dans @app/shared (tickets.ts).
 import {
   ACTION_TITLE_MAX_LENGTH,
   canCreateActionIn,
@@ -32,93 +33,45 @@ import {
 } from '@app/shared';
 import { ArrowDown, ArrowUp, Plus, TriangleAlert } from 'lucide-react';
 import { type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { api, ApiError } from './api';
+import { api } from './api';
 import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { useTicketLabels, useTicketTypes } from './ticket-types';
 import { formatDate } from './initiative-panels';
 import { usePanels } from './panels';
-import { TicketStatusLabel, ticketTarget } from './ticket-parts';
+import { useOpenNode } from './references';
+import { TicketStatusLabel } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
 
-/** Le non-membre reçoit 404 de l'API : même refus pour une initiative disparue. */
-const isRefusal = (error: unknown) => error instanceof ApiError && (error.status === 403 || error.status === 404);
-
-export function TicketsScreen({
-  initiativeId,
+export function TicketList({
   initiative,
-  version,
+  tickets,
   onChanged,
 }: {
-  initiativeId: string;
-  /** Absente tant que la liste des initiatives n'est pas chargée. */
-  initiative: InitiativeDto | undefined;
-  /** Change à chaque création, modification ou suppression d'un ticket. */
-  version: number;
-  /** Un ticket vient d'être créé : les listes se rechargent. */
+  initiative: InitiativeDto;
+  /** Tous les tickets de l'initiative, ouverts et fermés. */
+  tickets: TicketRow[];
+  /** Un ticket vient d'être créé : les listes et l'arborescence se rechargent. */
   onChanged: () => void;
 }) {
   const { t, locale } = useI18n();
   const ticketTypes = useTicketTypes({ fresh: true });
-  const { open } = usePanels();
   const [grouped, setGrouped] = useState(false);
-  const [tickets, setTickets] = useState<TicketRow[] | null>(null);
   const [filters, setFilters] = useState(DEFAULT_TICKET_FILTERS);
   const [sort, setSort] = useState(DEFAULT_TICKET_SORT);
-  const [refused, setRefused] = useState(false);
-  const [error, setError] = useState<UiError | null>(null);
+  const initiativeId = initiative.id;
 
-  useEffect(() => {
-    api.listTickets(initiativeId).then(
-      (rows) => {
-        setTickets(rows);
-        setError(null);
-      },
-      (e: unknown) => {
-        if (isRefusal(e)) setRefused(true);
-        else setError(toUiError(e));
-      },
-    );
-  }, [initiativeId, version]);
-
-  if (refused) {
-    return (
-      <>
-        <h1>{t('tickets.title')}</h1>
-        <p className="error" role="alert">
-          {t('tickets.refused')}
-        </p>
-      </>
-    );
-  }
-
-  const shown = tickets && sortTickets(ticketTypes, selectTickets(ticketTypes, tickets, filters), sort, locale);
-  const canCreate = !!initiative && canCreateActionIn(initiative);
-  const groups = grouped && tickets && shown ? groupTicketsByEpic(ticketTypes, tickets, shown) : null;
+  const shown = sortTickets(ticketTypes, selectTickets(ticketTypes, tickets, filters), sort, locale);
+  const canCreate = canCreateActionIn(initiative);
+  const groups = grouped ? groupTicketsByEpic(ticketTypes, tickets, shown) : null;
   return (
     <section className="tickets">
-      {initiative && (
-        <div className="panel-kicker">
-          {t('initiative.kicker')} <span className="code">{initiative.code}</span> · {initiative.name}
-        </div>
-      )}
-      <div className="tickets-header">
-        <h1>{t('tickets.title')}</h1>
-        {canCreate && (
-          <button type="button" className="primary" onClick={() => open({ kind: 'createTicket', initiativeId })}>
-            <Plus />
-            {t('tickets.new')}
-          </button>
-        )}
-      </div>
-      {initiative?.archivedAt && (
-        <p className="notice">{t('initiative.archivedOn', { date: formatDate(locale, initiative.archivedAt) })}</p>
-      )}
-      <ErrorMessage error={error} />
       {canCreate && <QuickCreate initiativeId={initiativeId} onCreated={onChanged} />}
-      {tickets?.length === 0 && <EmptyState subject="actions" title={t('tickets.empty')} hint={t(canCreate ? 'tickets.emptyHint' : 'tickets.emptyHintReadOnly')} />}
-      {tickets && tickets.length > 0 && shown && (
+      {tickets.length === 0 && (
+        <EmptyState subject="actions" title={t('tickets.empty')} hint={t(canCreate ? 'tickets.emptyHint' : 'tickets.emptyHintReadOnly')} />
+      )}
+      {tickets.length > 0 && (
         <>
           <TicketFilterBar
             tickets={tickets}
@@ -146,13 +99,20 @@ function QuickCreate({ initiativeId, onCreated }: { initiativeId: string; onCrea
   const { typeLabel } = useTicketLabels();
   // Types actifs autres que l'Action ; le premier proposé est la Question.
   const options = quickCreateTicketTypes(ticketTypes).map((option) => option.code);
-  const { open } = usePanels();
+  const openNode = useOpenNode();
   const [type, setType] = useState('question');
   const [title, setTitle] = useState('');
+  const [created, setCreated] = useState<string | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   const submit = useUnsavedForm({ type, title }, create);
 
-  async function create(): Promise<boolean> {
+  // Le ticket créé s'ouvre une fois la saisie vidée et retenue comme enregistrée :
+  // l'alerte ne s'interpose pas.
+  useEffect(() => {
+    if (created) openNode(initiativeId, { kind: 'ticket', id: created });
+  }, [created, initiativeId, openNode]);
+
+  async function create(): Promise<boolean | { type: string; title: string }> {
     const parsed = createTicketSchema.safeParse({ type, title });
     if (!parsed.success) {
       setError({ key: 'ticket.invalid' });
@@ -163,8 +123,8 @@ function QuickCreate({ initiativeId, onCreated }: { initiativeId: string; onCrea
       setTitle('');
       setError(null);
       onCreated();
-      open({ kind: 'ticket', initiativeId, ticketId: ticket.id });
-      return true;
+      setCreated(ticket.id);
+      return { type, title: '' };
     } catch (e) {
       setError(toUiError(e));
       return false;
@@ -286,22 +246,14 @@ function TicketFilterBar({
   );
 }
 
-/** Ticket dont la fiche est ouverte, même si un autre panneau la recouvre : sa ligne est mise en évidence. */
-function useOpenedTicketId(): string | undefined {
-  const { stack } = usePanels();
-  const opened = stack.map((entry) => entry.content).findLast((content) => content.kind === 'action' || content.kind === 'ticket');
-  if (opened?.kind === 'action') return opened.actionId;
-  return opened?.kind === 'ticket' ? opened.ticketId : undefined;
-}
-
 function TicketTitle({ ticket, initiativeId }: { ticket: TicketRow; initiativeId: string }) {
-  const { open } = usePanels();
+  const openNode = useOpenNode();
   return (
     <button
       type="button"
       className="link ticket-title"
       title={ticket.title}
-      onClick={() => open(ticketTarget(initiativeId, ticket))}
+      onClick={() => openNode(initiativeId, { kind: 'ticket', id: ticket.id })}
     >
       {ticket.title}
     </button>
@@ -418,7 +370,6 @@ function TicketTable({
 }) {
   const { t } = useI18n();
   const { typeLabel } = useTicketLabels();
-  const openedId = useOpenedTicketId();
   const area = useRef<HTMLDivElement>(null);
   const columnCount = useVisibleColumnCount(area);
   const ariaSort = (key: TicketSortKey) => {
@@ -427,11 +378,7 @@ function TicketTable({
   };
   const rows = (list: TicketRow[]) =>
     list.map((ticket) => (
-      <tr
-        key={ticket.id}
-        className={ticket.id === openedId ? 'selected' : undefined}
-        aria-current={ticket.id === openedId ? 'true' : undefined}
-      >
+      <tr key={ticket.id}>
         <td className="col-reference">
           <span className="code">{ticket.reference}</span>
         </td>
@@ -455,8 +402,8 @@ function TicketTable({
         </td>
       </tr>
     ));
-  const groupRow = (header: ReactNode, selected: boolean) => (
-    <tr className={`ticket-group-row${selected ? ' selected' : ''}`} aria-current={selected ? 'true' : undefined}>
+  const groupRow = (header: ReactNode) => (
+    <tr className="ticket-group-row">
       <td colSpan={columnCount}>{header}</td>
     </tr>
   );
@@ -479,15 +426,12 @@ function TicketTable({
           <>
             {groups.epics.map((group) => (
               <tbody key={group.epic.id}>
-                {groupRow(
-                  <EpicGroupHeader group={group} initiativeId={initiativeId} canCreate={canCreate} />,
-                  group.epic.id === openedId,
-                )}
+                {groupRow(<EpicGroupHeader group={group} initiativeId={initiativeId} canCreate={canCreate} />)}
                 {rows(group.tickets)}
               </tbody>
             ))}
             <tbody>
-              {groupRow(<NoEpicGroupHeader />, false)}
+              {groupRow(<NoEpicGroupHeader />)}
               {rows(groups.withoutEpic)}
             </tbody>
           </>
@@ -512,10 +456,9 @@ function TicketCompactList({
   canCreate: boolean;
 }) {
   const { typeLabel } = useTicketLabels();
-  const openedId = useOpenedTicketId();
   const items = (list: TicketRow[]) =>
     list.map((ticket) => (
-      <li key={ticket.id} className={ticket.id === openedId ? 'selected' : undefined}>
+      <li key={ticket.id}>
         <div className="ticket-compact-title">
           <span className="code">{ticket.reference}</span> <TicketTitle ticket={ticket} initiativeId={initiativeId} />
         </div>
@@ -532,7 +475,7 @@ function TicketCompactList({
       {groups ? (
         <>
           {groups.epics.flatMap((group) => [
-            <li key={`group-${group.epic.id}`} className={`ticket-group-row${group.epic.id === openedId ? ' selected' : ''}`}>
+            <li key={`group-${group.epic.id}`} className="ticket-group-row">
               <EpicGroupHeader group={group} initiativeId={initiativeId} canCreate={canCreate} />
             </li>,
             ...items(group.tickets),

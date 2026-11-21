@@ -1,11 +1,13 @@
 // Écrans de données d'une initiative (ADR-0021, N11) : l'initiative elle-même
 // (Aperçu, Membres, Désignations, Paramètres), son tableau de bord, son équipe,
-// les listes des branches, les parties prenantes, les besoins et les exigences. Les fiches gardent
-// leurs champs, droits et contrôles : seul leur conteneur change.
+// les listes des branches, les parties prenantes, les besoins, les exigences et
+// les tickets. Les fiches gardent leurs champs, droits et contrôles : seul leur
+// conteneur change.
 import {
   acceptsScenarios,
   type BabokDto,
   can,
+  canCreateActionIn,
   DASHBOARD_TABS,
   INITIATIVE_TABS,
   type InitiativeDto,
@@ -54,9 +56,11 @@ import {
 } from './stakeholder-screen';
 import { SuggestedActions } from './suggested-actions';
 import { OwnerDesignations, TeamMembers } from './team-section';
+import { TicketScreen } from './ticket-screen';
+import { TicketList } from './ticket-list';
 
-/** Écrans affichés dans l'écran de données ; les tickets et les pages gardent encore le leur. */
-export type ElementScreen = Exclude<InitiativeScreen, { kind: 'tickets' | 'pages' }>;
+/** Écrans affichés dans l'écran de données ; les pages gardent encore le leur. */
+export type ElementScreen = Exclude<InitiativeScreen, { kind: 'pages' }>;
 
 export function InitiativeDataScreen({
   screen,
@@ -64,6 +68,7 @@ export function InitiativeDataScreen({
   babok,
   pending,
   actionsVersion,
+  myId,
   onNavigate,
   onReplace,
   onSelectNode,
@@ -74,6 +79,7 @@ export function InitiativeDataScreen({
   onStakeholdersChanged,
   onNeedsChanged,
   onRequirementsChanged,
+  onTicketsChanged,
   onLinksChanged,
 }: {
   screen: ElementScreen;
@@ -82,6 +88,8 @@ export function InitiativeDataScreen({
   pending: boolean;
   babok: BabokDto | null;
   actionsVersion: number;
+  /** Pour savoir quels commentaires sont les miens. */
+  myId: string | null;
   /** Autre onglet : une adresse de plus, gardée par l'alerte. */
   onNavigate: (screen: InitiativeScreen) => void;
   /** L'élément affiché vient d'être supprimé : l'écran est remplacé, sans étape pour « Précédent ». */
@@ -97,6 +105,8 @@ export function InitiativeDataScreen({
   onNeedsChanged: () => void;
   /** Exigence ou scénario créé, modifié, supprimé ou déplacé : l'arborescence suit. */
   onRequirementsChanged: () => void;
+  /** Ticket créé, modifié (fermé, rouvert, autre Epic…) ou supprimé : l'arborescence suit. */
+  onTicketsChanged: () => void;
   /** Un lien avec un ticket a été créé ou retiré. */
   onLinksChanged: () => void;
 }) {
@@ -111,7 +121,7 @@ export function InitiativeDataScreen({
   const path = pathToNode(tree, shownKey ?? tree.key);
   const crumbs = path.slice(0, -1);
   // Élément introuvable : le fil d'Ariane s'arrête à sa branche.
-  const branchCrumbs = (branch: 'stakeholders' | 'needs' | 'requirements') => pathToNode(tree, treeNodeKey({ kind: 'branch', branch }));
+  const branchCrumbs = (branch: 'stakeholders' | 'needs' | 'requirements' | 'tickets') => pathToNode(tree, treeNodeKey({ kind: 'branch', branch }));
   const childNode = (ref: TreeNodeRef) => tree.children.find((c) => c.key === treeNodeKey(ref));
   const me = members.find((m) => m.isMe);
   const archivedBadge = initiative.archivedAt && <span className="badge">{t('initiative.archived')}</span>;
@@ -394,6 +404,51 @@ export function InitiativeDataScreen({
             onLinksChanged={onLinksChanged}
           />
         </DataScreen>
+      );
+    }
+    case 'tickets':
+      return (
+        <DataScreen {...inInitiative} title={t('tree.tickets')}>
+          {initiative.archivedAt && (
+            <p className="notice">{t('initiative.archivedOn', { date: formatDate(locale, initiative.archivedAt) })}</p>
+          )}
+          <BranchToolbar>
+            {canCreateActionIn(initiative) && (
+              <button type="button" className="primary" onClick={() => open({ kind: 'createTicket', initiativeId })}>
+                <Plus />
+                {t('tickets.new')}
+              </button>
+            )}
+          </BranchToolbar>
+          <TicketList initiative={initiative} tickets={data.tickets} onChanged={onTicketsChanged} />
+        </DataScreen>
+      );
+    case 'ticket': {
+      const row = data.tickets.find((r) => r.id === screen.ticketId);
+      if (!row) {
+        return <MissingElement kind={t('tree.tickets')} pending={pending} crumbs={branchCrumbs('tickets')} onCrumb={onSelectNode} />;
+      }
+      return (
+        <TicketScreen
+          initiative={initiative}
+          row={row}
+          rows={data.tickets}
+          members={members}
+          stakeholders={data.stakeholders}
+          babok={babok}
+          tab={screen.tab}
+          // Un ticket fermé n'est pas dans l'arborescence : Initiative › Tickets (N8).
+          crumbs={crumbs.length > 0 ? crumbs : branchCrumbs('tickets')}
+          onCrumb={onSelectNode}
+          actionsVersion={actionsVersion}
+          myId={myId}
+          onTab={(tab) => onNavigate({ ...screen, tab })}
+          onChanged={onTicketsChanged}
+          onDeleted={() => {
+            onTicketsChanged();
+            onReplace({ kind: 'tickets', initiativeId });
+          }}
+        />
       );
     }
     case 'requirements':

@@ -13,7 +13,7 @@ import {
 } from '@app/shared';
 import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ActionList } from './action-panels';
+import { ActionList } from './actions';
 import { api } from './api';
 import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';

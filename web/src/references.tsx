@@ -25,9 +25,8 @@ export function ReferencesProvider({ version, children }: { version: number; chi
 export const useReferences = () => useContext(ReferencesContext);
 
 /**
- * Ouvre un objet référencé (N16) : change d'initiative si besoin, affiche son
- * nœud à droite et, pour un élément pas encore repris dans l'écran de données,
- * ouvre son panneau actuel par-dessus.
+ * Ouvre un objet référencé (N16) : change d'initiative si besoin et affiche son
+ * nœud à droite.
  */
 export function useOpenReference(): (item: ReferenceDto) => void {
   const openNode = useOpenNode();
@@ -41,15 +40,14 @@ export function useOpenReference(): (item: ReferenceDto) => void {
 }
 
 /**
- * Ouvre le nœud d'un élément (lien vers une partie prenante, un besoin…) :
+ * Ouvre le nœud d'un élément (lien vers une partie prenante, un besoin, un ticket…) :
  * ferme les panneaux, avec l'alerte, et l'affiche à droite.
  */
 export function useOpenNode(): (initiativeId: string, ref: TreeNodeRef) => void {
   const { goTo } = useScreens();
   return useCallback(
     (initiativeId, ref) => {
-      const { screen, panel } = nodeDestination(initiativeId, ref);
-      void goTo(screen, panel);
+      void goTo(nodeDestination(initiativeId, ref));
     },
     [goTo],
   );
@@ -66,7 +64,7 @@ function referenceNode(item: ReferenceDto): TreeNodeRef | null {
       // L'exigence qui l'affiche, sur lui (D20).
       return item.scenario && { kind: 'scenario', id: item.id, requirementId: item.scenario.requirementId };
     default:
-      return { kind: 'ticket', id: item.id, type: item.category };
+      return { kind: 'ticket', id: item.id };
   }
 }
 

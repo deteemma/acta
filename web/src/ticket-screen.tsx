@@ -1,9 +1,12 @@
-// Tickets autres que l'Action (ticket 18, décision 11) : fiche en panneau, sur une
-// colonne, et « Nouveau ticket », où le type décide des champs. Règles dans
-// @app/shared (tickets.ts, roles.ts).
+// Ticket de tout type dans l'écran de données (ADR-0021, N11 ; ticket 18,
+// décision 11) : onglets Fiche, Tickets de l'Epic (Epic seulement), Liens,
+// Commentaires, Pièces jointes, Historique ; l'Action garde sa fiche (actions.tsx).
+// « Nouveau ticket », où le type décide des champs, en fenêtre de dialogue (N15).
+// Règles dans @app/shared (tickets.ts, roles.ts).
 import {
   ACTION_DESCRIPTION_MAX_LENGTH,
   ACTION_TITLE_MAX_LENGTH,
+  type ActionDto,
   type BabokDto,
   can,
   canBeAssignee,
@@ -13,155 +16,239 @@ import {
   epicProgress,
   type InitiativeDto,
   type InitiativeMemberDto,
+  type InitiativeTreeNode,
   memberName,
+  type MessageKey,
   newTicketTypes,
   RISK_LEVELS,
   selectableTicketStatuses,
   type RiskLevel,
   sortByReference,
   type StakeholderDto,
+  TICKET_TABS,
   ticketHasField,
   ticketEpicOptions,
   type TicketDto,
   type TicketRow,
   type TicketStatus,
+  type TicketTab,
   type TicketType,
   type TicketVersionDto,
   updateTicketSchema,
 } from '@app/shared';
 import { useEffect, useState } from 'react';
-import { TaskOptions, TechniqueOptions, TermLabel } from './action-panels';
+import { ActionSheet, TaskOptions, TechniqueOptions, TermLabel } from './actions';
 import { api, ApiError } from './api';
+import { DataScreen } from './data-screen';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { useTicketLabels, useTicketTypes } from './ticket-types';
 import { formatDate } from './initiative-panels';
-import { Panel, useCloseSilently, usePanels } from './panels';
+import { Panel, useCloseSilently } from './panels';
+import { useOpenNode } from './references';
 import { RichText, RichTextEditor } from './rich-text';
 import { StakeholderLink } from './stakeholder-screen';
 import { TicketAttachments } from './attachments';
 import { TicketComments } from './comments';
 import { TicketLinks } from './link-panels';
-import { EpicLink, EpicSelect, TicketAudit, TicketHistory, TicketStatusLabel, ticketTarget } from './ticket-parts';
+import { EpicLink, EpicSelect, TicketAudit, TicketHistory, TicketStatusLabel } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
 
 const canEditTicket = (ticket: Pick<TicketDto, 'initiative'>) =>
   can(ticket.initiative.myRole, 'editActions', { archived: ticket.initiative.archived });
 
-export function TicketPanel({
-  initiativeId,
-  ticketId,
-  ticketsVersion,
-  stakeholdersVersion,
+/** Fiche chargée : l'Action a la sienne, avec la tâche et la technique BABOK. */
+type LoadedTicket = { kind: 'action'; dto: ActionDto } | { kind: 'ticket'; dto: TicketDto };
+
+/** Onglets du ticket : Tickets de l'Epic pour un Epic seulement (le type sans champ Epic). */
+const ticketTabs = (type: TicketType): TicketTab[] =>
+  TICKET_TABS.filter((tab) => tab !== 'epic' || !ticketHasField(type, 'epic'));
+
+export function TicketScreen({
+  initiative,
+  row,
+  rows,
+  members,
+  stakeholders,
+  babok,
+  tab: asked,
+  crumbs,
+  onCrumb,
+  actionsVersion,
   myId,
+  onTab,
   onChanged,
-  onClose,
+  onDeleted,
 }: {
-  initiativeId: string;
-  ticketId: string;
-  /** Change à chaque écriture sur un ticket : l'Epic et ses tickets se rechargent. */
-  ticketsVersion: number;
-  stakeholdersVersion: number;
+  initiative: InitiativeDto;
+  /** Ligne du ticket dans la liste de l'initiative : son type, son en-tête avant chargement. */
+  row: TicketRow;
+  /** Tickets de l'initiative, d'où viennent les Epics proposés et les tickets d'un Epic. */
+  rows: TicketRow[];
+  members: InitiativeMemberDto[];
+  stakeholders: StakeholderDto[];
+  babok: BabokDto | null;
+  tab: TicketTab;
+  crumbs: InitiativeTreeNode[];
+  onCrumb: (node: InitiativeTreeNode) => void;
+  /** Change à chaque écriture sur un ticket ou un lien : les liens se rechargent. */
+  actionsVersion: number;
   /** Pour savoir quels commentaires sont les miens. */
   myId: string | null;
+  /** Autre onglet : une adresse de plus, gardée par l'alerte. */
+  onTab: (tab: TicketTab) => void;
+  /** Ticket modifié, ou lien créé ou retiré : les listes et l'arborescence suivent. */
   onChanged: () => void;
-  onClose: () => void;
+  onDeleted: () => void;
 }) {
   const { t } = useI18n();
   const { typeLabel } = useTicketLabels();
-  const closeSilently = useCloseSilently();
-  const [ticket, setTicket] = useState<TicketDto | null>(null);
-  const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
-  const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
-  const [rows, setRows] = useState<TicketRow[] | null>(null);
+  const [loaded, setLoaded] = useState<LoadedTicket | null>(null);
   const [versions, setVersions] = useState<TicketVersionDto[]>([]);
+  // Augmente à chaque enregistrement : l'historique se recharge.
   const [saveCount, setSaveCount] = useState(0);
   const [error, setError] = useState<UiError | null>(null);
+  const initiativeId = initiative.id;
+  const isAction = row.type === 'action';
 
   useEffect(() => {
-    api.getTicket(initiativeId, ticketId).then(setTicket, (e: unknown) => setError(toUiError(e)));
-    api.listMembers(initiativeId).then(setMembers, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, ticketId]);
+    const load: Promise<LoadedTicket> = isAction
+      ? api.getAction(initiativeId, row.id).then((dto) => ({ kind: 'action', dto }))
+      : api.getTicket(initiativeId, row.id).then((dto) => ({ kind: 'ticket', dto }));
+    load.then(setLoaded, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, row.id, isAction]);
 
   useEffect(() => {
-    api.ticketHistory(initiativeId, ticketId).then(setVersions, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, ticketId, saveCount]);
+    (isAction ? api.actionHistory(initiativeId, row.id) : api.ticketHistory(initiativeId, row.id)).then(setVersions, (e: unknown) =>
+      setError(toUiError(e)),
+    );
+  }, [initiativeId, row.id, isAction, saveCount]);
 
-  useEffect(() => {
-    api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, stakeholdersVersion]);
+  const saved = (next: LoadedTicket) => {
+    setLoaded(next);
+    setSaveCount((count) => count + 1);
+    onChanged();
+  };
 
-  useEffect(() => {
-    api.listTickets(initiativeId).then(setRows, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, ticketsVersion]);
-
+  const ticket = loaded?.dto;
+  const tabs = ticketTabs(row.type);
+  const tab = tabs.includes(asked) ? asked : 'sheet';
+  const epicTickets = sortByReference(rows.filter((r) => r.epic?.id === row.id));
   return (
-    <Panel
-      title={ticket ? ticket.title : t('common.loading')}
-      kicker={
-        ticket && (
-          <>
-            {typeLabel(ticket.type)} <span className="code">{ticket.reference}</span>
-          </>
-        )
-      }
-      onClose={onClose}
+    <DataScreen
+      crumbs={crumbs}
+      onCrumb={onCrumb}
+      kind={typeLabel(row.type)}
+      reference={row.reference}
+      title={ticket?.title ?? row.title}
+      badges={<TicketStatusLabel type={row.type} status={ticket?.status ?? row.status} />}
+      tabs={tabs.map((id) => ({
+        id,
+        label: t(`ticketTab.${id}` as MessageKey),
+        ...(id === 'epic' && { count: epicTickets.length }),
+      }))}
+      tab={tab}
+      onTab={onTab}
     >
+      {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
       <ErrorMessage error={error} />
-      {ticket && (
+      {!loaded || !ticket ? (
+        !error && <p>{t('common.loading')}</p>
+      ) : (
         <>
-          {ticket.initiative.archived && <p className="notice">{t('initiative.archived')}</p>}
-          {canEditTicket(ticket) && members && stakeholders && rows ? (
-            <TicketForm
-              ticket={ticket}
-              members={members}
-              stakeholders={stakeholders}
-              rows={rows}
-              onSaved={(saved) => {
-                setTicket(saved);
-                setSaveCount((count) => count + 1);
-                onChanged();
-              }}
-            />
-          ) : (
-            <TicketDetails ticket={ticket} />
-          )}
-          <TicketAudit ticket={ticket} />
-          {!ticketHasField(ticket.type, 'epic') && rows && <EpicTickets epicId={ticket.id} initiativeId={initiativeId} rows={rows} />}
-          <TicketLinks
-            initiativeId={initiativeId}
-            ticketId={ticket.id}
-            canEdit={can(ticket.initiative.myRole, 'editLinks', { archived: ticket.initiative.archived })}
-            version={ticketsVersion}
-            onChanged={onChanged}
-          />
-          <TicketComments initiativeId={initiativeId} ticketId={ticket.id} initiative={ticket.initiative} myId={myId} />
-          <TicketAttachments initiativeId={initiativeId} ticketId={ticket.id} initiative={ticket.initiative} />
-          <TicketHistory type={ticket.type} babok={null} versions={versions} />
-          {canEditTicket(ticket) && (
-            <DeleteTicket
-              ticket={ticket}
-              onDeleted={() => {
-                onChanged();
-                closeSilently();
-              }}
+          {tab === 'sheet' &&
+            (loaded.kind === 'action' ? (
+              babok ? (
+                <ActionSheet
+                  babok={babok}
+                  action={loaded.dto}
+                  members={members}
+                  stakeholders={stakeholders}
+                  rows={rows}
+                  onSaved={(dto) => saved({ kind: 'action', dto })}
+                  onDeleted={onDeleted}
+                />
+              ) : (
+                <p>{t('common.loading')}</p>
+              )
+            ) : (
+              <TicketSheet
+                ticket={loaded.dto}
+                members={members}
+                stakeholders={stakeholders}
+                rows={rows}
+                onSaved={(dto) => saved({ kind: 'ticket', dto })}
+                onDeleted={onDeleted}
+              />
+            ))}
+          {tab === 'epic' && <EpicTickets epicId={row.id} own={epicTickets} initiativeId={initiativeId} rows={rows} />}
+          {tab === 'links' && (
+            <TicketLinks
+              initiativeId={initiativeId}
+              ticketId={row.id}
+              canEdit={can(ticket.initiative.myRole, 'editLinks', { archived: ticket.initiative.archived })}
+              version={actionsVersion}
+              onChanged={onChanged}
             />
           )}
+          {tab === 'comments' && (
+            <TicketComments initiativeId={initiativeId} ticketId={row.id} initiative={ticket.initiative} myId={myId} />
+          )}
+          {tab === 'attachments' && <TicketAttachments initiativeId={initiativeId} ticketId={row.id} initiative={ticket.initiative} />}
+          {tab === 'history' && <TicketHistory type={row.type} babok={isAction ? babok : null} versions={versions} />}
         </>
       )}
-    </Panel>
+    </DataScreen>
   );
 }
 
-/** Fiche d'un Epic : ses tickets et le nombre de fermés. */
-function EpicTickets({ epicId, initiativeId, rows }: { epicId: string; initiativeId: string; rows: TicketRow[] }) {
+/** Onglet Fiche d'un ticket autre que l'Action : champs, auteurs et dates, suppression. */
+function TicketSheet({
+  ticket,
+  members,
+  stakeholders,
+  rows,
+  onSaved,
+  onDeleted,
+}: {
+  ticket: TicketDto;
+  members: InitiativeMemberDto[];
+  stakeholders: StakeholderDto[];
+  rows: TicketRow[];
+  onSaved: (ticket: TicketDto) => void;
+  onDeleted: () => void;
+}) {
+  return (
+    <>
+      {canEditTicket(ticket) ? (
+        <TicketForm ticket={ticket} members={members} stakeholders={stakeholders} rows={rows} onSaved={onSaved} />
+      ) : (
+        <TicketDetails ticket={ticket} />
+      )}
+      <TicketAudit ticket={ticket} />
+      {canEditTicket(ticket) && <DeleteTicket ticket={ticket} onDeleted={onDeleted} />}
+    </>
+  );
+}
+
+/** Onglet Tickets de l'Epic : ses tickets et le nombre de fermés. */
+function EpicTickets({
+  epicId,
+  own,
+  initiativeId,
+  rows,
+}: {
+  epicId: string;
+  /** Ses tickets, par référence. */
+  own: TicketRow[];
+  initiativeId: string;
+  rows: TicketRow[];
+}) {
   const { t } = useI18n();
   const ticketTypes = useTicketTypes();
-  const { open } = usePanels();
-  const own = sortByReference(rows.filter((row) => row.epic?.id === epicId));
+  const openNode = useOpenNode();
   return (
     <section className="epic-tickets">
-      <h3 className="group-title">{t('ticket.epicTickets')}</h3>
       {own.length === 0 ? (
         <p>
           <small>{t('ticket.epicTicketsEmpty')}</small>
@@ -174,7 +261,7 @@ function EpicTickets({ epicId, initiativeId, rows }: { epicId: string; initiativ
           <ul className="links">
             {own.map((row) => (
               <li key={row.id}>
-                <button type="button" className="link" onClick={() => open(ticketTarget(initiativeId, row))}>
+                <button type="button" className="link" onClick={() => openNode(initiativeId, { kind: 'ticket', id: row.id })}>
                   <span className="code">{row.reference}</span> {row.title}
                 </button>{' '}
                 <TicketStatusLabel type={row.type} status={row.status} />
@@ -494,12 +581,13 @@ function DeleteTicket({ ticket, onDeleted }: { ticket: TicketDto; onDeleted: () 
 }
 
 /**
- * « Nouveau ticket » : le type d'abord, qui ne changera plus, puis les champs qu'il
- * prévoit. Tout ticket naît dans le statut initial de son type. La fiche créée
- * remplace le panneau. Le responsable d'une Action est obligatoire : par défaut, la
- * personne qui crée ; il est facultatif pour les autres types.
+ * « Nouveau ticket », en fenêtre de dialogue (N15) : le type d'abord, qui ne
+ * changera plus, puis les champs qu'il prévoit. Tout ticket naît dans le statut
+ * initial de son type ; créé, il s'ouvre dans l'écran de données. Le responsable
+ * d'une Action est obligatoire : par défaut, la personne qui crée ; il est
+ * facultatif pour les autres types.
  */
-export function CreateTicketPanel({
+export function CreateTicketDialog({
   babok,
   initiative,
   epicId: proposedEpicId,
@@ -512,13 +600,14 @@ export function CreateTicketPanel({
   /** Ouvert depuis le « + Ticket » d'un Epic : le ticket y entre. */
   epicId?: string;
   myId: string | null;
-  onCreated: () => void;
+  /** Créé : les listes se rechargent, l'écran de données l'affiche. */
+  onCreated: (ticketId: string) => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
   const ticketTypes = useTicketTypes({ fresh: true });
   const { typeLabel } = useTicketLabels();
-  const { replaceSaved } = usePanels();
+  const closeSilently = useCloseSilently();
   // Types actifs seulement : un type désactivé n'est plus proposé à la création.
   const types = newTicketTypes(ticketTypes, !!proposedEpicId).map((option) => option.code);
   const [type, setType] = useState<TicketType>(types[0]!);
@@ -567,8 +656,9 @@ export function CreateTicketPanel({
           return false;
         }
         const action = await api.createAction(initiativeId, parsed.data);
-        onCreated();
-        replaceSaved({ kind: 'action', initiativeId, actionId: action.id });
+        // Saisie enregistrée : pas d'alerte.
+        closeSilently();
+        onCreated(action.id);
         return true;
       }
       const parsed = createTicketSchema.safeParse({
@@ -584,8 +674,8 @@ export function CreateTicketPanel({
         return false;
       }
       const ticket = await api.createTicket(initiativeId, parsed.data);
-      onCreated();
-      replaceSaved({ kind: 'ticket', initiativeId, ticketId: ticket.id });
+      closeSilently();
+      onCreated(ticket.id);
       return true;
     } catch (e) {
       setError(
@@ -600,6 +690,7 @@ export function CreateTicketPanel({
   return (
     <Panel
       title={t('tickets.new')}
+      variant="dialog"
       kicker={
         <>
           {t('initiative.kicker')} <span className="code">{initiative.code}</span> · {initiative.name}

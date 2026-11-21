@@ -16,7 +16,7 @@ import {
   type StakeholderDto,
 } from '@app/shared';
 import { useState } from 'react';
-import { NewActionButton } from './action-panels';
+import { NewActionButton } from './actions';
 import { LinkedTickets } from './link-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';

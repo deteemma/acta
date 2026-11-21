@@ -40,7 +40,7 @@ import {
 } from '@app/shared';
 import { Download } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
-import { NewActionButton } from './action-panels';
+import { NewActionButton } from './actions';
 import { LinkedTickets } from './link-panels';
 import { api, ApiError } from './api';
 import { saveFile } from './download';

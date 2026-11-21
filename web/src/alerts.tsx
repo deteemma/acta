@@ -9,6 +9,7 @@ import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { Panel, usePanels } from './panels';
+import { useOpenNode } from './references';
 import { useTicketTypes } from './ticket-types';
 
 const ALERT_GROUPS: { kind: Alert['kind']; title: MessageKey; Icon: LucideIcon }[] = [
@@ -72,7 +73,7 @@ export function AlertsPanel({
   onClose: () => void;
 }) {
   const { t, locale } = useI18n();
-  const { open } = usePanels();
+  const openNode = useOpenNode();
   // Nouvelles à l'ouverture : elles le restent à l'écran tant que le panneau est ouvert.
   const [newKeys] = useState(() => new Set(alerts.filter((a) => a.isNew).map(alertKey)));
   const [error, setError] = useState<UiError | null>(null);
@@ -106,7 +107,7 @@ export function AlertsPanel({
                     <button
                       type="button"
                       className="link"
-                      onClick={() => open({ kind: 'action', initiativeId: action.initiative.id, actionId: action.id })}
+                      onClick={() => openNode(action.initiative.id, { kind: 'ticket', id: action.id })}
                     >
                       <span className="code">{action.reference}</span> {action.title}
                     </button>

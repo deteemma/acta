@@ -12,7 +12,7 @@ import {
 import type { User } from 'oidc-client-ts';
 import { BookOpen, ListChecks, LogOut, PanelLeft, Plus, Search, Settings2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { ActionPanel, CreateActionPanel } from './action-panels';
+import { CreateActionDialog } from './actions';
 import { AdminPanel } from './admin-panel';
 import { PageTemplatePanel } from './admin-page-templates';
 import { AlertsButton, AlertsPanel, useMyAlerts } from './alerts';
@@ -37,8 +37,7 @@ import { CreateRequirementDialog } from './requirement-screen';
 import { CreateScenarioDialog } from './scenario-panels';
 import { ResizeHandle, SIDEBAR } from './resize';
 import { ScreensProvider, useScreens } from './screens';
-import { CreateTicketPanel, TicketPanel } from './ticket-panels';
-import { TicketsScreen } from './tickets-screen';
+import { CreateTicketDialog } from './ticket-screen';
 
 export function App({ user }: { user: User | null }) {
   return (
@@ -190,10 +189,11 @@ function Shell({ user }: { user: User }) {
 
   const selectNode = (node: InitiativeTreeNode) => {
     if (!shownId) return;
-    const { screen: next, panel } = nodeDestination(shownId, node.ref);
     setTreeOpen(false);
-    void goTo(next, panel);
+    void goTo(nodeDestination(shownId, node.ref));
   };
+  const showTicket = (initiativeId: string, ticketId: string) =>
+    void goTo({ kind: 'ticket', initiativeId, ticketId, tab: 'sheet' });
 
   const initiativeChanged = (changed: InitiativeDto) => {
     setInitiatives((list) => list && list.map((i) => (i.id === changed.id ? changed : i)));
@@ -254,18 +254,15 @@ function Shell({ user }: { user: User }) {
         </ScreenForms>
       );
     }
-    if (screen.kind === 'tickets') {
-      return (
-        <TicketsScreen
-          key={screen.initiativeId}
-          initiativeId={screen.initiativeId}
-          initiative={screenInitiativeDto}
-          version={actionsVersion}
-          onChanged={actionsChanged}
-        />
-      );
-    }
     if (!data || data.initiative.id !== screen.initiativeId) {
+      // Tickets d'une initiative dont je ne suis pas membre, ou disparue : le refus de l'écran Tickets (ticket 17).
+      if (dataError && isTicketsScreen(screen) && isRefusal(dataError)) {
+        return (
+          <p className="error" role="alert">
+            {t('tickets.refused')}
+          </p>
+        );
+      }
       return dataError ? <ErrorMessage error={dataError} /> : <p>{t('common.loading')}</p>;
     }
     return (
@@ -278,6 +275,7 @@ function Shell({ user }: { user: User }) {
           pending={dataPending}
           babok={babok}
           actionsVersion={actionsVersion}
+          myId={me?.id ?? null}
           onNavigate={(next) => void goTo(next)}
           onReplace={replaceScreen}
           onSelectNode={selectNode}
@@ -289,6 +287,7 @@ function Shell({ user }: { user: User }) {
           onStakeholdersChanged={stakeholdersChanged}
           onNeedsChanged={needsChanged}
           onRequirementsChanged={requirementsChanged}
+          onTicketsChanged={actionsChanged}
           onLinksChanged={actionsChanged}
         />
       </ScreenForms>
@@ -451,54 +450,33 @@ function Shell({ user }: { user: User }) {
               case 'createAction':
                 return (
                   babok && (
-                    <CreateActionPanel
+                    <CreateActionDialog
                       babok={babok}
                       initiatives={active}
                       initiativeId={content.initiativeId}
                       from={content.from}
-                      onCreated={actionsChanged}
+                      onCreated={(created) => {
+                        actionsChanged();
+                        showTicket(created.initiative.id, created.id);
+                      }}
                       onClose={close}
                     />
                   )
-                );
-              case 'action':
-                return (
-                  babok && (
-                    <ActionPanel
-                      babok={babok}
-                      initiativeId={content.initiativeId}
-                      actionId={content.actionId}
-                      ticketsVersion={actionsVersion}
-                      stakeholdersVersion={stakeholdersVersion}
-                      myId={me?.id ?? null}
-                      onChanged={actionsChanged}
-                      onClose={close}
-                    />
-                  )
-                );
-              case 'ticket':
-                return (
-                  <TicketPanel
-                    initiativeId={content.initiativeId}
-                    ticketId={content.ticketId}
-                    ticketsVersion={actionsVersion}
-                    stakeholdersVersion={stakeholdersVersion}
-                    myId={me?.id ?? null}
-                    onChanged={actionsChanged}
-                    onClose={close}
-                  />
                 );
               case 'createTicket': {
                 const initiative = active.find((i) => i.id === content.initiativeId);
                 return (
                   babok &&
                   initiative && (
-                    <CreateTicketPanel
+                    <CreateTicketDialog
                       babok={babok}
                       initiative={initiative}
                       epicId={content.epicId}
                       myId={me?.id ?? null}
-                      onCreated={actionsChanged}
+                      onCreated={(ticketId) => {
+                        actionsChanged();
+                        showTicket(initiative.id, ticketId);
+                      }}
                       onClose={close}
                     />
                   )
@@ -583,11 +561,15 @@ function InitiativeOptions({ initiatives }: { initiatives: InitiativeDto[] }) {
   ));
 }
 
+const isTicketsScreen = (screen: Screen) => screen.kind === 'tickets' || screen.kind === 'ticket';
+
+/** Le non-membre reçoit 404 de l'API : même refus pour une initiative disparue. */
+const isRefusal = (error: UiError) =>
+  'key' in error && error.key === 'error.http' && (error.params?.status === 403 || error.params?.status === 404);
+
 /** Initiative, et objet éventuel, d'où le bouton « + Action » crée l'action depuis ce panneau. */
 function actionOrigin(content: PanelContent): { initiativeId: string; from?: AnalysisObjectRef } | undefined {
   switch (content.kind) {
-    case 'action':
-    case 'ticket':
     case 'createTicket':
     case 'createStakeholder':
     case 'createNeed':

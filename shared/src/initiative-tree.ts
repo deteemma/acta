@@ -21,7 +21,7 @@ export type TreeNodeRef =
   | { kind: 'noEpic' }
   | { kind: 'stakeholder' | 'need' | 'requirement' | 'page'; id: string }
   | { kind: 'scenario'; id: string; requirementId: string }
-  | { kind: 'ticket'; id: string; type: string };
+  | { kind: 'ticket'; id: string };
 
 export interface InitiativeTreeNode {
   key: string;
@@ -120,7 +120,7 @@ export function buildInitiativeTree(data: InitiativeTreeData): InitiativeTreeNod
   // Epic fermé va sous « Sans Epic » (décision du 21.11.2026).
   const open = sortByReference(data.tickets.filter((t) => isOpenTicket(data.ticketTypes, t)));
   const ticketNode = (t: TicketRow, children: InitiativeTreeNode[] = []) =>
-    node({ kind: 'ticket', id: t.id, type: t.type }, { reference: short(t.reference), title: t.title, children });
+    node({ kind: 'ticket', id: t.id }, { reference: short(t.reference), title: t.title, children });
   const epics = open.filter((t) => t.type === 'epic');
   const openEpicIds = new Set(epics.map((e) => e.id));
   const members = open.filter((t) => t.type !== 'epic');
@@ -194,6 +194,9 @@ export function screenNodeKey(screen: Screen): string | null {
       return treeNodeKey({ kind: 'requirement', id: screen.requirementId });
     case 'scenario':
       return treeNodeKey({ kind: 'scenario', id: screen.scenarioId, requirementId: screen.requirementId });
+    case 'ticket':
+      // Un ticket fermé n'est pas dans l'arbre : aucun nœud n'y est alors choisi (N8).
+      return treeNodeKey({ kind: 'ticket', id: screen.ticketId });
     case 'pages':
       return screen.pageId ? treeNodeKey({ kind: 'page', id: screen.pageId }) : treeNodeKey({ kind: 'branch', branch: 'pages' });
   }

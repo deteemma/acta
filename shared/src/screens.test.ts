@@ -149,3 +149,31 @@ test('un onglet inconnu d’une exigence ou un scénario mal formé mène à l�
     assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
   }
 });
+
+test('un ticket, de tout type, a son adresse, et chacun de ses onglets ; la Fiche est celle de l’adresse nue', () => {
+  const base = `/initiatives/${ID}/tickets/${ELEMENT}`;
+  const cases = [
+    [{ kind: 'ticket', initiativeId: ID, ticketId: ELEMENT, tab: 'sheet' }, base],
+    [{ kind: 'ticket', initiativeId: ID, ticketId: ELEMENT, tab: 'epic' }, `${base}/epic`],
+    [{ kind: 'ticket', initiativeId: ID, ticketId: ELEMENT, tab: 'links' }, `${base}/links`],
+    [{ kind: 'ticket', initiativeId: ID, ticketId: ELEMENT, tab: 'comments' }, `${base}/comments`],
+    [{ kind: 'ticket', initiativeId: ID, ticketId: ELEMENT, tab: 'attachments' }, `${base}/attachments`],
+    [{ kind: 'ticket', initiativeId: ID, ticketId: ELEMENT, tab: 'history' }, `${base}/history`],
+  ] as const;
+  for (const [screen, path] of cases) {
+    assert.equal(screenPath(screen), path);
+    assert.deepEqual(parseScreenPath(path), screen, path);
+  }
+  assert.equal(sameScreen(cases[0][0], { kind: 'tickets', initiativeId: ID }), false);
+});
+
+test('un onglet inconnu d’un ticket ou un identifiant mal formé mène à l’accueil', () => {
+  for (const path of [
+    `/initiatives/${ID}/tickets/${ELEMENT}/inconnu`,
+    `/initiatives/${ID}/tickets/${ELEMENT}/scenarios`,
+    `/initiatives/${ID}/tickets/${ELEMENT}/links/x`,
+    `/initiatives/${ID}/tickets/pas-un-id`,
+  ]) {
+    assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
+  }
+});

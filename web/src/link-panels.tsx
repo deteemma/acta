@@ -24,10 +24,10 @@ import { api } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { NeedLink } from './need-screen';
-import { usePanels } from './panels';
 import { RequirementLink } from './requirement-screen';
+import { useOpenNode } from './references';
 import { useScreens } from './screens';
-import { TicketStatusLabel, ticketTarget } from './ticket-parts';
+import { TicketStatusLabel } from './ticket-parts';
 import { useUnsavedForm } from './unsaved-changes';
 
 /**
@@ -65,10 +65,10 @@ export function useLinkData(initiativeId: string, version: number, withAnalysis:
 }
 
 function TicketButton({ initiativeId, ticket }: { initiativeId: string; ticket: TicketRow }) {
-  const { open } = usePanels();
+  const openNode = useOpenNode();
   return (
     <>
-      <button type="button" className="link" onClick={() => open(ticketTarget(initiativeId, ticket))}>
+      <button type="button" className="link" onClick={() => openNode(initiativeId, { kind: 'ticket', id: ticket.id })}>
         <span className="code">{ticket.reference}</span> {ticket.title}
       </button>{' '}
       <TicketStatusLabel type={ticket.type} status={ticket.status} />

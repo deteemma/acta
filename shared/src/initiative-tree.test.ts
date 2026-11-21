@@ -198,4 +198,6 @@ test('chaque écran d’une initiative désigne son nœud ; « Mes actions » n�
   // Un scénario : son nœud, sous son exigence, est celui de l'écran (N16).
   assert.equal(screenNodeKey({ kind: 'requirement', initiativeId, requirementId: 'r1', tab: 'history' }), 'requirement:r1');
   assert.equal(screenNodeKey({ kind: 'scenario', initiativeId, requirementId: 'r1', scenarioId: 'sc1' }), 'scenario:sc1');
+  // Un ticket fermé n'est pas dans l'arbre : son nœud n'y sera pas trouvé (N8).
+  assert.equal(screenNodeKey({ kind: 'ticket', initiativeId, ticketId: 't1', tab: 'comments' }), 'ticket:t1');
 });

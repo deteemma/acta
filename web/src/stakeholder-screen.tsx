@@ -30,7 +30,7 @@ import {
   sortByDueDate,
 } from '@app/shared';
 import { useEffect, useState } from 'react';
-import { ActionList, NewActionButton } from './action-panels';
+import { ActionList, NewActionButton } from './actions';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
