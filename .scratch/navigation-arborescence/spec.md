@@ -53,14 +53,14 @@ Chaque ticket renvoie à ces décisions : **les lire avant de coder**. En cas de
   | Équipe | Membres · Désignations |
   | Nœud de branche | la liste de ses éléments, avec le bouton de création |
 
-  Tout champ ou section actuel d'un panneau trouve sa place dans l'un de ces onglets ; un cas qui n'y entre pas est une question pour la responsable fonctionnelle. Les actions liées à une partie prenante (avec « + Action ») vont dans son onglet Fiche, sous les champs (décision du 21.11.2026).
+  Tout champ ou section actuel d'un panneau trouve sa place dans l'un de ces onglets ; un cas qui n'y entre pas est une question pour la responsable fonctionnelle. Les actions liées à une partie prenante (avec « + Action ») vont dans son onglet Fiche, sous les champs (décision du 21.11.2026). Exigence : la Fiche garde les champs modifiables (besoins, exigence parente, sources) ; l'onglet Traçabilité les reprend en lecture, avec les exigences dérivées — ce libellé remplace « Exigences enfants » (décisions du 21.11.2026).
 - **N12** — Chaque élément et chaque onglet a sa propre adresse : recharger la page ou suivre un lien y ramène ; « Précédent » revient à l'élément ou à l'onglet d'avant. Après une connexion, on revient à l'adresse demandée.
 - **N13** — L'alerte des modifications non enregistrées s'applique au passage d'un élément, d'un onglet ou d'une initiative à l'autre, comme aujourd'hui entre panneaux.
 
 ### Créations, recherche, mobile
 
 - **N15** — Une création (initiative, action, ticket, partie prenante, besoin, exigence, page, scénario…) passe par une petite **fenêtre de dialogue** centrée avec les champs de création actuels. Une fois enregistré, l'élément s'ouvre à droite et apparaît dans l'arborescence. Le bouton « + Action » reste disponible partout.
-- **N16** — La palette (Ctrl+K) est conservée : choisir un résultat change d'initiative si besoin, déplie l'arborescence et ouvre l'élément à droite ; un scénario ouvre l'onglet Scénarios de son exigence, le scénario mis en évidence. Une référence citée dans un texte fait de même.
+- **N16** — La palette (Ctrl+K) est conservée : choisir un résultat change d'initiative si besoin, déplie l'arborescence et ouvre l'élément à droite ; un scénario ouvre l'onglet Scénarios de son exigence, le scénario mis en évidence. Une référence citée dans un texte fait de même. La mise en évidence suit l'adresse du scénario : elle tient tant qu'on reste sur cette adresse, et « Précédent » la retrouve ; un scénario tout juste créé s'ouvre de même (décisions du 21.11.2026).
 - **N14** — Le mobile garde sa navigation actuelle.
 
 ## Points de vigilance

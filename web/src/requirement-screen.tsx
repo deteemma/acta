@@ -171,7 +171,7 @@ export function RequirementTabContent({
   scenarioId?: string;
   stakeholders: StakeholderDto[];
   needs: NeedDto[];
-  /** Toutes les exigences de l'initiative : choix de la parente, exigences enfants. */
+  /** Toutes les exigences de l'initiative : choix de la parente, exigences dérivées. */
   requirements: RequirementDto[];
   /** Change à chaque écriture sur un ticket ou un lien : les tickets liés se rechargent. */
   actionsVersion: number;
@@ -311,7 +311,7 @@ export function CreateRequirementDialog({
   );
 }
 
-/** Onglet Traçabilité : besoins, exigence parente, exigences enfants et sources. */
+/** Onglet Traçabilité : besoins, exigence parente, exigences dérivées et sources. */
 function RequirementTrace({ requirement, derived }: { requirement: RequirementDto; derived: RequirementDto[] }) {
   const { t } = useI18n();
   const none = (key: Parameters<typeof t>[0]) => <small>{t(key)}</small>;
