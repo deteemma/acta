@@ -1,37 +1,26 @@
-// Contenu des panneaux : fiche d'une initiative, membre, création rapide.
+// Fiche d'une initiative (onglets Aperçu et Paramètres de l'écran de données,
+// ADR-0021), membre, création en fenêtre de dialogue.
 import {
   memberName,
-  type ActionDto,
   ANALYSIS_APPROACHES,
-  type BabokDto,
   type AnalysisApproach,
   can,
+  canEditInitiativeCode,
   createInitiativeSchema,
   englishTermTooltip,
   type InitiativeDto,
   type InitiativeMemberDto,
   INITIATIVE_DESCRIPTION_MAX_LENGTH,
   type Locale,
-  type NeedDto,
-  type OwnerDesignationDto,
-  type RequirementDto,
-  sortByDueDate,
-  type StakeholderDto,
   updateInitiativeSchema,
 } from '@app/shared';
-import { Archive, ArchiveRestore, FileText, LayoutDashboard, Plus, Ticket, Trash2, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { ActionList } from './action-panels';
+import { Archive, ArchiveRestore, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { api, ApiError } from './api';
-import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { canEditNeeds, NeedList } from './need-panels';
-import { Panel, useCloseSilently, usePanels, useSettleUnsaved } from './panels';
-import { canEditRequirements, ExportRequirementsButton, RequirementList } from './requirement-panels';
+import { Panel, useCloseSilently, useSettleUnsaved } from './panels';
 import { TextWithReferences } from './rich-text';
-import { useScreens } from './screens';
-import { TeamSection } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
 /** Date AAAA-MM-JJ ou horodatage, affiché dans la langue de l'interface. */
@@ -41,257 +30,18 @@ export function formatDate(locale: Locale, date: string): string {
   );
 }
 
-export function InitiativePanel({
-  initiativeId,
-  babok,
-  actionsVersion,
-  stakeholdersVersion,
-  needsVersion,
-  requirementsVersion,
-  pagesVersion,
-  onChanged,
-  onDeleted,
-  onClose,
-}: {
-  initiativeId: string;
-  babok: BabokDto | null;
-  /** Change à chaque écriture sur une action : la liste des actions se recharge. */
-  actionsVersion: number;
-  /** Change à chaque écriture sur une partie prenante. */
-  stakeholdersVersion: number;
-  /** Change à chaque écriture sur un besoin (le code peut aussi se figer). */
-  needsVersion: number;
-  /** Change à chaque écriture sur une exigence. */
-  requirementsVersion: number;
-  /** Change à chaque écriture sur une page. */
-  pagesVersion: number;
-  onChanged: (initiative: InitiativeDto) => void;
-  onDeleted: (initiativeId: string) => void;
-  onClose: () => void;
-}) {
-  const { t, locale } = useI18n();
-  const { open } = usePanels();
-  const { goTo } = useScreens();
-  const closeSilently = useCloseSilently();
-  const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
-  const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
-  const [designations, setDesignations] = useState<OwnerDesignationDto[]>([]);
-  const [ticketCount, setTicketCount] = useState(0);
-  const [pageCount, setPageCount] = useState(0);
-  const [actions, setActions] = useState<ActionDto[]>([]);
-  const [stakeholders, setStakeholders] = useState<StakeholderDto[]>([]);
-  const [needs, setNeeds] = useState<NeedDto[]>([]);
-  const [requirements, setRequirements] = useState<RequirementDto[]>([]);
-  const [error, setError] = useState<UiError | null>(null);
-
-  // Rechargée après chaque changement de l'équipe : il peut changer mon rôle.
-  const load = () =>
-    Promise.all([
-      api.getInitiative(initiativeId),
-      api.listMembers(initiativeId),
-      api.listOwnerDesignations(initiativeId),
-    ]).then(([i, m, d]) => {
-      changed(i);
-      setMembers(m);
-      setDesignations(d);
-    }, (e: unknown) => setError(toUiError(e)));
-
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initiativeId]);
-
-  useEffect(() => {
-    api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
-    api.listTickets(initiativeId).then((rows) => setTicketCount(rows.length), (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, actionsVersion]);
-
-  useEffect(() => {
-    api.listPages(initiativeId).then((rows) => setPageCount(rows.length), (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, pagesVersion]);
-
-  useEffect(() => {
-    api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, stakeholdersVersion]);
-
-  useEffect(() => {
-    api.listNeeds(initiativeId).then(setNeeds, (e: unknown) => setError(toUiError(e)));
-    // Le premier besoin fige le code : la fiche est relue.
-    api.getInitiative(initiativeId).then(changed, (e: unknown) => setError(toUiError(e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initiativeId, needsVersion]);
-
-  useEffect(() => {
-    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, requirementsVersion]);
-
-  function changed(next: InitiativeDto) {
-    setInitiative(next);
-    onChanged(next);
-  }
-
-  const state = { archived: initiative?.archivedAt != null };
-
-  // Hiérarchie de la fiche (refonte du design, ticket 04) : Fiche, Analyse, Équipe, Propriétaire.
-  const me = members?.find((m) => m.isMe);
-  return (
-    <Panel
-      title={initiative ? initiative.name : t('common.loading')}
-      kicker={
-        initiative && (
-          <>
-            {t('initiative.kicker')} <span className="code">{initiative.code}</span>
-          </>
-        )
-      }
-      badges={
-        initiative && (
-          <>
-            <span className="badge">{t('initiative.myRoleBadge', { role: t(`role.${initiative.myRole}`) })}</span>
-            {me?.isTeamBa && <span className="badge">{t('member.teamBa')}</span>}
-          </>
-        )
-      }
-      onClose={onClose}
-    >
-      <ErrorMessage error={error} />
-      {initiative && members && (
-        <>
-          {initiative.archivedAt && (
-            <p className="notice">{t('initiative.archivedOn', { date: formatDate(locale, initiative.archivedAt) })}</p>
-          )}
-          <h3 className="group-title">{t('initiative.groupSheet')}</h3>
-          {can(initiative.myRole, 'edit', state) ? (
-            <InitiativeForm initiative={initiative} onSaved={changed} />
-          ) : (
-            <InitiativeDetails initiative={initiative} />
-          )}
-          <h3 className="group-title">{t('initiative.groupAnalysis')}</h3>
-          <div className="section-header">
-            <h4>
-              {t('actions.section')} <span className="count">{actions.length}</span>
-            </h4>
-            <button type="button" disabled={!babok} onClick={() => open({ kind: 'dashboard', initiativeId })}>
-              <LayoutDashboard />
-              {t('dashboard.open')}
-            </button>
-          </div>
-          <ActionList actions={sortByDueDate(actions)} babok={babok} />
-          {actions.length === 0 && <p>{t('actions.sectionEmpty')}</p>}
-          <div className="section-header">
-            {/* Tous types confondus. */}
-            <h4>
-              {t('tickets.title')} <span className="count">{ticketCount}</span>
-            </h4>
-            <button type="button" onClick={() => void goTo({ kind: 'tickets', initiativeId })}>
-              <Ticket />
-              {t('tickets.open')}
-            </button>
-          </div>
-          <div className="section-header">
-            <h4>
-              {t('pages.title')} <span className="count">{pageCount}</span>
-            </h4>
-            <button type="button" onClick={() => void goTo({ kind: 'pages', initiativeId, pageId: null })}>
-              <FileText />
-              {t('pages.open')}
-            </button>
-          </div>
-          <div className="section-header">
-            <h4>
-              <span title={englishTermTooltip(locale, 'stakeholders.section')}>{t('stakeholders.section')}</span>{' '}
-              <span className="count">{stakeholders.length}</span>
-            </h4>
-            <button type="button" onClick={() => open({ kind: 'stakeholders', initiativeId })}>
-              <Users />
-              {t('stakeholders.open')}
-            </button>
-          </div>
-          {stakeholders.length === 0 && (
-            <EmptyState subject="stakeholders" compact title={t('stakeholders.sectionEmpty')} hint={t('empty.stakeholdersHint')} />
-          )}
-          <div className="section-header">
-            <h4>
-              <span title={englishTermTooltip(locale, 'needs.section')}>{t('needs.section')}</span>{' '}
-              <span className="count">{needs.length}</span>
-            </h4>
-            {canEditNeeds(initiative) && (
-              <button type="button" onClick={() => open({ kind: 'need', initiativeId })}>
-                <Plus />
-                {t('needs.new')}
-              </button>
-            )}
-          </div>
-          <NeedList needs={needs} />
-          {needs.length === 0 && (
-            <EmptyState subject="needs" compact title={t('needs.sectionEmpty')} hint={t('empty.needsHint')} />
-          )}
-          <div className="section-header">
-            <h4>
-              <span title={englishTermTooltip(locale, 'requirements.section')}>{t('requirements.section')}</span>{' '}
-              <span className="count">{requirements.length}</span>
-            </h4>
-            <div className="section-buttons">
-              {requirements.length > 0 && <ExportRequirementsButton initiative={initiative} onError={setError} />}
-              {canEditRequirements(initiative) && (
-                <button type="button" onClick={() => open({ kind: 'requirement', initiativeId })}>
-                  <Plus />
-                  {t('requirements.new')}
-                </button>
-              )}
-            </div>
-          </div>
-          <RequirementList requirements={requirements} />
-          {requirements.length === 0 && (
-            <EmptyState
-              subject="requirements"
-              compact
-              title={t('requirements.sectionEmpty')}
-              hint={t('empty.requirementsHint')}
-            />
-          )}
-          <h3 className="group-title">{t('initiative.groupTeam')}</h3>
-          <TeamSection
-            initiative={initiative}
-            members={members}
-            designations={designations}
-            onChanged={() => void load()}
-            onLeft={() => {
-              // L'initiative quitte la liste, comme une suppression.
-              onDeleted(initiative.id);
-              closeSilently();
-            }}
-          />
-          {can(initiative.myRole, 'archive', state) && (
-            <OwnerActions
-              initiative={initiative}
-              onChanged={changed}
-              onDeleted={() => {
-                onDeleted(initiative.id);
-                closeSilently();
-              }}
-            />
-          )}
-        </>
-      )}
-    </Panel>
-  );
-}
-
 /** Approche d'analyse : terme du BABOK, l'anglais en info-bulle (ADR-0013). */
 function ApproachLabel({ approach }: { approach: AnalysisApproach }) {
   const { t, locale } = useI18n();
   return <span title={englishTermTooltip(locale, `approach.${approach}`)}>{t(`approach.${approach}`)}</span>;
 }
 
-/** Fiche en lecture seule : lecteur, ou initiative archivée. */
-function InitiativeDetails({ initiative }: { initiative: InitiativeDto }) {
+/** Fiche en lecture seule : lecteur, ou initiative archivée. Le code est dans l'onglet Paramètres. */
+export function InitiativeDetails({ initiative }: { initiative: InitiativeDto }) {
   const { t, locale } = useI18n();
   const notSet = <small>{t('initiative.notSet')}</small>;
   return (
     <dl>
-      <dt>{t('initiative.code')}</dt>
-      <dd>{initiative.code}</dd>
       <dt>{t('initiative.name')}</dt>
       <dd>{initiative.name}</dd>
       <dt>{t('initiative.description')}</dt>
@@ -306,12 +56,9 @@ function InitiativeDetails({ initiative }: { initiative: InitiativeDto }) {
   );
 }
 
-/** Fiche modifiable : propriétaire et contributeurs ; le code est réservé au propriétaire. */
-function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; onSaved: (i: InitiativeDto) => void }) {
+/** Fiche modifiable : propriétaire et contributeurs. Le code est dans l'onglet Paramètres. */
+export function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; onSaved: (i: InitiativeDto) => void }) {
   const { t, locale } = useI18n();
-  // Propriétaire seul, et tant qu'aucune référence n'a été attribuée.
-  const canEditCode = can(initiative.myRole, 'editCode') && !initiative.codeFrozen;
-  const [code, setCode] = useState(initiative.code);
   const [name, setName] = useState(initiative.name);
   const [description, setDescription] = useState(initiative.description ?? '');
   const [approach, setApproach] = useState<AnalysisApproach | null>(initiative.analysisApproach);
@@ -319,13 +66,12 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
   const [plannedEndDate, setPlannedEndDate] = useState(initiative.plannedEndDate ?? '');
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
-  const submit = useUnsavedForm({ code, name, description, approach, startDate, plannedEndDate }, save);
+  const submit = useUnsavedForm({ name, description, approach, startDate, plannedEndDate }, save);
 
   async function save(): Promise<boolean> {
     setSaved(false);
     // Même schéma de validation que l'API (@app/shared).
     const parsed = updateInitiativeSchema.safeParse({
-      ...(canEditCode ? { code } : {}),
       name,
       description,
       analysisApproach: approach,
@@ -333,8 +79,7 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
       plannedEndDate: plannedEndDate || null,
     });
     if (!parsed.success) {
-      const codeIssue = parsed.error.issues.some((issue) => issue.path[0] === 'code');
-      setError({ key: codeIssue ? 'initiatives.invalid' : 'initiative.invalid' });
+      setError({ key: 'initiative.invalid' });
       return false;
     }
     try {
@@ -352,21 +97,10 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
 
   return (
     <form className="stacked" onSubmit={submit} onChange={edited}>
-      <div className="code-name">
-        <label>
-          {t('initiative.code')}
-          {canEditCode ? (
-            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-          ) : (
-            <input value={code} readOnly aria-readonly="true" />
-          )}
-          {initiative.codeFrozen && <small>{t('initiative.codeFrozen')}</small>}
-        </label>
-        <label>
-          {t('initiative.name')}
-          <input value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-      </div>
+      <label>
+        {t('initiative.name')}
+        <input value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
       <label>
         {t('initiative.description')}
         <textarea
@@ -413,8 +147,68 @@ function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; on
   );
 }
 
+/**
+ * Code de l'initiative (onglet Paramètres) : modifiable par le propriétaire seul,
+ * tant qu'aucune référence n'a été attribuée et que l'initiative n'est pas archivée.
+ */
+export function InitiativeCode({ initiative, onSaved }: { initiative: InitiativeDto; onSaved: (i: InitiativeDto) => void }) {
+  const { t } = useI18n();
+  const editable = canEditInitiativeCode(initiative);
+  const [code, setCode] = useState(initiative.code);
+  const [error, setError] = useState<UiError | null>(null);
+  const [saved, setSaved] = useState(false);
+  const submit = useUnsavedForm({ code }, save);
+
+  async function save(): Promise<boolean> {
+    setSaved(false);
+    // Même schéma de validation que l'API (@app/shared).
+    const parsed = updateInitiativeSchema.safeParse({ code });
+    if (!parsed.success) {
+      setError({ key: 'initiatives.invalid' });
+      return false;
+    }
+    try {
+      onSaved(await api.updateInitiative(initiative.id, parsed.data));
+      setError(null);
+      setSaved(true);
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError && e.status === 400 ? { key: 'initiatives.invalid' } : toUiError(e));
+      return false;
+    }
+  }
+
+  if (!editable) {
+    return (
+      <dl>
+        <dt>{t('initiative.code')}</dt>
+        <dd>
+          <span className="code">{initiative.code}</span>
+          {initiative.codeFrozen && (
+            <>
+              <br />
+              <small>{t('initiative.codeFrozen')}</small>
+            </>
+          )}
+        </dd>
+      </dl>
+    );
+  }
+  return (
+    <form className="stacked" onSubmit={submit} onChange={() => setSaved(false)}>
+      <label>
+        {t('initiative.code')}
+        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+      </label>
+      <button type="submit">{t('initiative.save')}</button>
+      <ErrorMessage error={error} />
+      <p role="status">{saved && t('initiative.saved')}</p>
+    </form>
+  );
+}
+
 /** Archiver / désarchiver, supprimer après confirmation (règles dans @app/shared : propriétaire). */
-function OwnerActions({
+export function OwnerActions({
   initiative,
   onChanged,
   onDeleted,
@@ -503,17 +297,17 @@ export function MemberPanel({ member, onClose }: { member: InitiativeMemberDto; 
   );
 }
 
-/** Création rapide, ouverte par le bouton flottant « + ». La fiche créée remplace le panneau. */
-export function CreateInitiativePanel({
+/** Nouvelle initiative, en fenêtre de dialogue (N15) ; une fois créée, elle s'ouvre à droite. */
+export function CreateInitiativeDialog({
   onCreated,
   onClose,
 }: {
+  /** L'initiative vient d'être créée : la liste la reçoit, l'écran de données l'affiche. */
   onCreated: (initiative: InitiativeDto) => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
   const closeSilently = useCloseSilently();
-  const { showInitiative } = useScreens();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<UiError | null>(null);
@@ -528,11 +322,10 @@ export function CreateInitiativePanel({
     }
     try {
       const initiative = await api.createInitiative(parsed.data);
-      onCreated(initiative);
       // Saisie enregistrée : pas d'alerte. Enregistrée depuis l'alerte, la sortie demandée
       // se poursuit et l'écran ne suit pas la nouvelle initiative.
       closeSilently();
-      showInitiative(initiative.id);
+      onCreated(initiative);
       return true;
     } catch (e) {
       setError(toUiError(e));
@@ -541,7 +334,7 @@ export function CreateInitiativePanel({
   }
 
   return (
-    <Panel title={t('initiatives.new')} onClose={onClose}>
+    <Panel title={t('initiatives.new')} variant="dialog" onClose={onClose}>
       <form className="stacked" onSubmit={submit}>
         <label>
           {t('initiative.code')}

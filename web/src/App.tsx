@@ -1,26 +1,37 @@
-import { type AnalysisObjectRef, type BabokDto, findBabokElement, type InitiativeDto, type MeDto, screenInitiativeId } from '@app/shared';
+import {
+  type AnalysisObjectRef,
+  type BabokDto,
+  findBabokElement,
+  type InitiativeDto,
+  type InitiativeTreeNode,
+  type MeDto,
+  type Screen,
+  screenInitiativeId,
+  screenNodeKey,
+} from '@app/shared';
 import type { User } from 'oidc-client-ts';
-import { Archive, BookOpen, FileText, ListChecks, LogOut, PanelLeft, Plus, Search, Settings2, Ticket } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { BookOpen, ListChecks, LogOut, PanelLeft, Plus, Search, Settings2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { ActionPanel, CreateActionPanel } from './action-panels';
 import { AdminPanel } from './admin-panel';
 import { PageTemplatePanel } from './admin-page-templates';
 import { AlertsButton, AlertsPanel, useMyAlerts } from './alerts';
 import { api } from './api';
 import { BabokElementPanel, BabokPanel } from './babok-panels';
-import { DashboardPanel } from './dashboard-panel';
 import { EmptyState } from './empty-state';
 import { login, loginErrorFromUrl, logout, shouldRedirectToLogin } from './auth';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { I18nProvider, LanguageSelector, useI18n } from './i18n';
 import { Logotype } from './logotype';
-import { CreateInitiativePanel, InitiativePanel, MemberPanel } from './initiative-panels';
+import { CreateInitiativeDialog, MemberPanel } from './initiative-panels';
+import { InitiativeDataScreen } from './initiative-screens';
+import { InitiativeTree, nodeDestination, useInitiativeData } from './initiative-tree';
 import { MyActions } from './my-actions';
 import { NeedPanel } from './need-panels';
 import { StakeholderPanel, StakeholdersPanel } from './stakeholder-panels';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
 import { PagesScreen } from './pages-screen';
-import { FabContext, PanelHost, type PanelContent, PanelsProvider, ScreenForms, usePanels } from './panels';
+import { FabContext, PanelHost, type PanelContent, PanelsProvider, SCREEN_TITLE_ID, ScreenForms, usePanels } from './panels';
 import { ReferencesProvider } from './references';
 import { RequirementPanel } from './requirement-panels';
 import { ResizeHandle, SIDEBAR } from './resize';
@@ -102,12 +113,19 @@ function SignedIn({ user }: { user: User }) {
   );
 }
 
-/** Coque de navigation : « Mes actions », initiatives, palette (Ctrl+K), bouton « + Action » et panneaux. */
+/** Petit écran (tablette, fenêtre étroite) : l'arborescence est repliée, ouverte par-dessus (N4). */
+const NARROW_SHELL = '(max-width: 60rem)';
+
+/**
+ * Coque (ADR-0021) : à gauche le sélecteur d'initiative, son arborescence et, en
+ * bas, « Mes actions », le référentiel et l'administration ; à droite l'écran de
+ * données. Palette (Ctrl+K), bouton « + Action » et panneaux pas encore repris.
+ */
 function Shell({ user }: { user: User }) {
   const { t } = useI18n();
   const { stack, open, leaveScreen } = usePanels();
   const { screen, goTo, initiativeGone } = useScreens();
-  const [initiatives, setInitiatives] = useState<InitiativeDto[]>([]);
+  const [initiatives, setInitiatives] = useState<InitiativeDto[] | null>(null);
   const [me, setMe] = useState<MeDto | null>(null);
   const [babok, setBabok] = useState<BabokDto | null>(null);
   const [error, setError] = useState<UiError | null>(null);
@@ -130,10 +148,17 @@ function Shell({ user }: { user: User }) {
   const [initiativeVersion, setInitiativeVersion] = useState(0);
   usePaletteShortcut();
   const alerts = useMyAlerts(me, actionsVersion);
+  const narrow = useMediaQuery(NARROW_SHELL);
   const [navHidden, setNavHidden] = useState(() => readNavHidden());
-  const toggleNav = (hidden: boolean) => {
-    setNavHidden(hidden);
-    writeNavHidden(hidden);
+  const [treeOpen, setTreeOpen] = useState(false);
+  const navShown = narrow ? treeOpen : !navHidden;
+  const toggleNav = () => {
+    if (narrow) {
+      setTreeOpen((o) => !o);
+      return;
+    }
+    setNavHidden(!navHidden);
+    writeNavHidden(!navHidden);
   };
 
   useEffect(() => {
@@ -143,18 +168,44 @@ function Shell({ user }: { user: User }) {
     api.babok().then(setBabok, (e: unknown) => setError(toUiError(e)));
   }, []);
 
-  const active = initiatives.filter((i) => !i.archivedAt);
-  const archived = initiatives.filter((i) => i.archivedAt);
+  const active = (initiatives ?? []).filter((i) => !i.archivedAt);
+  const archived = (initiatives ?? []).filter((i) => i.archivedAt);
   const screenInitiative = screenInitiativeId(screen);
-  // Une seule initiative dépliée à la fois : celle de la fiche ouverte, sinon celle
-  // de l'écran Tickets ou Pages ; elle le reste une fois la fiche refermée (décision 13).
-  const shownInitiativeId =
-    stack.map((e) => e.content).findLast((content) => content.kind === 'initiative')?.initiativeId ?? screenInitiative;
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  if (shownInitiativeId && shownInitiativeId !== expandedId) setExpandedId(shownInitiativeId);
-  // Panneau le plus haut qui montre une initiative ou l'un de ses objets : la
-  // création rapide propose cette initiative, et part de cet objet (ticket 13) ;
-  // sans panneau, celle de l'écran Tickets ou Pages.
+  // Initiative du sélecteur : celle de l'écran, sinon la dernière consultée sur ce
+  // navigateur, sinon la première (N2).
+  const [lastId, setLastId] = useState(() => readLastInitiative());
+  if (screenInitiative && screenInitiative !== lastId) setLastId(screenInitiative);
+  useEffect(() => {
+    if (lastId) writeLastInitiative(lastId);
+  }, [lastId]);
+  // Liste pas encore chargée : la dernière initiative est supposée encore accessible.
+  const isAccessible = (id: string | null) => !!id && (!initiatives || initiatives.some((i) => i.id === id));
+  const shownId = screenInitiative ?? (isAccessible(lastId) ? lastId : (active[0]?.id ?? archived[0]?.id ?? null));
+  const dataVersion = [actionsVersion, stakeholdersVersion, needsVersion, requirementsVersion, pagesVersion, initiativeVersion].join('-');
+  const { data, error: dataError } = useInitiativeData(shownId, dataVersion);
+  const selectedKey = screenInitiative && screenInitiative === shownId ? screenNodeKey(screen) : null;
+
+  useTitleFocus(screen);
+
+  const selectNode = (node: InitiativeTreeNode) => {
+    if (!shownId) return;
+    const { screen: next, panel } = nodeDestination(shownId, node.ref);
+    setTreeOpen(false);
+    void goTo(next, panel);
+  };
+
+  const initiativeChanged = (changed: InitiativeDto) => {
+    setInitiatives((list) => list && list.map((i) => (i.id === changed.id ? changed : i)));
+    setInitiativeVersion((v) => v + 1);
+  };
+  const initiativeRemoved = (id: string) => {
+    setInitiatives((list) => list && list.filter((i) => i.id !== id));
+    initiativeGone(id);
+  };
+
+  // Panneau le plus haut qui montre un objet d'une initiative : la création rapide
+  // propose cette initiative, et part de cet objet (ticket 13) ; sans panneau,
+  // l'initiative de l'écran.
   const fabOrigin =
     stack.map((e) => actionOrigin(e.content)).findLast((origin) => origin !== undefined) ??
     (screenInitiative ? { initiativeId: screenInitiative } : undefined);
@@ -172,57 +223,156 @@ function Shell({ user }: { user: User }) {
     </button>
   );
 
+  const screenInitiativeDto = screenInitiative ? initiatives?.find((i) => i.id === screenInitiative) : undefined;
+  const dataZone = (() => {
+    if (screen.kind === 'myActions') {
+      return (
+        <>
+          <h1 id={SCREEN_TITLE_ID} tabIndex={-1}>
+            {t('actions.title')}
+          </h1>
+          <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
+        </>
+      );
+    }
+    if (screen.kind === 'pages') {
+      return (
+        // La page en écriture est gardée par l'alerte comme un panneau.
+        <ScreenForms>
+          <PagesScreen
+            key={screen.initiativeId}
+            initiativeId={screen.initiativeId}
+            pageId={screen.pageId}
+            initiative={screenInitiativeDto}
+            babok={babok}
+            version={pagesVersion}
+            onChanged={pagesChanged}
+            myId={me?.id ?? null}
+            linksVersion={actionsVersion}
+            onLinksChanged={actionsChanged}
+          />
+        </ScreenForms>
+      );
+    }
+    if (screen.kind === 'tickets') {
+      return (
+        <TicketsScreen
+          key={screen.initiativeId}
+          initiativeId={screen.initiativeId}
+          initiative={screenInitiativeDto}
+          version={actionsVersion}
+          onChanged={actionsChanged}
+        />
+      );
+    }
+    if (!data || data.initiative.id !== screen.initiativeId) {
+      return dataError ? <ErrorMessage error={dataError} /> : <p>{t('common.loading')}</p>;
+    }
+    return (
+      <ScreenForms>
+        <InitiativeDataScreen
+          // Autre élément ou autre initiative : les formulaires repartent de l'élément affiché.
+          key={`${screen.initiativeId}:${screen.kind}`}
+          screen={screen}
+          data={data}
+          babok={babok}
+          actionsVersion={actionsVersion}
+          onNavigate={(next) => void goTo(next)}
+          onSelectNode={selectNode}
+          onInitiativeChanged={initiativeChanged}
+          // Mon rôle a pu changer : l'initiative est relue, la liste et l'arborescence suivent.
+          onTeamChanged={() => void api.getInitiative(screen.initiativeId).then(initiativeChanged, (e: unknown) => setError(toUiError(e)))}
+          onInitiativeGone={initiativeRemoved}
+          onActionCreated={actionsChanged}
+        />
+      </ScreenForms>
+    );
+  })();
+
   return (
     // Les références citées dans un texte suivent les besoins, exigences, tickets et pages créés, modifiés ou supprimés.
     <ReferencesProvider version={needsVersion + requirementsVersion + actionsVersion + pagesVersion}>
       <FabContext.Provider value={fab}>
-        <div className="shell">
-          {/* Barre latérale (refonte du design, ticket 03) : repliable, le choix est retenu sur ce navigateur. */}
-          {!navHidden && (
-            <nav id="sidebar" className="sidebar" aria-label={t('shell.navigation')}>
-              <ResizeHandle area={SIDEBAR} label={t('shell.resizeNav')} className="sidebar-resize" />
+        <div className={`shell${narrow ? ' shell-narrow' : ''}`}>
+          {navShown && narrow && <div className="sidebar-backdrop" aria-hidden="true" onClick={() => setTreeOpen(false)} />}
+          {navShown && (
+            <nav
+              id="sidebar"
+              className={`sidebar${narrow ? ' sidebar-overlay' : ''}`}
+              aria-label={t('shell.navigation')}
+              onKeyDown={(e) => {
+                if (narrow && e.key === 'Escape') setTreeOpen(false);
+              }}
+            >
+              {!narrow && <ResizeHandle area={SIDEBAR} label={t('shell.resizeNav')} className="sidebar-resize" />}
               <Logotype />
-              <button
-                type="button"
-                className="nav-item"
-                aria-current={screen.kind === 'myActions' ? 'page' : undefined}
-                onClick={() => void goTo({ kind: 'myActions' })}
-              >
-                <ListChecks />
-                {t('actions.title')}
-              </button>
-              <div className="nav-section">
-                <h2>{t('initiatives.title')}</h2>
-                <button type="button" className="ghost" onClick={() => open({ kind: 'createInitiative' })}>
+              <div className="initiative-picker">
+                <label>
+                  <span className="visually-hidden">{t('shell.initiativePicker')}</span>
+                  <select
+                    value={shownId ?? ''}
+                    disabled={!initiatives || initiatives.length === 0}
+                    onChange={(e) => {
+                      setTreeOpen(false);
+                      void goTo({ kind: 'initiative', initiativeId: e.target.value, tab: 'overview' });
+                    }}
+                  >
+                    {!shownId && <option value="">{t('initiatives.title')}</option>}
+                    {/* Les actives, puis les archivées (N2). */}
+                    <optgroup label={t('shell.activeInitiatives')}>
+                      <InitiativeOptions initiatives={active} />
+                    </optgroup>
+                    {archived.length > 0 && (
+                      <optgroup label={t('shell.archivedInitiatives')}>
+                        <InitiativeOptions initiatives={archived} />
+                      </optgroup>
+                    )}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="ghost icon-only"
+                  aria-label={t('initiatives.new')}
+                  title={t('initiatives.new')}
+                  onClick={() => open({ kind: 'createInitiative' })}
+                >
                   <Plus />
-                  {t('initiatives.new')}
                 </button>
               </div>
-              <InitiativeList initiatives={active} expandedId={expandedId} />
-              {initiatives.length === 0 && (
-                <EmptyState
-                  subject="initiatives"
-                  compact
-                  title={t('initiatives.empty')}
-                  hint={t('empty.initiativesHint')}
-                />
-              )}
-              {archived.length > 0 && (
-                // Ouverte si l'initiative dépliée en fait partie, sans quoi son entrée resterait cachée.
-                <details className="archived" open={archived.some((i) => i.id === expandedId)}>
-                  <summary>
-                    <Archive />
-                    {t('initiatives.archivedSection', { count: archived.length })}
-                  </summary>
-                  <InitiativeList initiatives={archived} expandedId={expandedId} />
-                </details>
-              )}
-              {me?.isAdmin && (
-                <button type="button" className="nav-item sidebar-end" onClick={() => open({ kind: 'admin' })}>
-                  <Settings2 />
-                  {t('admin.open')}
+              <div className="tree-scroll">
+                {initiatives?.length === 0 && (
+                  <EmptyState subject="initiatives" compact title={t('initiatives.empty')} hint={t('empty.initiativesHint')} />
+                )}
+                {shownId && data?.initiative.id === shownId && (
+                  <InitiativeTree tree={data.tree} selectedKey={selectedKey} onSelect={selectNode} />
+                )}
+                {shownId && data?.initiative.id !== shownId && !dataError && <p className="muted">{t('tree.loading')}</p>}
+              </div>
+              {/* Hors de l'arborescence, affichés dans la zone de droite (N3). */}
+              <div className="sidebar-end">
+                <button
+                  type="button"
+                  className="nav-item"
+                  aria-current={screen.kind === 'myActions' ? 'page' : undefined}
+                  onClick={() => {
+                    setTreeOpen(false);
+                    void goTo({ kind: 'myActions' });
+                  }}
+                >
+                  <ListChecks />
+                  {t('actions.title')}
                 </button>
-              )}
+                <button type="button" className="nav-item" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
+                  <BookOpen />
+                  {t('babok.open')}
+                </button>
+                {me?.isAdmin && (
+                  <button type="button" className="nav-item" onClick={() => open({ kind: 'admin' })}>
+                    <Settings2 />
+                    {t('admin.open')}
+                  </button>
+                )}
+              </div>
             </nav>
           )}
           <div className="shell-main">
@@ -231,10 +381,10 @@ function Shell({ user }: { user: User }) {
                 type="button"
                 className="ghost icon-only"
                 aria-controls="sidebar"
-                aria-expanded={!navHidden}
-                aria-label={t(navHidden ? 'shell.showNav' : 'shell.hideNav')}
-                title={t(navHidden ? 'shell.showNav' : 'shell.hideNav')}
-                onClick={() => toggleNav(!navHidden)}
+                aria-expanded={navShown}
+                aria-label={t(navShown ? 'shell.hideNav' : 'shell.showNav')}
+                title={t(navShown ? 'shell.hideNav' : 'shell.showNav')}
+                onClick={toggleNav}
               >
                 <PanelLeft />
               </button>
@@ -246,10 +396,6 @@ function Shell({ user }: { user: User }) {
                 <kbd>{IS_MAC ? '⌘K' : 'Ctrl+K'}</kbd>
               </button>
               <span className="topbar-end">
-                <button type="button" className="ghost" disabled={!babok} onClick={() => open({ kind: 'babok' })}>
-                  <BookOpen />
-                  {t('babok.open')}
-                </button>
                 <AlertsButton alerts={alerts} />
                 <small>{user.profile.name ?? user.profile.preferred_username}</small>
                 <LanguageSelector />
@@ -261,36 +407,7 @@ function Shell({ user }: { user: User }) {
             </header>
             <main className="page">
               <ErrorMessage error={error} />
-              {screen.kind === 'pages' ? (
-                // La page en écriture est gardée par l'alerte comme un panneau.
-                <ScreenForms>
-                  <PagesScreen
-                    key={screen.initiativeId}
-                    initiativeId={screen.initiativeId}
-                    pageId={screen.pageId}
-                    initiative={initiatives.find((i) => i.id === screen.initiativeId)}
-                    babok={babok}
-                    version={pagesVersion}
-                    onChanged={pagesChanged}
-                    myId={me?.id ?? null}
-                    linksVersion={actionsVersion}
-                    onLinksChanged={actionsChanged}
-                  />
-                </ScreenForms>
-              ) : screen.kind === 'tickets' ? (
-                <TicketsScreen
-                  key={screen.initiativeId}
-                  initiativeId={screen.initiativeId}
-                  initiative={initiatives.find((i) => i.id === screen.initiativeId)}
-                  version={actionsVersion}
-                  onChanged={actionsChanged}
-                />
-              ) : (
-                <>
-                  <h1>{t('actions.title')}</h1>
-                  <MyActions initiatives={[...active, ...archived]} babok={babok} version={actionsVersion} />
-                </>
-              )}
+              {dataZone}
             </main>
           </div>
           {fab}
@@ -303,41 +420,13 @@ function Shell({ user }: { user: User }) {
                 return <Palette initiatives={[...active, ...archived]} babok={babok} onClose={close} />;
               case 'createInitiative':
                 return (
-                  <CreateInitiativePanel onCreated={(i) => setInitiatives((list) => [i, ...list])} onClose={close} />
-                );
-              case 'initiative':
-                return (
-                  <InitiativePanel
-                    initiativeId={content.initiativeId}
-                    babok={babok}
-                    actionsVersion={actionsVersion}
-                    stakeholdersVersion={stakeholdersVersion}
-                    needsVersion={needsVersion}
-                    requirementsVersion={requirementsVersion}
-                    pagesVersion={pagesVersion}
-                    onChanged={(changed) => {
-                      setInitiatives((list) => list.map((i) => (i.id === changed.id ? changed : i)));
-                      setInitiativeVersion((v) => v + 1);
-                    }}
-                    onDeleted={(id) => {
-                      setInitiatives((list) => list.filter((i) => i.id !== id));
-                      initiativeGone(id);
+                  <CreateInitiativeDialog
+                    onCreated={(i) => {
+                      setInitiatives((list) => [i, ...(list ?? [])]);
+                      void goTo({ kind: 'initiative', initiativeId: i.id, tab: 'overview' });
                     }}
                     onClose={close}
                   />
-                );
-              case 'dashboard':
-                return (
-                  babok && (
-                    <DashboardPanel
-                      initiativeId={content.initiativeId}
-                      babok={babok}
-                      actionsVersion={actionsVersion}
-                      dataVersion={[actionsVersion, stakeholdersVersion, needsVersion, requirementsVersion, initiativeVersion].join('-')}
-                      onActionCreated={actionsChanged}
-                      onClose={close}
-                    />
-                  )
                 );
               case 'alerts':
                 return <AlertsPanel alerts={alerts} onSeen={setMe} onClose={close} />;
@@ -461,11 +550,17 @@ function Shell({ user }: { user: User }) {
   );
 }
 
+function InitiativeOptions({ initiatives }: { initiatives: InitiativeDto[] }) {
+  return initiatives.map((i) => (
+    <option key={i.id} value={i.id}>
+      {i.code} — {i.name}
+    </option>
+  ));
+}
+
 /** Initiative, et objet éventuel, d'où le bouton « + Action » crée l'action depuis ce panneau. */
 function actionOrigin(content: PanelContent): { initiativeId: string; from?: AnalysisObjectRef } | undefined {
   switch (content.kind) {
-    case 'initiative':
-    case 'dashboard':
     case 'action':
     case 'ticket':
     case 'createTicket':
@@ -485,55 +580,38 @@ function actionOrigin(content: PanelContent): { initiativeId: string; from?: Ana
   }
 }
 
-function InitiativeList({ initiatives, expandedId }: { initiatives: InitiativeDto[]; expandedId: string | null }) {
-  const { t } = useI18n();
-  const { screen, goTo, showInitiative } = useScreens();
-  return (
-    <ul className="nav-list">
-      {initiatives.map((i) => (
-        <li key={i.id}>
-          {/* L'écran Tickets suit la fiche ouverte (précision de la décision 13, point 1). */}
-          <button
-            type="button"
-            className="nav-item"
-            onClick={() => showInitiative(i.id)}
-          >
-            <span className="code">{i.code}</span>
-            <span>
-              {i.name}
-              <small>{t(`role.${i.myRole}`)}</small>
-            </span>
-          </button>
-          {i.id === expandedId && (
-            <>
-              <button
-                type="button"
-                className="nav-item nav-sub"
-                aria-current={screen.kind === 'tickets' && screen.initiativeId === i.id ? 'page' : undefined}
-                onClick={() => void goTo({ kind: 'tickets', initiativeId: i.id })}
-              >
-                <Ticket />
-                {t('tickets.title')}
-              </button>
-              <button
-                type="button"
-                className="nav-item nav-sub"
-                aria-current={screen.kind === 'pages' && screen.initiativeId === i.id ? 'page' : undefined}
-                onClick={() => void goTo({ kind: 'pages', initiativeId: i.id, pageId: null })}
-              >
-                <FileText />
-                {t('pages.title')}
-              </button>
-            </>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
+/**
+ * Focus sur le titre de l'écran de données à chaque changement d'élément
+ * (accessibilité), sauf au démarrage et quand un panneau vient de s'ouvrir par-dessus.
+ */
+function useTitleFocus(screen: Screen) {
+  const element = screen.kind === 'myActions' ? 'myActions' : `${screen.initiativeId}:${screenNodeKey(screen)}`;
+  const previous = useRef(element);
+  useEffect(() => {
+    if (previous.current === element) return;
+    previous.current = element;
+    requestAnimationFrame(() => {
+      if (document.activeElement?.closest('dialog')) return;
+      document.getElementById(SCREEN_TITLE_ID)?.focus();
+    });
+  }, [element]);
 }
 
-// Barre latérale masquée ou non : préférence de ce navigateur seulement.
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const onChange = () => setMatches(list.matches);
+    list.addEventListener('change', onChange);
+    return () => list.removeEventListener('change', onChange);
+  }, [query]);
+  return matches;
+}
+
+// Préférences de ce navigateur seulement ; stockage indisponible (navigation
+// privée) : elles valent pour la session.
 const NAV_HIDDEN_KEY = 'acta.navHidden';
+const LAST_INITIATIVE_KEY = 'acta.lastInitiative';
 
 function readNavHidden(): boolean {
   try {
@@ -547,6 +625,23 @@ function writeNavHidden(hidden: boolean) {
   try {
     localStorage.setItem(NAV_HIDDEN_KEY, String(hidden));
   } catch {
-    // Stockage indisponible (navigation privée) : le choix vaut pour la session.
+    // Le choix vaut pour la session.
+  }
+}
+
+/** Dernière initiative consultée sur ce navigateur (N2). */
+function readLastInitiative(): string | null {
+  try {
+    return localStorage.getItem(LAST_INITIATIVE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeLastInitiative(initiativeId: string) {
+  try {
+    localStorage.setItem(LAST_INITIATIVE_KEY, initiativeId);
+  } catch {
+    // Retenue pour la session seulement.
   }
 }

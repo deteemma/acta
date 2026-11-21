@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addMemberSchema, createAccountSchema, updateInitiativeSchema, updateMemberSchema } from './schemas.js';
+import { addMemberSchema, canEditInitiativeCode, createAccountSchema, updateInitiativeSchema, updateMemberSchema } from './schemas.js';
 
 const valid = (input: unknown) => updateInitiativeSchema.safeParse(input).success;
 
@@ -70,4 +70,12 @@ test('le mot de passe temporaire d’un nouveau compte fait au moins 6 caractèr
   const account = { username: 'dora', email: 'dora@exemple.test', firstName: 'Dora', lastName: 'Nouvelle' };
   assert.equal(createAccountSchema.safeParse({ ...account, temporaryPassword: '12345' }).success, false);
   assert.equal(createAccountSchema.safeParse({ ...account, temporaryPassword: '123456' }).success, true);
+});
+
+test('le code d’une initiative ne se modifie que par le propriétaire, tant qu’il n’est pas figé et que l’initiative est active', () => {
+  const base = { myRole: 'owner', codeFrozen: false, archivedAt: null } as const;
+  assert.equal(canEditInitiativeCode(base), true);
+  assert.equal(canEditInitiativeCode({ ...base, myRole: 'contributor' }), false);
+  assert.equal(canEditInitiativeCode({ ...base, codeFrozen: true }), false);
+  assert.equal(canEditInitiativeCode({ ...base, archivedAt: '2026-11-01T00:00:00Z' }), false);
 });

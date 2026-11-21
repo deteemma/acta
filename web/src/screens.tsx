@@ -1,7 +1,9 @@
-// Écran principal (tickets 17 et 22, décision 13) : « Mes actions », « Tickets » ou
-// « Pages ». Changer d'écran, ou de page ouverte, ferme les panneaux et quitte la
-// page en écriture, avec l'alerte des modifications non enregistrées ; l'adresse
-// du navigateur suit l'écran, et « Précédent » est un changement d'écran.
+// Écran affiché à droite (tickets 17 et 22, décision 13 ; navigation par
+// arborescence, ADR-0021) : « Mes actions », ou un élément d'une initiative et
+// son onglet. Changer d'élément, d'onglet ou d'initiative ferme les panneaux et
+// quitte la saisie de l'écran, avec l'alerte des modifications non enregistrées
+// (N13) ; l'adresse du navigateur suit l'écran, et « Précédent » est un
+// changement d'écran (N12).
 import { parseScreenPath, sameScreen, type Screen, screenInitiativeId, screenPath } from '@app/shared';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { type PanelContent, usePanels } from './panels';
@@ -15,7 +17,7 @@ interface Screens {
   goTo: (screen: Screen, panel?: PanelContent) => Promise<boolean>;
   /** Remplace l'écran sans alerte ni étape pour « Précédent » : la page qui vient d'être créée. */
   replaceScreen: (screen: Screen) => void;
-  /** Affiche les tickets de l'initiative et sa fiche : l'écran et la fiche montrent la même (décision 13). */
+  /** Affiche l'initiative (onglet Aperçu), avec l'alerte. */
   showInitiative: (initiativeId: string) => void;
   /** L'initiative n'est plus accessible (supprimée, quittée) : son écran laisse place à l'accueil. */
   initiativeGone: (initiativeId: string) => void;
@@ -60,7 +62,7 @@ export function ScreensProvider({ children }: { children: ReactNode }) {
   );
 
   const showInitiative = useCallback(
-    (initiativeId: string) => void goTo({ kind: 'tickets', initiativeId }, { kind: 'initiative', initiativeId }),
+    (initiativeId: string) => void goTo({ kind: 'initiative', initiativeId, tab: 'overview' }),
     [goTo],
   );
 

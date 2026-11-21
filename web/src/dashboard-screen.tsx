@@ -1,85 +1,48 @@
-// Tableau de bord de l'initiative (ticket 12) : les actions par domaine de
-// connaissance puis par tâche du BABOK. Règles dans @app/shared (dashboard.ts).
-import {
-  type ActionDto,
-  type BabokDto,
-  type InitiativeDto,
-  initiativeDashboard,
-} from '@app/shared';
+// Tableau de bord de l'initiative (ticket 12 ; nœud de l'arborescence, ADR-0021) :
+// onglet Tâches BABOK, les actions par domaine de connaissance puis par tâche du
+// BABOK ; onglet Actions suggérées. Règles dans @app/shared (dashboard.ts).
+import { type ActionDto, type BabokDto, initiativeDashboard } from '@app/shared';
 import { useEffect, useState } from 'react';
 import { ActionList, StatusLabel } from './action-panels';
 import { api } from './api';
 import { BabokName } from './babok-panels';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { Panel } from './panels';
-import { SuggestedActions } from './suggested-actions';
 import { useTicketTypes } from './ticket-types';
 
-export function DashboardPanel({
+/** Onglet Tâches BABOK : couverture du BABOK par les actions de l'initiative. */
+export function DashboardTasks({
   initiativeId,
   babok,
   actionsVersion,
-  dataVersion,
-  onActionCreated,
-  onClose,
 }: {
   initiativeId: string;
   babok: BabokDto;
   /** Change à chaque écriture sur une action : le tableau se recharge. */
   actionsVersion: number;
-  /**
-   * Change à chaque écriture sur l'initiative ou ses objets d'analyse : la fiche
-   * et les actions suggérées se rechargent.
-   */
-  dataVersion: string;
-  onActionCreated: () => void;
-  onClose: () => void;
 }) {
   const { t } = useI18n();
   const ticketTypes = useTicketTypes();
-  const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
   const [actions, setActions] = useState<ActionDto[] | null>(null);
   const [error, setError] = useState<UiError | null>(null);
-
-  useEffect(() => {
-    api.getInitiative(initiativeId).then(setInitiative, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, dataVersion]);
 
   useEffect(() => {
     api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
   }, [initiativeId, actionsVersion]);
 
   return (
-    <Panel
-      title={initiative ? initiative.name : t('common.loading')}
-      kicker={
-        initiative && (
-          <>
-            {t('dashboard.kicker')} <span className="code">{initiative.code}</span>
-          </>
-        )
-      }
-      onClose={onClose}
-    >
+    <>
       <ErrorMessage error={error} />
-      {initiative && (
-        <SuggestedActions
-          initiative={initiative}
-          babok={babok}
-          onActionCreated={onActionCreated}
-        />
-      )}
-      {actions && <h3 className="group-title">{t('dashboard.coverageGroup')}</h3>}
+      {actions && <h2 className="group-title">{t('dashboard.coverageGroup')}</h2>}
       {actions &&
         initiativeDashboard(ticketTypes, babok, actions).map(({ knowledgeArea, tasks, coveredTaskCount }) => {
           const coverage = t('dashboard.coverage', { covered: coveredTaskCount, total: tasks.length });
           return (
             <section key={knowledgeArea.id} className="dashboard-area">
               <div className="dashboard-area-head">
-                <h4>
+                <h3>
                   <span className="code">{knowledgeArea.section}</span> <BabokName element={knowledgeArea} />
-                </h4>
+                </h3>
                 <small>{coverage}</small>
               </div>
               {/* Barre de couverture (refonte du design, ticket 04) : part des tâches couvertes. */}
@@ -111,6 +74,6 @@ export function DashboardPanel({
             </section>
           );
         })}
-    </Panel>
+    </>
   );
 }

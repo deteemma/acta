@@ -42,7 +42,7 @@ import { RichText, RichTextEditor } from './rich-text';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
-const canEditStakeholders = (initiative: InitiativeDto) =>
+export const canEditStakeholders = (initiative: InitiativeDto) =>
   can(initiative.myRole, 'editStakeholders', { archived: initiative.archivedAt != null });
 
 /** Libellé d'un terme du BABOK, l'anglais en info-bulle (ADR-0013). */
@@ -145,7 +145,7 @@ export function StakeholdersPanel({
   );
 }
 
-function StakeholderList({ stakeholders }: { stakeholders: StakeholderDto[] }) {
+export function StakeholderList({ stakeholders }: { stakeholders: StakeholderDto[] }) {
   const { t } = useI18n();
   const level = (value: StakeholderDto['influence']) =>
     value ? t(`stakeholderLevel.${value}`) : t('stakeholder.notEvaluated');
@@ -176,7 +176,7 @@ function StakeholderList({ stakeholders }: { stakeholders: StakeholderDto[] }) {
 }
 
 /** Influence en lignes (forte en haut), intérêt en colonnes (faible à gauche). */
-function StakeholderMatrix({ stakeholders }: { stakeholders: StakeholderDto[] }) {
+export function StakeholderMatrix({ stakeholders }: { stakeholders: StakeholderDto[] }) {
   const { t } = useI18n();
   const { cells, unpositioned } = stakeholderMatrix(stakeholders);
   const names = (list: StakeholderDto[]) => (

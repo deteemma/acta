@@ -1,35 +1,110 @@
-// Écrans en pleine page (tickets 17 et 22, décision 13) et leur adresse : recharger
-// reste au même endroit, et le lien d'une page peut être envoyé à un membre. Les
-// panneaux, eux, n'ont pas d'adresse.
+// Écrans et leur adresse (tickets 17 et 22, décision 13 ; navigation par
+// arborescence, ADR-0021, N12) : chaque élément de l'arborescence et chacun de
+// ses onglets a son adresse. Recharger reste au même endroit, « Précédent »
+// revient à l'élément ou à l'onglet d'avant, et un lien peut être envoyé à un
+// membre. Les éléments pas encore repris dans l'écran de données s'ouvrent
+// encore dans leur panneau, sans adresse.
+
+/** Onglets de l'initiative (N11) ; le premier est celui de l'adresse nue. */
+export const INITIATIVE_TABS = ['overview', 'members', 'designations', 'settings'] as const;
+export type InitiativeTab = (typeof INITIATIVE_TABS)[number];
+/** Onglets du tableau de bord : Tâches BABOK, Actions suggérées. */
+export const DASHBOARD_TABS = ['tasks', 'suggested'] as const;
+export type DashboardTab = (typeof DASHBOARD_TABS)[number];
+/** Onglets de l'équipe : Membres, Désignations. */
+export const TEAM_TABS = ['members', 'designations'] as const;
+export type TeamTab = (typeof TEAM_TABS)[number];
+/** Onglets du nœud Parties prenantes : Liste, Matrice influence × intérêt. */
+export const STAKEHOLDERS_TABS = ['list', 'matrix'] as const;
+export type StakeholdersTab = (typeof STAKEHOLDERS_TABS)[number];
 
 export type Screen =
   | { kind: 'myActions' }
+  | { kind: 'initiative'; initiativeId: string; tab: InitiativeTab }
+  | { kind: 'dashboard'; initiativeId: string; tab: DashboardTab }
+  | { kind: 'team'; initiativeId: string; tab: TeamTab }
+  | { kind: 'stakeholders'; initiativeId: string; tab: StakeholdersTab }
+  | { kind: 'needs'; initiativeId: string }
+  | { kind: 'requirements'; initiativeId: string }
   | { kind: 'tickets'; initiativeId: string }
   /** Arborescence des pages ; `pageId` : la page ouverte, null si aucune. */
   | { kind: 'pages'; initiativeId: string; pageId: string | null };
 
+/** Écran d'une initiative, quel qu'il soit. */
+export type InitiativeScreen = Exclude<Screen, { kind: 'myActions' }>;
+
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const TICKETS_PATH = new RegExp(`^/initiatives/(${UUID})/tickets/?$`, 'i');
-const PAGES_PATH = new RegExp(`^/initiatives/(${UUID})/pages(?:/(${UUID}))?/?$`, 'i');
+const ID = new RegExp(`^${UUID}$`, 'i');
+const INITIATIVE_PATH = new RegExp(`^/initiatives/(${UUID})((?:/[^/]+)*)/?$`, 'i');
+
+/** Segment d'onglet : absent pour le premier onglet. */
+const tabSegment = (tabs: readonly string[], tab: string) => (tab === tabs[0] ? '' : `/${tab}`);
 
 export function screenPath(screen: Screen): string {
+  if (screen.kind === 'myActions') return '/';
+  const base = `/initiatives/${screen.initiativeId}`;
   switch (screen.kind) {
+    case 'initiative':
+      return base + tabSegment(INITIATIVE_TABS, screen.tab);
+    case 'dashboard':
+      return `${base}/dashboard${tabSegment(DASHBOARD_TABS, screen.tab)}`;
+    case 'team':
+      return `${base}/team${tabSegment(TEAM_TABS, screen.tab)}`;
+    case 'stakeholders':
+      return `${base}/stakeholders${tabSegment(STAKEHOLDERS_TABS, screen.tab)}`;
+    case 'needs':
+    case 'requirements':
     case 'tickets':
-      return `/initiatives/${screen.initiativeId}/tickets`;
+      return `${base}/${screen.kind}`;
     case 'pages':
-      return `/initiatives/${screen.initiativeId}/pages${screen.pageId ? `/${screen.pageId}` : ''}`;
-    case 'myActions':
-      return '/';
+      return `${base}/pages${screen.pageId ? `/${screen.pageId}` : ''}`;
   }
+}
+
+/** Onglet d'un segment : le premier sans segment, null si l'onglet est inconnu. */
+function readTab<T extends string>(tabs: readonly T[], segments: readonly string[]): T | null {
+  if (segments.length === 0) return tabs[0]!;
+  if (segments.length > 1) return null;
+  return tabs.find((tab) => tab === segments[0]) ?? null;
 }
 
 /** Écran d'une adresse ; une adresse inconnue mène à l'accueil. */
 export function parseScreenPath(path: string): Screen {
-  const tickets = TICKETS_PATH.exec(path);
-  if (tickets) return { kind: 'tickets', initiativeId: tickets[1]! };
-  const pages = PAGES_PATH.exec(path);
-  if (pages) return { kind: 'pages', initiativeId: pages[1]!, pageId: pages[2] ?? null };
-  return { kind: 'myActions' };
+  return parseInitiativePath(path) ?? { kind: 'myActions' };
+}
+
+function parseInitiativePath(path: string): Screen | null {
+  const match = INITIATIVE_PATH.exec(path);
+  if (!match) return null;
+  const initiativeId = match[1]!;
+  const segments = match[2]!.split('/').filter(Boolean);
+  const [first, ...rest] = segments;
+  switch (first) {
+    case 'dashboard': {
+      const tab = readTab(DASHBOARD_TABS, rest);
+      return tab && { kind: 'dashboard', initiativeId, tab };
+    }
+    case 'team': {
+      const tab = readTab(TEAM_TABS, rest);
+      return tab && { kind: 'team', initiativeId, tab };
+    }
+    case 'stakeholders': {
+      const tab = readTab(STAKEHOLDERS_TABS, rest);
+      return tab && { kind: 'stakeholders', initiativeId, tab };
+    }
+    case 'needs':
+    case 'requirements':
+    case 'tickets':
+      return rest.length === 0 ? { kind: first, initiativeId } : null;
+    case 'pages': {
+      if (rest.length === 0) return { kind: 'pages', initiativeId, pageId: null };
+      return rest.length === 1 && ID.test(rest[0]!) ? { kind: 'pages', initiativeId, pageId: rest[0]! } : null;
+    }
+    default: {
+      const tab = readTab(INITIATIVE_TABS, segments);
+      return tab && { kind: 'initiative', initiativeId, tab };
+    }
+  }
 }
 
 export const sameScreen = (a: Screen, b: Screen) => screenPath(a) === screenPath(b);

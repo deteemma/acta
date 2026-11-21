@@ -32,8 +32,6 @@ import { FormRegistryContext, UnsavedChangesAlert } from './unsaved-changes';
 export type PanelContent =
   | { kind: 'palette' }
   | { kind: 'createInitiative' }
-  | { kind: 'initiative'; initiativeId: string }
-  | { kind: 'dashboard'; initiativeId: string }
   | { kind: 'alerts' }
   | { kind: 'member'; member: InitiativeMemberDto }
   | { kind: 'admin' }
@@ -321,11 +319,19 @@ export function usePanels(): Panels {
   return panels;
 }
 
-/** Contenu de l'écran principal : ses formulaires sont gardés par leaveScreen et settleScreen. */
+/**
+ * Contenu de l'écran principal : ses formulaires sont gardés par leaveScreen et
+ * settleScreen ; useSettleUnsaved y passe la saisie de l'écran à l'alerte (archivage).
+ */
 export function ScreenForms({ children }: { children: ReactNode }) {
   const registry = useContext(PanelRegistryContext)!;
+  const { settleScreen } = usePanels();
   const register = useCallback((form: GuardedForm) => registry.registerForm(SCREEN_ID, form), [registry]);
-  return <FormRegistryContext.Provider value={register}>{children}</FormRegistryContext.Provider>;
+  return (
+    <FormRegistryContext.Provider value={register}>
+      <SettleUnsavedContext.Provider value={settleScreen}>{children}</SettleUnsavedContext.Provider>
+    </FormRegistryContext.Provider>
+  );
 }
 
 /** Affiche la pile de panneaux ; `render` donne le contenu de chacun. */
@@ -391,7 +397,8 @@ export function Panel({
   kicker?: ReactNode;
   /** Sous le titre : badges (rôle, statut…). */
   badges?: ReactNode;
-  variant?: 'side' | 'palette';
+  /** `dialog` : petite fenêtre de dialogue centrée, pour une création (ADR-0021, N15). */
+  variant?: 'side' | 'palette' | 'dialog';
   /** Faux pour le panneau que le bouton flottant ouvre lui-même. */
   showFab?: boolean;
   onClose: () => void;

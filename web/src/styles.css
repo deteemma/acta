@@ -325,8 +325,202 @@ ul.dense-list > li {
 .sidebar details.archived {
   padding-inline-start: var(--space-2);
 }
+/*
+ * Navigation par arborescence (ADR-0021) : sélecteur d'initiative, arborescence
+ * qui défile seule, puis « Mes actions », référentiel et administration en bas.
+ */
+.sidebar {
+  overflow: hidden;
+}
 .sidebar-end {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.initiative-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.initiative-picker label {
+  flex: 1;
+  min-width: 0;
+}
+.initiative-picker select {
+  width: 100%;
+}
+.tree-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin-top: var(--space-2);
+}
+.muted {
+  color: var(--muted);
+}
+.tree,
+.tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tree [role='treeitem']:focus-visible {
+  outline: none;
+}
+.tree [role='treeitem']:focus-visible > .tree-node {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.tree-node {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+}
+.tree-node:hover {
+  background: var(--bg);
+}
+.tree-node.is-selected {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.tree-node.is-selected .tree-title {
+  font-weight: 600;
+}
+.tree-twisty {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  min-height: 2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+}
+.tree-twisty svg {
+  width: 1rem;
+  height: 1rem;
+}
+/* Libellés alignés à gauche, la référence courte avant le titre (N10). */
+.tree-label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 2rem;
+  padding-inline-end: var(--space-2);
+  cursor: pointer;
+}
+.tree-label .code {
+  flex: none;
+  /* Largeur fixe : les titres d'un même niveau commencent à la même colonne. */
+  min-width: 7ch;
+}
+.tree-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree-count {
+  margin-inline-start: auto;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--tone-neutral-bg);
+  color: var(--tone-neutral-fg);
+  font-size: var(--text-badge);
+  font-weight: 600;
+}
+.tabs [role='tab'] .tree-count {
+  margin-inline-start: var(--space-1);
+}
+/* Petit écran : l'arborescence est repliée, affichée par-dessus l'écran de données (N4). */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 4;
+  width: min(22rem, 90vw);
+  box-shadow: var(--shadow-popover);
+}
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  background: var(--backdrop);
+}
+/* Écran de données (N11) : fil d'Ariane, en-tête, onglets. */
+.data-screen {
+  max-width: 64rem;
+}
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.crumbs li + li::before {
+  content: '›';
+  padding-inline: var(--space-2);
+}
+.crumbs button.link {
+  color: var(--muted);
+  text-decoration: underline;
+}
+.data-head {
+  margin: var(--space-2) 0 var(--space-4);
+}
+.page .data-head h1 {
+  margin: var(--space-1) 0 var(--space-2);
+}
+.data-head h1:focus {
+  outline: none;
+}
+.data-kind {
+  color: var(--muted);
+}
+.data-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.branch-toolbar {
+  margin-bottom: var(--space-4);
+}
+.branch-toolbar:empty {
+  display: none;
+}
+.overview-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+.overview-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 5rem;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: inherit;
+  font-weight: 400;
+  text-align: start;
+}
+.overview-count strong {
+  font-size: var(--text-page-title);
 }
 .code {
   font-family: var(--font-mono);
@@ -376,18 +570,7 @@ ul.dense-list > li {
 .multiline {
   max-width: 75ch;
 }
-/* Petit écran : la barre latérale passe au-dessus de la page. */
 @media (max-width: 48rem) {
-  .shell {
-    flex-direction: column;
-  }
-  .sidebar {
-    position: static;
-    flex: none;
-    height: auto;
-    border-inline-end: none;
-    border-bottom: 1px solid var(--border);
-  }
   .topbar,
   .page {
     padding-inline: var(--space-4);
@@ -430,7 +613,7 @@ body:has(.panel-docked[open]) .shell-main {
  * --docked-panel-width ; les bornes valent aussi si la fenêtre change de taille.
  */
 :root {
-  --sidebar-current-width: clamp(12rem, var(--sidebar-width, 15rem), 24rem);
+  --sidebar-current-width: clamp(14rem, var(--sidebar-width, 18rem), 28rem);
   --docked-current-width: clamp(24rem, var(--docked-panel-width, 32rem), 60vw);
 }
 .resize-handle {
@@ -545,6 +728,13 @@ kbd {
 .panel-palette {
   margin: 12vh auto auto;
   width: min(36rem, calc(100% - var(--space-8)));
+  border-radius: var(--radius-lg);
+}
+/* Création en fenêtre de dialogue centrée (navigation par arborescence, N15). */
+.panel-dialog {
+  margin: auto;
+  width: min(32rem, calc(100% - var(--space-8)));
+  max-height: calc(100dvh - var(--space-8));
   border-radius: var(--radius-lg);
 }
 .panel-header {

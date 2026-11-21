@@ -1,5 +1,6 @@
-// Palette de commandes (Ctrl+K / Cmd+K) : accès direct à la fiche d'une
-// initiative, d'un objet référencé (ticket 09, scénarios compris : phase 3, ticket 06) ou d'un élément du référentiel BABOK.
+// Palette de commandes (Ctrl+K / Cmd+K) : accès direct à une initiative, à un
+// objet référencé (ticket 09, scénarios compris : phase 3, ticket 06), ouvert
+// dans son nœud (N16), ou à un élément du référentiel BABOK.
 import {
   type BabokDto,
   type BabokElementDto,
@@ -78,7 +79,7 @@ export function Palette({
       case 'initiative':
         return showInitiative(result.item.id);
       case 'reference':
-        return openReference(result.item, { replace: true });
+        return openReference(result.item);
       case 'babok':
         return replace({ kind: 'babokElement', elementId: result.item.id });
     }

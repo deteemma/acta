@@ -32,7 +32,7 @@ Chaque ticket renvoie à ces décisions : **les lire avant de coder**. En cas de
 - **N5** — Racine : l'initiative. Branches, dans cet ordre : Tableau de bord, Parties prenantes, Besoins, Exigences, Tickets, Pages, Équipe. Chaque branche montre son nombre d'éléments.
 - **N6** — Exigences : imbriquées sous leur exigence parente ; les scénarios Gherkin d'une exigence apparaissent sous elle, dans leur ordre.
 - **N7** — Besoins et exigences forment deux branches distinctes ; leur relation se lit dans l'onglet « Traçabilité » de l'exigence.
-- **N8** — Tickets : seuls les tickets **ouverts** y figurent, rangés par Epic (l'Epic est le nœud parent de ses tickets) puis sous « Sans Epic ». Les tickets fermés se retrouvent par la liste du nœud Tickets (filtre Ouverts / Fermés / Ouverts et fermés) ; ouvert depuis la liste, un ticket fermé s'affiche à droite sans apparaître dans l'arborescence.
+- **N8** — Tickets : seuls les tickets **ouverts** y figurent, rangés par Epic (l'Epic est le nœud parent de ses tickets) puis sous « Sans Epic » ; le ticket ouvert d'un Epic fermé va sous « Sans Epic », et le nombre de la branche compte les tickets ouverts (décisions du 21.11.2026). Les tickets fermés se retrouvent par la liste du nœud Tickets (filtre Ouverts / Fermés / Ouverts et fermés) ; ouvert depuis la liste, un ticket fermé s'affiche à droite sans apparaître dans l'arborescence.
 - **N9** — Pages : leur arborescence propre (sous-pages), avec le rangement actuel (glisser-déposer, Alt + flèches).
 - **N10** — Le chemin vers le nœud choisi est toujours déplié. Les libellés sont alignés à gauche ; la référence courte (ex. `EX-001`) précède le titre.
 
