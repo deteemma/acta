@@ -1,7 +1,7 @@
 // Écrans de données d'une initiative (ADR-0021, N11) : l'initiative elle-même
 // (Aperçu, Membres, Désignations, Paramètres), son tableau de bord, son équipe,
-// les listes des branches, les parties prenantes, les besoins, les exigences et
-// les tickets. Les fiches gardent leurs champs, droits et contrôles : seul leur
+// les listes des branches, les parties prenantes, les besoins, les exigences,
+// les tickets et les pages. Les fiches gardent leurs champs, droits et contrôles : seul leur
 // conteneur change.
 import {
   acceptsScenarios,
@@ -22,6 +22,8 @@ import {
   STAKEHOLDER_TABS,
   STAKEHOLDERS_TABS,
   TEAM_TABS,
+  type PageRow,
+  type TreeBranch,
   type TreeNodeRef,
   treeNodeKey,
 } from '@app/shared';
@@ -55,12 +57,10 @@ import {
   StakeholderSheet,
 } from './stakeholder-screen';
 import { SuggestedActions } from './suggested-actions';
+import { canEditPages, PageList, PageScreen } from './page-screen';
 import { OwnerDesignations, TeamMembers } from './team-section';
 import { TicketScreen } from './ticket-screen';
 import { TicketList } from './ticket-list';
-
-/** Écrans affichés dans l'écran de données ; les pages gardent encore le leur. */
-export type ElementScreen = Exclude<InitiativeScreen, { kind: 'pages' }>;
 
 export function InitiativeDataScreen({
   screen,
@@ -80,9 +80,13 @@ export function InitiativeDataScreen({
   onNeedsChanged,
   onRequirementsChanged,
   onTicketsChanged,
+  onPagesChanged,
+  onAddPage,
+  editPageId,
+  onPageEditStarted,
   onLinksChanged,
 }: {
-  screen: ElementScreen;
+  screen: InitiativeScreen;
   data: InitiativeData;
   /** Données en cours de rechargement : un élément absent vient peut-être d'être créé. */
   pending: boolean;
@@ -107,6 +111,13 @@ export function InitiativeDataScreen({
   onRequirementsChanged: () => void;
   /** Ticket créé, modifié (fermé, rouvert, autre Epic…) ou supprimé : l'arborescence suit. */
   onTicketsChanged: () => void;
+  /** Page modifiée, déplacée, restaurée ou supprimée : l'arborescence suit. */
+  onPagesChanged: () => void;
+  /** « Nouvelle page », ou « Sous-page » de `parent` : fenêtre de dialogue. */
+  onAddPage: (parent: PageRow | null) => void;
+  /** Page tout juste créée, qui s'ouvre en écriture ; null sinon. */
+  editPageId: string | null;
+  onPageEditStarted: () => void;
   /** Un lien avec un ticket a été créé ou retiré. */
   onLinksChanged: () => void;
 }) {
@@ -121,7 +132,7 @@ export function InitiativeDataScreen({
   const path = pathToNode(tree, shownKey ?? tree.key);
   const crumbs = path.slice(0, -1);
   // Élément introuvable : le fil d'Ariane s'arrête à sa branche.
-  const branchCrumbs = (branch: 'stakeholders' | 'needs' | 'requirements' | 'tickets') => pathToNode(tree, treeNodeKey({ kind: 'branch', branch }));
+  const branchCrumbs = (branch: TreeBranch) => pathToNode(tree, treeNodeKey({ kind: 'branch', branch }));
   const childNode = (ref: TreeNodeRef) => tree.children.find((c) => c.key === treeNodeKey(ref));
   const me = members.find((m) => m.isMe);
   const archivedBadge = initiative.archivedAt && <span className="badge">{t('initiative.archived')}</span>;
@@ -451,6 +462,60 @@ export function InitiativeDataScreen({
         />
       );
     }
+    case 'pages':
+      return (
+        <DataScreen {...inInitiative} title={t('tree.pages')}>
+          {initiative.archivedAt && (
+            <p className="notice">{t('initiative.archivedOn', { date: formatDate(locale, initiative.archivedAt) })}</p>
+          )}
+          <BranchToolbar>
+            {canEditPages(initiative) && (
+              <button type="button" className="primary" onClick={() => onAddPage(null)}>
+                <Plus />
+                {t('pages.new')}
+              </button>
+            )}
+          </BranchToolbar>
+          <PageList initiativeId={initiativeId} pages={data.pages} canEdit={canEditPages(initiative)} />
+        </DataScreen>
+      );
+    case 'page': {
+      const row = data.pages.find((p) => p.id === screen.pageId);
+      if (!row) {
+        return (
+          <MissingElement
+            kind={t('referenceCategory.page')}
+            pending={pending}
+            crumbs={branchCrumbs('pages')}
+            onCrumb={onSelectNode}
+            message={t('pages.notFound')}
+          />
+        );
+      }
+      return (
+        <PageScreen
+          initiative={initiative}
+          row={row}
+          pages={data.pages}
+          babok={babok}
+          tab={screen.tab}
+          crumbs={crumbs}
+          onCrumb={onSelectNode}
+          linksVersion={actionsVersion}
+          myId={myId}
+          startEditing={editPageId === row.id}
+          onEditStarted={onPageEditStarted}
+          onTab={(tab) => onNavigate({ ...screen, tab })}
+          onChanged={onPagesChanged}
+          onLinksChanged={onLinksChanged}
+          onAddChild={() => onAddPage(row)}
+          onDeleted={() => {
+            onPagesChanged();
+            onReplace({ kind: 'pages', initiativeId });
+          }}
+        />
+      );
+    }
     case 'requirements':
       return (
         <DataScreen {...inInitiative} title={t('tree.requirements')}>
@@ -501,16 +566,26 @@ function MissingElement({
   pending,
   crumbs,
   onCrumb,
+  message,
 }: {
   kind: ReactNode;
   pending: boolean;
   crumbs: InitiativeTreeNode[];
   onCrumb: (node: InitiativeTreeNode) => void;
+  /** Message propre à l'élément introuvable ; sinon l'erreur 404. */
+  message?: string;
 }) {
   const { t } = useI18n();
   return (
     <DataScreen crumbs={crumbs} onCrumb={onCrumb} kind={kind} title={t('common.loading')}>
-      {!pending && <ErrorMessage error={{ key: 'error.http', params: { status: 404 } }} />}
+      {!pending &&
+        (message ? (
+          <p className="error" role="alert">
+            {message}
+          </p>
+        ) : (
+          <ErrorMessage error={{ key: 'error.http', params: { status: 404 } }} />
+        ))}
     </DataScreen>
   );
 }

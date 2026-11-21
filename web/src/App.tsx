@@ -25,12 +25,12 @@ import { I18nProvider, LanguageSelector, useI18n } from './i18n';
 import { Logotype } from './logotype';
 import { CreateInitiativeDialog, MemberPanel } from './initiative-panels';
 import { InitiativeDataScreen } from './initiative-screens';
-import { InitiativeTree, nodeDestination, useInitiativeData } from './initiative-tree';
+import { InitiativeTree, nodeDestination, type PageMoves, useInitiativeData } from './initiative-tree';
 import { MyActions } from './my-actions';
 import { CreateNeedDialog } from './need-screen';
 import { CreateStakeholderDialog } from './stakeholder-screen';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
-import { PagesScreen } from './pages-screen';
+import { canEditPages, CreatePageDialog } from './page-screen';
 import { FabContext, PanelHost, type PanelContent, PanelsProvider, SCREEN_TITLE_ID, ScreenForms, usePanels } from './panels';
 import { ReferencesProvider } from './references';
 import { CreateRequirementDialog } from './requirement-screen';
@@ -144,6 +144,8 @@ function Shell({ user }: { user: User }) {
   // De même pour les pages (ticket 22).
   const [pagesVersion, setPagesVersion] = useState(0);
   const pagesChanged = () => setPagesVersion((v) => v + 1);
+  // Page tout juste créée : elle s'ouvre en écriture (décision du 21.11.2026).
+  const [editPageId, setEditPageId] = useState<string | null>(null);
   // De même pour la fiche d'une initiative (approche, date de fin prévue : ticket 14).
   const [initiativeVersion, setInitiativeVersion] = useState(0);
   usePaletteShortcut();
@@ -195,6 +197,28 @@ function Shell({ user }: { user: User }) {
   const showTicket = (initiativeId: string, ticketId: string) =>
     void goTo({ kind: 'ticket', initiativeId, ticketId, tab: 'sheet' });
 
+  // Rangement des pages dans l'arborescence, pour qui peut les modifier (N9).
+  const pageMoves: PageMoves | undefined =
+    data && canEditPages(data.initiative)
+      ? {
+          pages: data.pages,
+          onMove: async (pageId, placement) => {
+            try {
+              await api.movePage(data.initiative.id, pageId, placement);
+              setError(null);
+              pagesChanged();
+            } catch (e) {
+              setError(toUiError(e));
+              throw e;
+            }
+          },
+          onAddChild: (parentId) => {
+            setTreeOpen(false);
+            open({ kind: 'createPage', initiativeId: data.initiative.id, parentId });
+          },
+        }
+      : undefined;
+
   const initiativeChanged = (changed: InitiativeDto) => {
     setInitiatives((list) => list && list.map((i) => (i.id === changed.id ? changed : i)));
     setInitiativeVersion((v) => v + 1);
@@ -223,7 +247,6 @@ function Shell({ user }: { user: User }) {
     </button>
   );
 
-  const screenInitiativeDto = screenInitiative ? initiatives?.find((i) => i.id === screenInitiative) : undefined;
   const dataZone = (() => {
     if (screen.kind === 'myActions') {
       return (
@@ -235,31 +258,14 @@ function Shell({ user }: { user: User }) {
         </>
       );
     }
-    if (screen.kind === 'pages') {
-      return (
-        // La page en écriture est gardée par l'alerte comme un panneau.
-        <ScreenForms>
-          <PagesScreen
-            key={screen.initiativeId}
-            initiativeId={screen.initiativeId}
-            pageId={screen.pageId}
-            initiative={screenInitiativeDto}
-            babok={babok}
-            version={pagesVersion}
-            onChanged={pagesChanged}
-            myId={me?.id ?? null}
-            linksVersion={actionsVersion}
-            onLinksChanged={actionsChanged}
-          />
-        </ScreenForms>
-      );
-    }
     if (!data || data.initiative.id !== screen.initiativeId) {
-      // Tickets d'une initiative dont je ne suis pas membre, ou disparue : le refus de l'écran Tickets (ticket 17).
-      if (dataError && isTicketsScreen(screen) && isRefusal(dataError)) {
+      // Tickets ou pages d'une initiative dont je ne suis pas membre, ou disparue :
+      // le refus de l'écran Tickets (ticket 17) ou Pages (ticket 22).
+      const refusal = refusalMessage(screen);
+      if (dataError && refusal && isRefusal(dataError)) {
         return (
           <p className="error" role="alert">
-            {t('tickets.refused')}
+            {t(refusal)}
           </p>
         );
       }
@@ -288,6 +294,10 @@ function Shell({ user }: { user: User }) {
           onNeedsChanged={needsChanged}
           onRequirementsChanged={requirementsChanged}
           onTicketsChanged={actionsChanged}
+          onPagesChanged={pagesChanged}
+          onAddPage={(parent) => open({ kind: 'createPage', initiativeId: screen.initiativeId, ...(parent && { parentId: parent.id }) })}
+          editPageId={editPageId}
+          onPageEditStarted={() => setEditPageId(null)}
           onLinksChanged={actionsChanged}
         />
       </ScreenForms>
@@ -349,7 +359,7 @@ function Shell({ user }: { user: User }) {
                   <EmptyState subject="initiatives" compact title={t('initiatives.empty')} hint={t('empty.initiativesHint')} />
                 )}
                 {shownId && data?.initiative.id === shownId && (
-                  <InitiativeTree tree={data.tree} selectedKey={selectedKey} onSelect={selectNode} />
+                  <InitiativeTree tree={data.tree} selectedKey={selectedKey} onSelect={selectNode} pageMoves={pageMoves} />
                 )}
                 {shownId && data?.initiative.id !== shownId && !dataError && <p className="muted">{t('tree.loading')}</p>}
               </div>
@@ -527,6 +537,24 @@ function Shell({ user }: { user: User }) {
                     />
                   )
                 );
+              case 'createPage':
+                return (
+                  data?.initiative.id === content.initiativeId && (
+                    <CreatePageDialog
+                      initiative={data.initiative}
+                      parent={data.pages.find((p) => p.id === content.parentId) ?? null}
+                      babok={babok}
+                      onCreated={(created) => {
+                        pagesChanged();
+                        // En écriture seulement si elle s'ouvre bien : sinon, elle s'ouvrira plus tard en lecture.
+                        void goTo({ kind: 'page', initiativeId: created.initiativeId, pageId: created.id, tab: 'content' }).then(
+                          (opened) => opened && setEditPageId(created.id),
+                        );
+                      }}
+                      onClose={close}
+                    />
+                  )
+                );
               case 'createScenario':
                 return (
                   <CreateScenarioDialog
@@ -561,7 +589,19 @@ function InitiativeOptions({ initiatives }: { initiatives: InitiativeDto[] }) {
   ));
 }
 
-const isTicketsScreen = (screen: Screen) => screen.kind === 'tickets' || screen.kind === 'ticket';
+/** Refus d'accès propre à l'écran (tickets 17 et 22) ; null : l'erreur telle quelle. */
+function refusalMessage(screen: Screen): 'tickets.refused' | 'pages.refused' | null {
+  switch (screen.kind) {
+    case 'tickets':
+    case 'ticket':
+      return 'tickets.refused';
+    case 'pages':
+    case 'page':
+      return 'pages.refused';
+    default:
+      return null;
+  }
+}
 
 /** Le non-membre reçoit 404 de l'API : même refus pour une initiative disparue. */
 const isRefusal = (error: UiError) =>
@@ -574,6 +614,7 @@ function actionOrigin(content: PanelContent): { initiativeId: string; from?: Ana
     case 'createStakeholder':
     case 'createNeed':
     case 'createRequirement':
+    case 'createPage':
       return { initiativeId: content.initiativeId };
     case 'createScenario':
       return { initiativeId: content.initiativeId, from: { kind: 'requirement', id: content.requirementId } };

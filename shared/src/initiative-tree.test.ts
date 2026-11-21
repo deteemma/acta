@@ -191,8 +191,8 @@ test('chaque écran d’une initiative désigne son nœud ; « Mes actions » n�
   assert.equal(screenNodeKey({ kind: 'team', initiativeId, tab: 'designations' }), 'team');
   assert.equal(screenNodeKey({ kind: 'stakeholders', initiativeId, tab: 'matrix' }), 'branch:stakeholders');
   assert.equal(screenNodeKey({ kind: 'tickets', initiativeId }), 'branch:tickets');
-  assert.equal(screenNodeKey({ kind: 'pages', initiativeId, pageId: null }), 'branch:pages');
-  assert.equal(screenNodeKey({ kind: 'pages', initiativeId, pageId: 'p1' }), 'page:p1');
+  assert.equal(screenNodeKey({ kind: 'pages', initiativeId }), 'branch:pages');
+  assert.equal(screenNodeKey({ kind: 'page', initiativeId, pageId: 'p1', tab: 'history' }), 'page:p1');
   assert.equal(screenNodeKey({ kind: 'stakeholder', initiativeId, stakeholderId: 's1', tab: 'origin' }), 'stakeholder:s1');
   assert.equal(screenNodeKey({ kind: 'need', initiativeId, needId: 'n1', tab: 'links' }), 'need:n1');
   // Un scénario : son nœud, sous son exigence, est celui de l'écran (N16).

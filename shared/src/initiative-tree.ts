@@ -185,6 +185,7 @@ export function screenNodeKey(screen: Screen): string | null {
     case 'needs':
     case 'requirements':
     case 'tickets':
+    case 'pages':
       return treeNodeKey({ kind: 'branch', branch: screen.kind });
     case 'stakeholder':
       return treeNodeKey({ kind: 'stakeholder', id: screen.stakeholderId });
@@ -197,7 +198,7 @@ export function screenNodeKey(screen: Screen): string | null {
     case 'ticket':
       // Un ticket fermé n'est pas dans l'arbre : aucun nœud n'y est alors choisi (N8).
       return treeNodeKey({ kind: 'ticket', id: screen.ticketId });
-    case 'pages':
-      return screen.pageId ? treeNodeKey({ kind: 'page', id: screen.pageId }) : treeNodeKey({ kind: 'branch', branch: 'pages' });
+    case 'page':
+      return treeNodeKey({ kind: 'page', id: screen.pageId });
   }
 }

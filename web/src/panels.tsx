@@ -51,6 +51,8 @@ export type PanelContent =
   | { kind: 'createStakeholder'; initiativeId: string }
   | { kind: 'createNeed'; initiativeId: string }
   | { kind: 'createRequirement'; initiativeId: string }
+  /** « Nouvelle page » ; avec `parentId`, « Sous-page » de cette page. */
+  | { kind: 'createPage'; initiativeId: string; parentId?: string }
   /** Avec la langue de la validation de syntaxe (D15). */
   | { kind: 'createScenario'; initiativeId: string; requirementId: string; language: Locale };
 

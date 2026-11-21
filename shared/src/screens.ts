@@ -34,6 +34,9 @@ export type RequirementTab = (typeof REQUIREMENT_TABS)[number];
  */
 export const TICKET_TABS = ['sheet', 'epic', 'links', 'comments', 'attachments', 'history'] as const;
 export type TicketTab = (typeof TICKET_TABS)[number];
+/** Onglets d'une page : Contenu, Liens, Commentaires, Pièces jointes, Historique. */
+export const PAGE_TABS = ['content', 'links', 'comments', 'attachments', 'history'] as const;
+export type PageTab = (typeof PAGE_TABS)[number];
 
 export type Screen =
   | { kind: 'myActions' }
@@ -51,8 +54,9 @@ export type Screen =
   | { kind: 'tickets'; initiativeId: string }
   /** Ticket de tout type, ouvert ou fermé (N8). */
   | { kind: 'ticket'; initiativeId: string; ticketId: string; tab: TicketTab }
-  /** Arborescence des pages ; `pageId` : la page ouverte, null si aucune. */
-  | { kind: 'pages'; initiativeId: string; pageId: string | null };
+  /** Nœud Pages : la liste des pages. */
+  | { kind: 'pages'; initiativeId: string }
+  | { kind: 'page'; initiativeId: string; pageId: string; tab: PageTab };
 
 /** Écran d'une initiative, quel qu'il soit. */
 export type InitiativeScreen = Exclude<Screen, { kind: 'myActions' }>;
@@ -86,12 +90,13 @@ export function screenPath(screen: Screen): string {
       return `${base}/requirements/${screen.requirementId}/scenarios/${screen.scenarioId}`;
     case 'ticket':
       return `${base}/tickets/${screen.ticketId}${tabSegment(TICKET_TABS, screen.tab)}`;
+    case 'page':
+      return `${base}/pages/${screen.pageId}${tabSegment(PAGE_TABS, screen.tab)}`;
     case 'needs':
     case 'requirements':
     case 'tickets':
-      return `${base}/${screen.kind}`;
     case 'pages':
-      return `${base}/pages${screen.pageId ? `/${screen.pageId}` : ''}`;
+      return `${base}/${screen.kind}`;
   }
 }
 
@@ -158,8 +163,11 @@ function parseInitiativePath(path: string): Screen | null {
       return tab && { kind: 'ticket', initiativeId, ticketId, tab };
     }
     case 'pages': {
-      if (rest.length === 0) return { kind: 'pages', initiativeId, pageId: null };
-      return rest.length === 1 && ID.test(rest[0]!) ? { kind: 'pages', initiativeId, pageId: rest[0]! } : null;
+      const [pageId, ...tabs] = rest;
+      if (!pageId) return { kind: 'pages', initiativeId };
+      if (!ID.test(pageId)) return null;
+      const tab = readTab(PAGE_TABS, tabs);
+      return tab && { kind: 'page', initiativeId, pageId, tab };
     }
     default: {
       const tab = readTab(INITIATIVE_TABS, segments);

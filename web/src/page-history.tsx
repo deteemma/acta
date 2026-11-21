@@ -1,6 +1,7 @@
 // Enregistrements et versions d'une page (ticket 23, décisions 07 points 4 et 5,
-// 08 points 6 et 8) : historique en volet à droite, enregistrement ouvert et
-// comparaison de deux enregistrements au centre. Règles dans @app/shared
+// 08 points 6 et 8) : onglet Historique de la page, où un enregistrement ouvert
+// ou la comparaison de deux enregistrements remplace la liste (décision du
+// 21.11.2026). Règles dans @app/shared
 // (page-revisions.ts).
 import {
   checkPageRevisionDelete,
@@ -18,7 +19,7 @@ import {
   type PageRevisionRow,
   pageComparisonText,
 } from '@app/shared';
-import { ArrowLeft, GitCompare, X } from 'lucide-react';
+import { ArrowLeft, GitCompare } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { api } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
@@ -27,11 +28,11 @@ import { PageContent } from './page-content';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
-/** Ce que le centre de l'écran montre : la page, un enregistrement, ou deux comparés. */
-export type PageShown = { kind: 'page' } | { kind: 'revision'; id: string } | { kind: 'compare'; fromId: string; toId: string };
+/** Ce que l'onglet Historique montre : la liste, un enregistrement, ou deux comparés. */
+export type PageShown = { kind: 'list' } | { kind: 'revision'; id: string } | { kind: 'compare'; fromId: string; toId: string };
 
 /**
- * Historique en volet : versions mises en évidence, filtre « versions seulement »,
+ * Liste de l'historique : versions mises en évidence, filtre « versions seulement »,
  * ouverture d'un enregistrement, choix de deux enregistrements à comparer. Tout
  * membre le consulte.
  */
@@ -39,13 +40,11 @@ export function PageHistory({
   revisions,
   shown,
   onShow,
-  onClose,
 }: {
   /** Du plus récent au plus ancien. */
   revisions: PageRevisionRow[] | null;
   shown: PageShown;
   onShow: (shown: PageShown) => void;
-  onClose: () => void;
 }) {
   const { t, locale } = useI18n();
   const [versionsOnly, setVersionsOnly] = useState(false);
@@ -68,13 +67,10 @@ export function PageHistory({
   }
 
   return (
-    <aside className="page-history" aria-labelledby={titleId}>
-      <div className="page-history-header">
-        <h2 id={titleId}>{t('pageHistory.title')}</h2>
-        <button type="button" className="ghost icon-only" aria-label={t('page.historyClose')} title={t('page.historyClose')} onClick={onClose}>
-          <X />
-        </button>
-      </div>
+    <section className="page-history" aria-labelledby={titleId}>
+      <h2 id={titleId} className="visually-hidden">
+        {t('pageHistory.title')}
+      </h2>
       <label className="checkbox">
         <input type="checkbox" checked={versionsOnly} onChange={(e) => setVersionsOnly(e.target.checked)} />
         {t('pageHistory.versionsOnly')}
@@ -130,7 +126,7 @@ export function PageHistory({
         </button>
         {picked.length !== 2 && <small>{t('pageHistory.compareHint')}</small>}
       </div>
-    </aside>
+    </section>
   );
 }
 
@@ -205,7 +201,7 @@ export function PageRevisionView({
 
   return (
     <article className="page-view page-revision">
-      <button type="button" className="ghost" onClick={() => onShow({ kind: 'page' })}>
+      <button type="button" className="ghost" onClick={() => onShow({ kind: 'list' })}>
         <ArrowLeft />
         {t('pageRevision.back')}
       </button>
@@ -392,7 +388,7 @@ export function PageComparison({
 
   return (
     <article className="page-view page-comparison">
-      <button type="button" className="ghost" onClick={() => onShow({ kind: 'page' })}>
+      <button type="button" className="ghost" onClick={() => onShow({ kind: 'list' })}>
         <ArrowLeft />
         {t('pageRevision.back')}
       </button>

@@ -213,7 +213,7 @@ function TaskPages({ taskId }: { taskId: string }) {
               <button
                 type="button"
                 className="link"
-                onClick={() => void goTo({ kind: 'pages', initiativeId: page.initiativeId, pageId: page.id })}
+                onClick={() => void goTo({ kind: 'page', initiativeId: page.initiativeId, pageId: page.id, tab: 'content' })}
               >
                 <span className="code">{page.reference}</span> {page.title}
               </button>

@@ -31,19 +31,27 @@ test('deux écrans sont les mêmes s’ils ont la même nature et la même initi
 
 const PAGE = '7a6b5c4d-3e2f-4a1b-8c9d-0e1f2a3b4c5d';
 
-test('l’écran Pages a son adresse, et celle de la page ouverte : le lien d’une page peut être envoyé', () => {
-  assert.equal(screenPath({ kind: 'pages', initiativeId: ID, pageId: null }), `/initiatives/${ID}/pages`);
-  assert.equal(screenPath({ kind: 'pages', initiativeId: ID, pageId: PAGE }), `/initiatives/${ID}/pages/${PAGE}`);
-  assert.deepEqual(parseScreenPath(`/initiatives/${ID}/pages`), { kind: 'pages', initiativeId: ID, pageId: null });
-  assert.deepEqual(parseScreenPath(`/initiatives/${ID}/pages/${PAGE}/`), { kind: 'pages', initiativeId: ID, pageId: PAGE });
-  assert.deepEqual(parseScreenPath(`/initiatives/${ID}/pages/pas-un-id`), { kind: 'myActions' });
+test('le nœud Pages a son adresse, et chaque page la sienne, onglet par onglet : le lien d’une page peut être envoyé', () => {
+  assert.equal(screenPath({ kind: 'pages', initiativeId: ID }), `/initiatives/${ID}/pages`);
+  assert.equal(screenPath({ kind: 'page', initiativeId: ID, pageId: PAGE, tab: 'content' }), `/initiatives/${ID}/pages/${PAGE}`);
+  assert.equal(screenPath({ kind: 'page', initiativeId: ID, pageId: PAGE, tab: 'history' }), `/initiatives/${ID}/pages/${PAGE}/history`);
+  assert.deepEqual(parseScreenPath(`/initiatives/${ID}/pages`), { kind: 'pages', initiativeId: ID });
+  // L'adresse d'une page d'avant les onglets ouvre son Contenu.
+  assert.deepEqual(parseScreenPath(`/initiatives/${ID}/pages/${PAGE}/`), { kind: 'page', initiativeId: ID, pageId: PAGE, tab: 'content' });
+  for (const tab of ['links', 'comments', 'attachments', 'history'] as const) {
+    assert.deepEqual(parseScreenPath(`/initiatives/${ID}/pages/${PAGE}/${tab}`), { kind: 'page', initiativeId: ID, pageId: PAGE, tab });
+  }
+  for (const path of [`/initiatives/${ID}/pages/pas-un-id`, `/initiatives/${ID}/pages/${PAGE}/inconnu`, `/initiatives/${ID}/pages/${PAGE}/links/x`]) {
+    assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
+  }
 });
 
-test('ouvrir une autre page est un autre écran, pour « Précédent »', () => {
-  const pages = { kind: 'pages', initiativeId: ID, pageId: null } as const;
-  assert.equal(sameScreen(pages, { ...pages, pageId: PAGE }), false);
-  assert.equal(sameScreen({ ...pages, pageId: PAGE }, { ...pages, pageId: PAGE }), true);
-  assert.equal(sameScreen(pages, { kind: 'tickets', initiativeId: ID }), false);
+test('ouvrir une autre page, ou un autre onglet de la page, est un autre écran, pour « Précédent »', () => {
+  const page = { kind: 'page', initiativeId: ID, pageId: PAGE, tab: 'content' } as const;
+  assert.equal(sameScreen({ kind: 'pages', initiativeId: ID }, page), false);
+  assert.equal(sameScreen(page, { ...page, tab: 'comments' }), false);
+  assert.equal(sameScreen(page, { ...page }), true);
+  assert.equal(sameScreen({ kind: 'pages', initiativeId: ID }, { kind: 'tickets', initiativeId: ID }), false);
 });
 
 test('l’initiative a son adresse, et chacun de ses onglets ; l’onglet Aperçu est celui de l’adresse nue', () => {

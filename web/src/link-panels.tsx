@@ -76,11 +76,11 @@ function TicketButton({ initiativeId, ticket }: { initiativeId: string; ticket: 
   );
 }
 
-/** Une page s'ouvre sur l'écran Pages, panneaux fermés (ticket 22, choix 6). */
+/** Une page s'ouvre dans l'écran de données, panneaux fermés (ticket 22, choix 6). */
 function PageButton({ initiativeId, page }: { initiativeId: string; page: PageRow }) {
   const { goTo } = useScreens();
   return (
-    <button type="button" className="link" onClick={() => void goTo({ kind: 'pages', initiativeId, pageId: page.id })}>
+    <button type="button" className="link" onClick={() => void goTo({ kind: 'page', initiativeId, pageId: page.id, tab: 'content' })}>
       <span className="code">{page.reference}</span> {page.title}
     </button>
   );
