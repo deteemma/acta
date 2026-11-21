@@ -32,7 +32,7 @@ Chaque ticket renvoie à ces décisions : **les lire avant de coder**. En cas de
 - **N5** — Racine : l'initiative. Branches, dans cet ordre : Tableau de bord, Parties prenantes, Besoins, Exigences, Tickets, Pages, Équipe. Chaque branche montre son nombre d'éléments.
 - **N6** — Exigences : imbriquées sous leur exigence parente ; les scénarios Gherkin d'une exigence apparaissent sous elle, dans leur ordre.
 - **N7** — Besoins et exigences forment deux branches distinctes ; leur relation se lit dans l'onglet « Traçabilité » de l'exigence.
-- **N8** — Tickets : seuls les tickets **ouverts** y figurent, rangés par Epic (l'Epic est le nœud parent de ses tickets) puis sous « Sans Epic » ; le ticket ouvert d'un Epic fermé va sous « Sans Epic », et le nombre de la branche compte les tickets ouverts (décisions du 21.11.2026). Les tickets fermés se retrouvent par la liste du nœud Tickets (filtre Ouverts / Fermés / Ouverts et fermés) ; ouvert depuis la liste, un ticket fermé s'affiche à droite sans apparaître dans l'arborescence.
+- **N8** — Tickets : seuls les tickets **ouverts** y figurent, rangés par Epic (l'Epic est le nœud parent de ses tickets) puis sous « Sans Epic » ; le ticket ouvert d'un Epic fermé va sous « Sans Epic », et le nombre de la branche compte les tickets ouverts (décisions du 21.11.2026). Les tickets fermés se retrouvent par la liste du nœud Tickets (filtre Ouverts / Fermés / Ouverts et fermés) ; ouvert depuis la liste, un ticket fermé s'affiche à droite sans apparaître dans l'arborescence. La liste ne met plus en évidence la ligne du ticket ouvert, la liste et le ticket n'étant plus affichés ensemble ; de même pour les listes d'actions (décision du 21.11.2026).
 - **N9** — Pages : leur arborescence propre (sous-pages), avec le rangement actuel (glisser-déposer, Alt + flèches).
 - **N10** — Le chemin vers le nœud choisi est toujours déplié. Les libellés sont alignés à gauche ; la référence courte (ex. `EX-001`) précède le titre.
 
@@ -59,7 +59,7 @@ Chaque ticket renvoie à ces décisions : **les lire avant de coder**. En cas de
 
 ### Créations, recherche, mobile
 
-- **N15** — Une création (initiative, action, ticket, partie prenante, besoin, exigence, page, scénario…) passe par une petite **fenêtre de dialogue** centrée avec les champs de création actuels. Une fois enregistré, l'élément s'ouvre à droite et apparaît dans l'arborescence. Le bouton « + Action » reste disponible partout.
+- **N15** — Une création (initiative, action, ticket, partie prenante, besoin, exigence, page, scénario…) passe par une petite **fenêtre de dialogue** centrée avec les champs de création actuels. Une fois enregistré, l'élément s'ouvre à droite et apparaît dans l'arborescence. Le bouton « + Action » reste disponible partout. Une action suggérée créée depuis le tableau de bord s'ouvre de même à droite, à la place du tableau de bord ; une action choisie dans les alertes ouvre l'écran de son ticket (décisions du 21.11.2026).
 - **N16** — La palette (Ctrl+K) est conservée : choisir un résultat change d'initiative si besoin, déplie l'arborescence et ouvre l'élément à droite ; un scénario ouvre l'onglet Scénarios de son exigence, le scénario mis en évidence. Une référence citée dans un texte fait de même. La mise en évidence suit l'adresse du scénario : elle tient tant qu'on reste sur cette adresse, et « Précédent » la retrouve ; un scénario tout juste créé s'ouvre de même (décisions du 21.11.2026).
 - **N14** — Le mobile garde sa navigation actuelle.
 
