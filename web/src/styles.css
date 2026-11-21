@@ -1387,28 +1387,6 @@ form.invite h4 {
   margin-top: var(--space-4);
 }
 /* Parties prenantes (ticket 08) */
-.stakeholder-views {
-  margin-top: 0;
-}
-/* Onglets : Liste / Matrice. */
-.stakeholder-views [role='group'] {
-  display: flex;
-  gap: var(--space-1);
-  border-bottom: 1px solid var(--border);
-}
-.stakeholder-views [role='group'] button {
-  margin-bottom: -1px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: none;
-  color: var(--muted);
-}
-.stakeholder-views [role='group'] button[aria-pressed='true'] {
-  border-bottom-color: var(--accent);
-  color: var(--text);
-  font-weight: 600;
-}
 /* Ligne d'une partie prenante : nom et rôles à gauche, nature et niveaux à droite (ticket 04, lot 1). */
 .stakeholder-list li.stakeholder-row {
   display: grid;

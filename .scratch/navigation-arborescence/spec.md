@@ -53,7 +53,7 @@ Chaque ticket renvoie à ces décisions : **les lire avant de coder**. En cas de
   | Équipe | Membres · Désignations |
   | Nœud de branche | la liste de ses éléments, avec le bouton de création |
 
-  Tout champ ou section actuel d'un panneau trouve sa place dans l'un de ces onglets ; un cas qui n'y entre pas est une question pour la responsable fonctionnelle.
+  Tout champ ou section actuel d'un panneau trouve sa place dans l'un de ces onglets ; un cas qui n'y entre pas est une question pour la responsable fonctionnelle. Les actions liées à une partie prenante (avec « + Action ») vont dans son onglet Fiche, sous les champs (décision du 21.11.2026).
 - **N12** — Chaque élément et chaque onglet a sa propre adresse : recharger la page ou suivre un lien y ramène ; « Précédent » revient à l'élément ou à l'onglet d'avant. Après une connexion, on revient à l'adresse demandée.
 - **N13** — L'alerte des modifications non enregistrées s'applique au passage d'un élément, d'un onglet ou d'une initiative à l'autre, comme aujourd'hui entre panneaux.
 

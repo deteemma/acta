@@ -44,7 +44,7 @@ export interface InitiativeData {
  */
 export function useInitiativeData(initiativeId: string | null, version: string) {
   const ticketTypes = useTicketTypes();
-  const [loaded, setLoaded] = useState<Awaited<ReturnType<typeof loadInitiative>> | null>(null);
+  const [loaded, setLoaded] = useState<{ version: string; data: Awaited<ReturnType<typeof loadInitiative>> } | null>(null);
   const [failure, setFailure] = useState<{ initiativeId: string; error: UiError } | null>(null);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function useInitiativeData(initiativeId: string | null, version: string) 
     loadInitiative(initiativeId).then(
       (data) => {
         if (!current) return;
-        setLoaded(data);
+        setLoaded({ version, data });
         setFailure(null);
       },
       (e: unknown) => current && setFailure({ initiativeId, error: toUiError(e) }),
@@ -63,7 +63,7 @@ export function useInitiativeData(initiativeId: string | null, version: string) 
     };
   }, [initiativeId, version]);
 
-  const shown = loaded?.initiative.id === initiativeId ? loaded : null;
+  const shown = loaded?.data.initiative.id === initiativeId ? loaded.data : null;
   const data = useMemo<InitiativeData | null>(
     () =>
       shown && {
@@ -78,7 +78,9 @@ export function useInitiativeData(initiativeId: string | null, version: string) 
     [shown, ticketTypes],
   );
   const error = failure?.initiativeId === initiativeId ? failure.error : null;
-  return { data, error };
+  // Rechargement en cours : un élément tout juste créé n'y est pas encore.
+  const pending = !error && loaded?.version !== version;
+  return { data, pending, error };
 }
 
 async function loadInitiative(id: string) {
@@ -149,12 +151,9 @@ export function nodeDestination(initiativeId: string, ref: TreeNodeRef): { scree
     case 'noEpic':
       return { screen: { kind: 'tickets', initiativeId } };
     case 'stakeholder':
-      return {
-        screen: { kind: 'stakeholders', initiativeId, tab: 'list' },
-        panel: { kind: 'stakeholder', initiativeId, stakeholderId: ref.id },
-      };
+      return { screen: { kind: 'stakeholder', initiativeId, stakeholderId: ref.id, tab: 'sheet' } };
     case 'need':
-      return { screen: { kind: 'needs', initiativeId }, panel: { kind: 'need', initiativeId, needId: ref.id } };
+      return { screen: { kind: 'need', initiativeId, needId: ref.id, tab: 'sheet' } };
     case 'requirement':
       return { screen: { kind: 'requirements', initiativeId }, panel: { kind: 'requirement', initiativeId, requirementId: ref.id } };
     case 'scenario':

@@ -43,12 +43,12 @@ import { api, ApiError } from './api';
 import { saveFile } from './download';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { NeedLink } from './need-panels';
+import { NeedLink } from './need-screen';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { setRequirementStatuses, StatusLabel, useRequirementStatuses } from './requirement-statuses';
 import { RichText, RichTextEditor } from './rich-text';
 import { NO_FEATURE, ScenariosSection } from './scenario-panels';
-import { StakeholderLink } from './stakeholder-panels';
+import { StakeholderLink } from './stakeholder-screen';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 

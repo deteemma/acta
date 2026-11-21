@@ -27,8 +27,8 @@ import { CreateInitiativeDialog, MemberPanel } from './initiative-panels';
 import { InitiativeDataScreen } from './initiative-screens';
 import { InitiativeTree, nodeDestination, useInitiativeData } from './initiative-tree';
 import { MyActions } from './my-actions';
-import { NeedPanel } from './need-panels';
-import { StakeholderPanel, StakeholdersPanel } from './stakeholder-panels';
+import { CreateNeedDialog } from './need-screen';
+import { CreateStakeholderDialog } from './stakeholder-screen';
 import { IS_MAC, Palette, usePaletteShortcut } from './palette';
 import { PagesScreen } from './pages-screen';
 import { FabContext, PanelHost, type PanelContent, PanelsProvider, SCREEN_TITLE_ID, ScreenForms, usePanels } from './panels';
@@ -124,7 +124,7 @@ const NARROW_SHELL = '(max-width: 60rem)';
 function Shell({ user }: { user: User }) {
   const { t } = useI18n();
   const { stack, open, leaveScreen } = usePanels();
-  const { screen, goTo, initiativeGone } = useScreens();
+  const { screen, goTo, replaceScreen, initiativeGone } = useScreens();
   const [initiatives, setInitiatives] = useState<InitiativeDto[] | null>(null);
   const [me, setMe] = useState<MeDto | null>(null);
   const [babok, setBabok] = useState<BabokDto | null>(null);
@@ -182,7 +182,7 @@ function Shell({ user }: { user: User }) {
   const isAccessible = (id: string | null) => !!id && (!initiatives || initiatives.some((i) => i.id === id));
   const shownId = screenInitiative ?? (isAccessible(lastId) ? lastId : (active[0]?.id ?? archived[0]?.id ?? null));
   const dataVersion = [actionsVersion, stakeholdersVersion, needsVersion, requirementsVersion, pagesVersion, initiativeVersion].join('-');
-  const { data, error: dataError } = useInitiativeData(shownId, dataVersion);
+  const { data, pending: dataPending, error: dataError } = useInitiativeData(shownId, dataVersion);
   const selectedKey = screenInitiative && screenInitiative === shownId ? screenNodeKey(screen) : null;
 
   useTitleFocus(screen);
@@ -205,10 +205,9 @@ function Shell({ user }: { user: User }) {
 
   // Panneau le plus haut qui montre un objet d'une initiative : la création rapide
   // propose cette initiative, et part de cet objet (ticket 13) ; sans panneau,
-  // l'initiative de l'écran.
+  // l'élément de l'écran.
   const fabOrigin =
-    stack.map((e) => actionOrigin(e.content)).findLast((origin) => origin !== undefined) ??
-    (screenInitiative ? { initiativeId: screenInitiative } : undefined);
+    stack.map((e) => actionOrigin(e.content)).findLast((origin) => origin !== undefined) ?? screenActionOrigin(screen);
   const fab = (
     <button
       type="button"
@@ -272,18 +271,23 @@ function Shell({ user }: { user: User }) {
       <ScreenForms>
         <InitiativeDataScreen
           // Autre élément ou autre initiative : les formulaires repartent de l'élément affiché.
-          key={`${screen.initiativeId}:${screen.kind}`}
+          key={`${screen.initiativeId}:${screenNodeKey(screen)}`}
           screen={screen}
           data={data}
+          pending={dataPending}
           babok={babok}
           actionsVersion={actionsVersion}
           onNavigate={(next) => void goTo(next)}
+          onReplace={replaceScreen}
           onSelectNode={selectNode}
           onInitiativeChanged={initiativeChanged}
           // Mon rôle a pu changer : l'initiative est relue, la liste et l'arborescence suivent.
           onTeamChanged={() => void api.getInitiative(screen.initiativeId).then(initiativeChanged, (e: unknown) => setError(toUiError(e)))}
           onInitiativeGone={initiativeRemoved}
           onActionCreated={actionsChanged}
+          onStakeholdersChanged={stakeholdersChanged}
+          onNeedsChanged={needsChanged}
+          onLinksChanged={actionsChanged}
         />
       </ScreenForms>
     );
@@ -498,35 +502,34 @@ function Shell({ user }: { user: User }) {
                   )
                 );
               }
-              case 'stakeholders':
+              case 'createStakeholder':
                 return (
-                  <StakeholdersPanel initiativeId={content.initiativeId} version={stakeholdersVersion} onClose={close} />
+                  data?.initiative.id === content.initiativeId && (
+                    <CreateStakeholderDialog
+                      initiativeId={content.initiativeId}
+                      members={data.members}
+                      stakeholders={data.stakeholders}
+                      onCreated={(created) => {
+                        stakeholdersChanged();
+                        void goTo({ kind: 'stakeholder', initiativeId: created.initiativeId, stakeholderId: created.id, tab: 'sheet' });
+                      }}
+                      onClose={close}
+                    />
+                  )
                 );
-              case 'stakeholder':
+              case 'createNeed':
                 return (
-                  <StakeholderPanel
-                    babok={babok}
-                    initiativeId={content.initiativeId}
-                    stakeholderId={content.stakeholderId}
-                    actionsVersion={actionsVersion}
-                    needsVersion={needsVersion}
-                    requirementsVersion={requirementsVersion}
-                    onChanged={stakeholdersChanged}
-                    onClose={close}
-                  />
-                );
-              case 'need':
-                return (
-                  <NeedPanel
-                    initiativeId={content.initiativeId}
-                    needId={content.needId}
-                    actionsVersion={actionsVersion}
-                    stakeholdersVersion={stakeholdersVersion}
-                    requirementsVersion={requirementsVersion}
-                    onChanged={needsChanged}
-                    onLinksChanged={actionsChanged}
-                    onClose={close}
-                  />
+                  data?.initiative.id === content.initiativeId && (
+                    <CreateNeedDialog
+                      initiativeId={content.initiativeId}
+                      stakeholders={data.stakeholders}
+                      onCreated={(created) => {
+                        needsChanged();
+                        void goTo({ kind: 'need', initiativeId: created.initiativeId, needId: created.id, tab: 'sheet' });
+                      }}
+                      onClose={close}
+                    />
+                  )
                 );
               case 'requirement':
                 return (
@@ -564,12 +567,9 @@ function actionOrigin(content: PanelContent): { initiativeId: string; from?: Ana
     case 'action':
     case 'ticket':
     case 'createTicket':
-    case 'stakeholders':
+    case 'createStakeholder':
+    case 'createNeed':
       return { initiativeId: content.initiativeId };
-    case 'stakeholder':
-      return { initiativeId: content.initiativeId, ...(content.stakeholderId && { from: { kind: 'stakeholder', id: content.stakeholderId } }) };
-    case 'need':
-      return { initiativeId: content.initiativeId, ...(content.needId && { from: { kind: 'need', id: content.needId } }) };
     case 'requirement':
       return {
         initiativeId: content.initiativeId,
@@ -577,6 +577,20 @@ function actionOrigin(content: PanelContent): { initiativeId: string; from?: Ana
       };
     default:
       return undefined;
+  }
+}
+
+/** Initiative, et élément éventuel, d'où le bouton « + Action » crée l'action depuis l'écran de données. */
+function screenActionOrigin(screen: Screen): { initiativeId: string; from?: AnalysisObjectRef } | undefined {
+  switch (screen.kind) {
+    case 'myActions':
+      return undefined;
+    case 'stakeholder':
+      return { initiativeId: screen.initiativeId, from: { kind: 'stakeholder', id: screen.stakeholderId } };
+    case 'need':
+      return { initiativeId: screen.initiativeId, from: { kind: 'need', id: screen.needId } };
+    default:
+      return { initiativeId: screen.initiativeId };
   }
 }
 

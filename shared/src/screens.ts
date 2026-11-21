@@ -17,6 +17,12 @@ export type TeamTab = (typeof TEAM_TABS)[number];
 /** Onglets du nœud Parties prenantes : Liste, Matrice influence × intérêt. */
 export const STAKEHOLDERS_TABS = ['list', 'matrix'] as const;
 export type StakeholdersTab = (typeof STAKEHOLDERS_TABS)[number];
+/** Onglets d'une partie prenante : Fiche, « À l'origine de ». */
+export const STAKEHOLDER_TABS = ['sheet', 'origin'] as const;
+export type StakeholderTab = (typeof STAKEHOLDER_TABS)[number];
+/** Onglets d'un besoin : Fiche, Exigences, Liens. */
+export const NEED_TABS = ['sheet', 'requirements', 'links'] as const;
+export type NeedTab = (typeof NEED_TABS)[number];
 
 export type Screen =
   | { kind: 'myActions' }
@@ -24,6 +30,8 @@ export type Screen =
   | { kind: 'dashboard'; initiativeId: string; tab: DashboardTab }
   | { kind: 'team'; initiativeId: string; tab: TeamTab }
   | { kind: 'stakeholders'; initiativeId: string; tab: StakeholdersTab }
+  | { kind: 'stakeholder'; initiativeId: string; stakeholderId: string; tab: StakeholderTab }
+  | { kind: 'need'; initiativeId: string; needId: string; tab: NeedTab }
   | { kind: 'needs'; initiativeId: string }
   | { kind: 'requirements'; initiativeId: string }
   | { kind: 'tickets'; initiativeId: string }
@@ -52,6 +60,10 @@ export function screenPath(screen: Screen): string {
       return `${base}/team${tabSegment(TEAM_TABS, screen.tab)}`;
     case 'stakeholders':
       return `${base}/stakeholders${tabSegment(STAKEHOLDERS_TABS, screen.tab)}`;
+    case 'stakeholder':
+      return `${base}/stakeholders/${screen.stakeholderId}${tabSegment(STAKEHOLDER_TABS, screen.tab)}`;
+    case 'need':
+      return `${base}/needs/${screen.needId}${tabSegment(NEED_TABS, screen.tab)}`;
     case 'needs':
     case 'requirements':
     case 'tickets':
@@ -89,10 +101,22 @@ function parseInitiativePath(path: string): Screen | null {
       return tab && { kind: 'team', initiativeId, tab };
     }
     case 'stakeholders': {
+      // Une partie prenante (son identifiant), sinon un onglet du nœud.
+      const [stakeholderId, ...tabs] = rest;
+      if (stakeholderId && ID.test(stakeholderId)) {
+        const tab = readTab(STAKEHOLDER_TABS, tabs);
+        return tab && { kind: 'stakeholder', initiativeId, stakeholderId, tab };
+      }
       const tab = readTab(STAKEHOLDERS_TABS, rest);
       return tab && { kind: 'stakeholders', initiativeId, tab };
     }
-    case 'needs':
+    case 'needs': {
+      const [needId, ...tabs] = rest;
+      if (!needId) return { kind: 'needs', initiativeId };
+      if (!ID.test(needId)) return null;
+      const tab = readTab(NEED_TABS, tabs);
+      return tab && { kind: 'need', initiativeId, needId, tab };
+    }
     case 'requirements':
     case 'tickets':
       return rest.length === 0 ? { kind: first, initiativeId } : null;

@@ -186,6 +186,10 @@ export function screenNodeKey(screen: Screen): string | null {
     case 'requirements':
     case 'tickets':
       return treeNodeKey({ kind: 'branch', branch: screen.kind });
+    case 'stakeholder':
+      return treeNodeKey({ kind: 'stakeholder', id: screen.stakeholderId });
+    case 'need':
+      return treeNodeKey({ kind: 'need', id: screen.needId });
     case 'pages':
       return screen.pageId ? treeNodeKey({ kind: 'page', id: screen.pageId }) : treeNodeKey({ kind: 'branch', branch: 'pages' });
   }

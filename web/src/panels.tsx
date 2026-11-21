@@ -49,11 +49,9 @@ export type PanelContent =
   | { kind: 'ticket'; initiativeId: string; ticketId: string }
   /** « Nouveau ticket » ; avec `epicId`, ouvert depuis le « + Ticket » de cet Epic. */
   | { kind: 'createTicket'; initiativeId: string; epicId?: string }
-  | { kind: 'stakeholders'; initiativeId: string }
-  /** Sans `stakeholderId`, création d'une partie prenante. */
-  | { kind: 'stakeholder'; initiativeId: string; stakeholderId?: string }
-  /** Sans `needId`, création d'un besoin. */
-  | { kind: 'need'; initiativeId: string; needId?: string }
+  /** Fenêtres de création (N15) ; l'élément créé s'ouvre ensuite dans l'écran de données. */
+  | { kind: 'createStakeholder'; initiativeId: string }
+  | { kind: 'createNeed'; initiativeId: string }
   /**
    * Sans `requirementId`, création d'une exigence. Avec `scenarioId`, ouverte
    * sur ce scénario, mis en évidence (palette, D20).

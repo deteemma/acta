@@ -23,6 +23,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { api } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
+import { NeedLink } from './need-screen';
 import { usePanels } from './panels';
 import { useScreens } from './screens';
 import { TicketStatusLabel, ticketTarget } from './ticket-parts';
@@ -190,9 +191,7 @@ export function TicketLinks({
         title={t('link.needs')}
         items={shown.needs}
         render={(need) => (
-          <button type="button" className="link" onClick={() => open({ kind: 'need', initiativeId, needId: need.id })}>
-            <strong>{need.reference}</strong> {need.title}
-          </button>
+          <NeedLink initiativeId={initiativeId} need={need} />
         )}
         onRemove={canEdit ? (need) => remove(() => api.removeNeedLink(initiativeId, ticketId, need.id)) : undefined}
       />
@@ -284,9 +283,7 @@ export function PageLinks({
         title={t('link.needs')}
         items={shown.needs}
         render={(need) => (
-          <button type="button" className="link" onClick={() => open({ kind: 'need', initiativeId, needId: need.id })}>
-            <strong>{need.reference}</strong> {need.title}
-          </button>
+          <NeedLink initiativeId={initiativeId} need={need} />
         )}
         onRemove={canEdit ? (need) => removeLink('need', need.id) : undefined}
       />

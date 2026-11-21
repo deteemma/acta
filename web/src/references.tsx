@@ -30,12 +30,25 @@ export const useReferences = () => useContext(ReferencesContext);
  * ouvre son panneau actuel par-dessus.
  */
 export function useOpenReference(): (item: ReferenceDto) => void {
-  const { goTo } = useScreens();
+  const openNode = useOpenNode();
   return useCallback(
     (item) => {
       const ref = referenceNode(item);
-      if (!ref) return;
-      const { screen, panel } = nodeDestination(item.initiativeId, ref);
+      if (ref) openNode(item.initiativeId, ref);
+    },
+    [openNode],
+  );
+}
+
+/**
+ * Ouvre le nœud d'un élément (lien vers une partie prenante, un besoin…) :
+ * ferme les panneaux, avec l'alerte, et l'affiche à droite.
+ */
+export function useOpenNode(): (initiativeId: string, ref: TreeNodeRef) => void {
+  const { goTo } = useScreens();
+  return useCallback(
+    (initiativeId, ref) => {
+      const { screen, panel } = nodeDestination(initiativeId, ref);
       void goTo(screen, panel);
     },
     [goTo],

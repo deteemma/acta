@@ -1,5 +1,6 @@
 // Parties prenantes (ticket 08) : liste et matrice influence × intérêt d'une
-// initiative, fiche d'une partie prenante dans un panneau latéral. Règles dans
+// initiative, onglets d'une partie prenante dans l'écran de données (ADR-0021,
+// N11 : Fiche, « À l'origine de ») et fenêtre de création (N15). Règles dans
 // @app/shared (stakeholders.ts, roles.ts).
 import {
   memberName,
@@ -28,16 +29,15 @@ import {
   type StakeholderRole,
   sortByDueDate,
 } from '@app/shared';
-import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionList, NewActionButton } from './action-panels';
 import { api, ApiError } from './api';
-import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { NeedList } from './need-panels';
+import { NeedList } from './need-screen';
 import { RequirementList } from './requirement-panels';
-import { Panel, useCloseSilently, usePanels } from './panels';
+import { Panel, useCloseSilently } from './panels';
+import { useOpenNode } from './references';
 import { RichText, RichTextEditor } from './rich-text';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
@@ -62,88 +62,16 @@ function RoleList({ roles }: { roles: readonly StakeholderRole[] }) {
 
 /** Bouton qui ouvre la fiche d'une partie prenante. */
 export function StakeholderLink({ initiativeId, stakeholder }: { initiativeId: string; stakeholder: StakeholderRefDto }) {
-  const { open } = usePanels();
+  const openNode = useOpenNode();
   return (
-    <button
-      type="button"
-      className="link"
-      onClick={() => open({ kind: 'stakeholder', initiativeId, stakeholderId: stakeholder.id })}
-    >
+    <button type="button" className="link" onClick={() => openNode(initiativeId, { kind: 'stakeholder', id: stakeholder.id })}>
       {stakeholder.name}
     </button>
   );
 }
 
-/** Liste et matrice influence × intérêt des parties prenantes d'une initiative. */
-export function StakeholdersPanel({
-  initiativeId,
-  version,
-  onClose,
-}: {
-  initiativeId: string;
-  /** Change à chaque écriture sur une partie prenante : la liste se recharge. */
-  version: number;
-  onClose: () => void;
-}) {
-  const { t, locale } = useI18n();
-  const { open } = usePanels();
-  const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
-  const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
-  const [view, setView] = useState<'list' | 'matrix'>('list');
-  const [error, setError] = useState<UiError | null>(null);
-
-  useEffect(() => {
-    Promise.all([api.getInitiative(initiativeId), api.listStakeholders(initiativeId)]).then(([i, s]) => {
-      setInitiative(i);
-      setStakeholders(s);
-    }, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, version]);
-
-  return (
-    <Panel
-      title={initiative ? initiative.name : t('common.loading')}
-      kicker={
-        initiative && (
-          <>
-            <span title={englishTermTooltip(locale, 'stakeholders.section')}>{t('stakeholders.section')}</span>{' '}
-            <span className="code">{initiative.code}</span>
-          </>
-        )
-      }
-      onClose={onClose}
-    >
-      <ErrorMessage error={error} />
-      {initiative && stakeholders && (
-        <>
-          {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
-          <div className="section-header stakeholder-views">
-            <div role="group">
-              <button type="button" aria-pressed={view === 'list'} onClick={() => setView('list')}>
-                {t('stakeholders.list')}
-              </button>{' '}
-              <button type="button" aria-pressed={view === 'matrix'} onClick={() => setView('matrix')}>
-                {t('stakeholders.matrix')}
-              </button>
-            </div>
-            {canEditStakeholders(initiative) && (
-              <button type="button" onClick={() => open({ kind: 'stakeholder', initiativeId })}>
-                <Plus />
-                {t('stakeholders.new')}
-              </button>
-            )}
-          </div>
-          {stakeholders.length === 0 ? (
-            <EmptyState subject="stakeholders" title={t('stakeholders.empty')} hint={t('empty.stakeholdersHint')} />
-          ) : view === 'list' ? (
-            <StakeholderList stakeholders={stakeholders} />
-          ) : (
-            <StakeholderMatrix stakeholders={stakeholders} />
-          )}
-        </>
-      )}
-    </Panel>
-  );
-}
+/** Nature de l'écran, l'anglais en info-bulle. */
+export const StakeholderKicker = () => <Term term="stakeholder.kicker" />;
 
 export function StakeholderList({ stakeholders }: { stakeholders: StakeholderDto[] }) {
   const { t } = useI18n();
@@ -226,130 +154,116 @@ export function StakeholderMatrix({ stakeholders }: { stakeholders: StakeholderD
   );
 }
 
-/** Fiche d'une partie prenante ; sans `stakeholderId`, création. */
-export function StakeholderPanel({
+/**
+ * Onglet Fiche : les champs (en lecture seule pour un lecteur ou une initiative
+ * archivée), les actions liées (décision du 21.11.2026), la trace et la suppression.
+ */
+export function StakeholderSheet({
+  initiative,
+  members,
+  stakeholders,
+  stakeholder,
   babok,
-  initiativeId,
-  stakeholderId,
   actionsVersion,
-  needsVersion,
-  requirementsVersion,
   onChanged,
-  onClose,
+  onDeleted,
 }: {
+  initiative: InitiativeDto;
+  members: InitiativeMemberDto[];
+  stakeholders: StakeholderDto[];
+  stakeholder: StakeholderDto;
   babok: BabokDto | null;
-  initiativeId: string;
-  stakeholderId?: string;
   /** Change à chaque écriture sur une action : les actions liées se rechargent. */
   actionsVersion: number;
-  /** De même pour les besoins dont elle est à l'origine. */
-  needsVersion: number;
-  /** De même pour les exigences dont elle est la source. */
-  requirementsVersion: number;
-  /** Une partie prenante a été créée, modifiée ou supprimée : les listes se rechargent. */
+  /** Modifiée : les listes et l'arborescence se rechargent. */
   onChanged: () => void;
-  onClose: () => void;
+  onDeleted: () => void;
 }) {
   const { t } = useI18n();
-  const { replaceSaved } = usePanels();
-  const closeSilently = useCloseSilently();
-  const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
-  const [members, setMembers] = useState<InitiativeMemberDto[] | null>(null);
-  const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
   const [actions, setActions] = useState<ActionDto[]>([]);
-  const [needs, setNeeds] = useState<NeedDto[]>([]);
-  const [requirements, setRequirements] = useState<RequirementDto[]>([]);
   const [error, setError] = useState<UiError | null>(null);
 
   useEffect(() => {
-    Promise.all([api.getInitiative(initiativeId), api.listMembers(initiativeId), api.listStakeholders(initiativeId)]).then(
-      ([i, m, s]) => {
-        setInitiative(i);
-        setMembers(m);
-        setStakeholders(s);
-        if (stakeholderId && !s.some((x) => x.id === stakeholderId)) setError({ key: 'error.http', params: { status: 404 } });
-      },
-      (e: unknown) => setError(toUiError(e)),
-    );
-  }, [initiativeId, stakeholderId]);
+    api.listActions(initiative.id).then(setActions, (e: unknown) => setError(toUiError(e)));
+  }, [initiative.id, actionsVersion]);
 
-  useEffect(() => {
-    if (!stakeholderId) return;
-    api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, stakeholderId, actionsVersion]);
-
-  useEffect(() => {
-    if (!stakeholderId) return;
-    api.listNeeds(initiativeId).then(setNeeds, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, stakeholderId, needsVersion]);
-
-  useEffect(() => {
-    if (!stakeholderId) return;
-    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, stakeholderId, requirementsVersion]);
-
-  const stakeholder = stakeholderId ? stakeholders?.find((s) => s.id === stakeholderId) : undefined;
-  const linkedActions = sortByDueDate(actions.filter((a) => a.stakeholders.some((s) => s.id === stakeholderId)));
-  const originatedNeeds = needs.filter((n) => n.stakeholders.some((s) => s.id === stakeholderId));
-  const sourcedRequirements = requirements.filter((r) => r.stakeholders.some((s) => s.id === stakeholderId));
-  const ready = initiative && members && stakeholders && (!stakeholderId || stakeholder);
-
-  function saved(next: StakeholderDto) {
-    setStakeholders((list) => list && (list.some((s) => s.id === next.id) ? list.map((s) => (s.id === next.id ? next : s)) : [...list, next]));
-    onChanged();
-  }
+  const linkedActions = sortByDueDate(actions.filter((a) => a.stakeholders.some((s) => s.id === stakeholder.id)));
+  const editable = canEditStakeholders(initiative);
 
   return (
-    <Panel
-      title={stakeholder ? stakeholder.name : stakeholderId ? t('common.loading') : t('stakeholders.new')}
-      kicker={stakeholder && <Term term="stakeholder.kicker" />}
-      onClose={onClose}
-    >
+    <>
       <ErrorMessage error={error} />
-      {ready && (
-        <>
-          {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
-          {canEditStakeholders(initiative) ? (
-            <StakeholderForm
-              initiativeId={initiativeId}
-              stakeholder={stakeholder}
-              linkable={linkableMembers(members, stakeholders, stakeholderId ?? null)}
-              onSaved={(next) => {
-                saved(next);
-                if (!stakeholder) replaceSaved({ kind: 'stakeholder', initiativeId, stakeholderId: next.id });
-              }}
-            />
-          ) : (
-            stakeholder && <StakeholderDetails stakeholder={stakeholder} />
-          )}
-          {stakeholder && (
-            <>
-              <div className="section-header">
-                <h3>{t('stakeholder.actions')}</h3>
-                <NewActionButton initiative={initiative} from={{ kind: 'stakeholder', id: stakeholder.id }} />
-              </div>
-              <ActionList actions={linkedActions} babok={babok} />
-              {linkedActions.length === 0 && <p>{t('stakeholder.noActions')}</p>}
-              <h3>{t('stakeholder.needs')}</h3>
-              <NeedList needs={originatedNeeds} />
-              {originatedNeeds.length === 0 && <p>{t('stakeholder.noNeeds')}</p>}
-              <h3>{t('stakeholder.requirements')}</h3>
-              <RequirementList requirements={sourcedRequirements} />
-              {sourcedRequirements.length === 0 && <p>{t('stakeholder.noRequirements')}</p>}
-              <AuditTrail stakeholder={stakeholder} />
-              {canEditStakeholders(initiative) && (
-                <DeleteStakeholder
-                  stakeholder={stakeholder}
-                  onDeleted={() => {
-                    onChanged();
-                    closeSilently();
-                  }}
-                />
-              )}
-            </>
-          )}
-        </>
+      {editable ? (
+        <StakeholderForm
+          initiativeId={initiative.id}
+          stakeholder={stakeholder}
+          linkable={linkableMembers(members, stakeholders, stakeholder.id)}
+          onSaved={onChanged}
+        />
+      ) : (
+        <StakeholderDetails stakeholder={stakeholder} />
       )}
+      <div className="section-header">
+        <h3>{t('stakeholder.actions')}</h3>
+        <NewActionButton initiative={initiative} from={{ kind: 'stakeholder', id: stakeholder.id }} />
+      </div>
+      <ActionList actions={linkedActions} babok={babok} />
+      {linkedActions.length === 0 && <p>{t('stakeholder.noActions')}</p>}
+      <AuditTrail stakeholder={stakeholder} />
+      {editable && <DeleteStakeholder stakeholder={stakeholder} onDeleted={onDeleted} />}
+    </>
+  );
+}
+
+/** Besoins et exigences dont la partie prenante est la source. */
+export const originatedBy = (stakeholderId: string, needs: NeedDto[], requirements: RequirementDto[]) => ({
+  needs: needs.filter((n) => n.stakeholders.some((s) => s.id === stakeholderId)),
+  requirements: requirements.filter((r) => r.stakeholders.some((s) => s.id === stakeholderId)),
+});
+
+/** Onglet « À l'origine de ». */
+export function StakeholderOrigin({ needs, requirements }: { needs: NeedDto[]; requirements: RequirementDto[] }) {
+  const { t } = useI18n();
+  return (
+    <>
+      <h3>{t('stakeholder.needs')}</h3>
+      <NeedList needs={needs} />
+      {needs.length === 0 && <p>{t('stakeholder.noNeeds')}</p>}
+      <h3>{t('stakeholder.requirements')}</h3>
+      <RequirementList requirements={requirements} />
+      {requirements.length === 0 && <p>{t('stakeholder.noRequirements')}</p>}
+    </>
+  );
+}
+
+/** Nouvelle partie prenante, en fenêtre de dialogue (N15) : les champs de création actuels. */
+export function CreateStakeholderDialog({
+  initiativeId,
+  members,
+  stakeholders,
+  onCreated,
+  onClose,
+}: {
+  initiativeId: string;
+  members: InitiativeMemberDto[];
+  stakeholders: StakeholderDto[];
+  /** Créée : les listes se rechargent, l'écran de données l'affiche. */
+  onCreated: (stakeholder: StakeholderDto) => void;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const closeSilently = useCloseSilently();
+  return (
+    <Panel title={t('stakeholders.new')} variant="dialog" onClose={onClose}>
+      <StakeholderForm
+        initiativeId={initiativeId}
+        linkable={linkableMembers(members, stakeholders, null)}
+        onSaved={(created) => {
+          // Saisie enregistrée : pas d'alerte.
+          closeSilently();
+          onCreated(created);
+        }}
+      />
     </Panel>
   );
 }

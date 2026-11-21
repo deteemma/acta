@@ -29,7 +29,7 @@ export function DataScreen<T extends string>({
   crumbs: InitiativeTreeNode[];
   onCrumb: (node: InitiativeTreeNode) => void;
   /** Type de l'élément, au-dessus du titre. */
-  kind: string;
+  kind: ReactNode;
   reference?: string | null;
   title: string;
   badges?: ReactNode;

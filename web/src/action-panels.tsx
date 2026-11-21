@@ -44,7 +44,7 @@ import { useI18n } from './i18n';
 import { formatDate } from './initiative-panels';
 import { Panel, useCloseSilently, usePanels } from './panels';
 import { RichText, RichTextEditor } from './rich-text';
-import { StakeholderLink } from './stakeholder-panels';
+import { StakeholderLink } from './stakeholder-screen';
 import { TicketAttachments } from './attachments';
 import { TicketComments } from './comments';
 import { TicketLinks } from './link-panels';

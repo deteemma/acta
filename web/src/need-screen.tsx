@@ -1,5 +1,6 @@
-// Besoins (ticket 09) : liste d'une initiative, fiche d'un besoin dans un
-// panneau latéral. Règles dans @app/shared (needs.ts, references.ts, roles.ts).
+// Besoins (ticket 09) : liste d'une initiative, onglets d'un besoin dans l'écran
+// de données (ADR-0021, N11 : Fiche, Exigences, Liens) et fenêtre de création
+// (N15). Règles dans @app/shared (needs.ts, references.ts, roles.ts).
 import {
   memberName,
   can,
@@ -14,16 +15,17 @@ import {
   type RequirementDto,
   type StakeholderDto,
 } from '@app/shared';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { NewActionButton } from './action-panels';
 import { LinkedTickets } from './link-panels';
 import { api, ApiError } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { Panel, useCloseSilently, usePanels } from './panels';
+import { Panel, useCloseSilently } from './panels';
+import { useOpenNode } from './references';
 import { RequirementList } from './requirement-panels';
 import { RichText, RichTextEditor } from './rich-text';
-import { StakeholderLink } from './stakeholder-panels';
+import { StakeholderLink } from './stakeholder-screen';
 import { formatDateTime } from './team-section';
 import { useUnsavedForm } from './unsaved-changes';
 
@@ -32,9 +34,9 @@ export const canEditNeeds = (initiative: InitiativeDto) =>
 
 /** Bouton qui ouvre la fiche d'un besoin : sa référence et son titre. */
 export function NeedLink({ initiativeId, need }: { initiativeId: string; need: NeedRefDto }) {
-  const { open } = usePanels();
+  const openNode = useOpenNode();
   return (
-    <button type="button" className="link" onClick={() => open({ kind: 'need', initiativeId, needId: need.id })}>
+    <button type="button" className="link" onClick={() => openNode(initiativeId, { kind: 'need', id: need.id })}>
       <strong>{need.reference}</strong> {need.title}
     </button>
   );
@@ -57,120 +59,106 @@ export function NeedList({ needs }: { needs: NeedDto[] }) {
   );
 }
 
-/** Fiche d'un besoin ; sans `needId`, création. */
-export function NeedPanel({
-  initiativeId,
-  needId,
-  actionsVersion,
-  stakeholdersVersion,
-  requirementsVersion,
+/** Onglet Fiche : les champs (en lecture seule pour un lecteur ou une initiative archivée), la trace et la suppression. */
+export function NeedSheet({
+  initiative,
+  need,
+  stakeholders,
   onChanged,
-  onLinksChanged,
+  onDeleted,
+}: {
+  initiative: InitiativeDto;
+  need: NeedDto;
+  /** Parties prenantes de l'initiative, que l'on peut mettre à l'origine du besoin. */
+  stakeholders: StakeholderDto[];
+  /** Modifié : les listes et l'arborescence se rechargent. */
+  onChanged: () => void;
+  onDeleted: () => void;
+}) {
+  const editable = canEditNeeds(initiative);
+  return (
+    <>
+      {editable ? (
+        <NeedForm initiativeId={initiative.id} need={need} stakeholders={stakeholders} onSaved={onChanged} />
+      ) : (
+        <NeedDetails need={need} />
+      )}
+      <AuditTrail need={need} />
+      {editable && <DeleteNeed need={need} onDeleted={onDeleted} />}
+    </>
+  );
+}
+
+/** Exigences qui répondent au besoin. */
+export const requirementsOfNeed = (needId: string, requirements: RequirementDto[]) =>
+  requirements.filter((r) => r.needs.some((n) => n.id === needId));
+
+/** Onglet Exigences. */
+export function NeedRequirements({ requirements }: { requirements: RequirementDto[] }) {
+  const { t } = useI18n();
+  return (
+    <>
+      <h4 className="section-title">
+        {t('need.requirements')} <span className="count">{requirements.length}</span>
+      </h4>
+      <RequirementList requirements={requirements} />
+      {requirements.length === 0 && <p>{t('need.noRequirements')}</p>}
+    </>
+  );
+}
+
+/** Onglet Liens : tickets et pages liés, et « + Action » depuis le besoin. */
+export function NeedLinks({
+  initiative,
+  need,
+  version,
+  onChanged,
+}: {
+  initiative: InitiativeDto;
+  need: NeedDto;
+  /** Change à chaque écriture sur un ticket ou un lien. */
+  version: number;
+  /** Un lien avec un ticket a été créé ou retiré. */
+  onChanged: () => void;
+}) {
+  return (
+    <LinkedTickets
+      initiativeId={initiative.id}
+      end={{ kind: 'need', id: need.id }}
+      canEdit={can(initiative.myRole, 'editLinks', { archived: initiative.archivedAt != null })}
+      version={version}
+      onChanged={onChanged}
+      actions={<NewActionButton initiative={initiative} from={{ kind: 'need', id: need.id }} />}
+    />
+  );
+}
+
+/** Nouveau besoin, en fenêtre de dialogue (N15) : les champs de création actuels. */
+export function CreateNeedDialog({
+  initiativeId,
+  stakeholders,
+  onCreated,
   onClose,
 }: {
   initiativeId: string;
-  needId?: string;
-  /** Change à chaque écriture sur un ticket ou un lien : les tickets liés se rechargent. */
-  actionsVersion: number;
-  /** Change à chaque écriture sur une partie prenante : les choix se rechargent. */
-  stakeholdersVersion: number;
-  /** De même pour les exigences liées. */
-  requirementsVersion: number;
-  /** Un besoin a été créé, modifié ou supprimé : les listes se rechargent. */
-  onChanged: () => void;
-  /** Un lien avec un ticket a été créé ou retiré. */
-  onLinksChanged: () => void;
+  stakeholders: StakeholderDto[];
+  /** Créé : les listes se rechargent, l'écran de données l'affiche. */
+  onCreated: (need: NeedDto) => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { replaceSaved } = usePanels();
   const closeSilently = useCloseSilently();
-  const [initiative, setInitiative] = useState<InitiativeDto | null>(null);
-  const [need, setNeed] = useState<NeedDto | null>(null);
-  const [stakeholders, setStakeholders] = useState<StakeholderDto[] | null>(null);
-  const [requirements, setRequirements] = useState<RequirementDto[]>([]);
-  const [error, setError] = useState<UiError | null>(null);
-
-  useEffect(() => {
-    api.getInitiative(initiativeId).then(setInitiative, (e: unknown) => setError(toUiError(e)));
-    if (needId) api.getNeed(initiativeId, needId).then(setNeed, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, needId]);
-
-  useEffect(() => {
-    api.listStakeholders(initiativeId).then(setStakeholders, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, stakeholdersVersion]);
-
-  useEffect(() => {
-    if (!needId) return;
-    api.listRequirements(initiativeId).then(setRequirements, (e: unknown) => setError(toUiError(e)));
-  }, [initiativeId, needId, requirementsVersion]);
-
-  const linkedRequirements = requirements.filter((r) => r.needs.some((n) => n.id === needId));
-  const ready = initiative && stakeholders && (!needId || need);
-
   return (
-    <Panel
-      title={need ? need.title : needId ? t('common.loading') : t('needs.new')}
-      kicker={
-        need && (
-          <>
-            {t('need.kicker')} <span className="code">{need.reference}</span>
-          </>
-        )
-      }
-      badges={need && <span className="badge">{t(`needNature.${need.nature}`)}</span>}
-      onClose={onClose}
-    >
-      <ErrorMessage error={error} />
-      {ready && (
-        <>
-          {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
-          {/* Groupes Fiche et Analyse (refonte du design, validé le 01.11.2026). */}
-          <h3 className="group-title">{t('initiative.groupSheet')}</h3>
-          {canEditNeeds(initiative) ? (
-            <NeedForm
-              initiativeId={initiativeId}
-              need={need ?? undefined}
-              stakeholders={stakeholders}
-              onSaved={(next) => {
-                setNeed(next);
-                onChanged();
-                if (!need) replaceSaved({ kind: 'need', initiativeId, needId: next.id });
-              }}
-            />
-          ) : (
-            need && <NeedDetails need={need} />
-          )}
-          {need && (
-            <>
-              <h3 className="group-title">{t('initiative.groupAnalysis')}</h3>
-              <LinkedTickets
-                initiativeId={initiativeId}
-                end={{ kind: 'need', id: need.id }}
-                canEdit={can(initiative.myRole, 'editLinks', { archived: initiative.archivedAt != null })}
-                version={actionsVersion}
-                onChanged={onLinksChanged}
-                actions={<NewActionButton initiative={initiative} from={{ kind: 'need', id: need.id }} />}
-              />
-              <h4 className="section-title">
-                {t('need.requirements')} <span className="count">{linkedRequirements.length}</span>
-              </h4>
-              <RequirementList requirements={linkedRequirements} />
-              {linkedRequirements.length === 0 && <p>{t('need.noRequirements')}</p>}
-              <AuditTrail need={need} />
-              {canEditNeeds(initiative) && (
-                <DeleteNeed
-                  need={need}
-                  onDeleted={() => {
-                    onChanged();
-                    closeSilently();
-                  }}
-                />
-              )}
-            </>
-          )}
-        </>
-      )}
+    <Panel title={t('needs.new')} variant="dialog" onClose={onClose}>
+      <NeedForm
+        initiativeId={initiativeId}
+        stakeholders={stakeholders}
+        onSaved={(created) => {
+          // Saisie enregistrée : pas d'alerte.
+          closeSilently();
+          onCreated(created);
+        }}
+      />
     </Panel>
   );
 }

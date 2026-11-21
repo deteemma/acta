@@ -1,6 +1,6 @@
 // Écrans de données d'une initiative (ADR-0021, N11) : l'initiative elle-même
-// (Aperçu, Membres, Désignations, Paramètres), son tableau de bord, son équipe et
-// les listes des branches pas encore reprises par leur ticket. Les fiches gardent
+// (Aperçu, Membres, Désignations, Paramètres), son tableau de bord, son équipe,
+// les listes des branches, les parties prenantes et les besoins. Les fiches gardent
 // leurs champs, droits et contrôles : seul leur conteneur change.
 import {
   type BabokDto,
@@ -11,9 +11,11 @@ import {
   type InitiativeScreen,
   type InitiativeTreeNode,
   type MessageKey,
+  NEED_TABS,
   type OwnerDesignationDto,
   pathToNode,
   screenNodeKey,
+  STAKEHOLDER_TABS,
   STAKEHOLDERS_TABS,
   TEAM_TABS,
   type TreeNodeRef,
@@ -29,10 +31,18 @@ import { ErrorMessage, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { formatDate, InitiativeCode, InitiativeDetails, InitiativeForm, OwnerActions } from './initiative-panels';
 import type { InitiativeData } from './initiative-tree';
-import { canEditNeeds, NeedList } from './need-panels';
+import { canEditNeeds, NeedLinks, NeedList, NeedRequirements, NeedSheet, requirementsOfNeed } from './need-screen';
 import { usePanels } from './panels';
 import { canEditRequirements, ExportRequirementsButton, RequirementList } from './requirement-panels';
-import { canEditStakeholders, StakeholderList, StakeholderMatrix } from './stakeholder-panels';
+import {
+  canEditStakeholders,
+  originatedBy,
+  StakeholderKicker,
+  StakeholderList,
+  StakeholderMatrix,
+  StakeholderOrigin,
+  StakeholderSheet,
+} from './stakeholder-screen';
 import { SuggestedActions } from './suggested-actions';
 import { OwnerDesignations, TeamMembers } from './team-section';
 
@@ -43,20 +53,29 @@ export function InitiativeDataScreen({
   screen,
   data,
   babok,
+  pending,
   actionsVersion,
   onNavigate,
+  onReplace,
   onSelectNode,
   onInitiativeChanged,
   onTeamChanged,
   onInitiativeGone,
   onActionCreated,
+  onStakeholdersChanged,
+  onNeedsChanged,
+  onLinksChanged,
 }: {
   screen: ElementScreen;
   data: InitiativeData;
+  /** Données en cours de rechargement : un élément absent vient peut-être d'être créé. */
+  pending: boolean;
   babok: BabokDto | null;
   actionsVersion: number;
   /** Autre onglet : une adresse de plus, gardée par l'alerte. */
   onNavigate: (screen: InitiativeScreen) => void;
+  /** L'élément affiché vient d'être supprimé : l'écran est remplacé, sans étape pour « Précédent ». */
+  onReplace: (screen: InitiativeScreen) => void;
   onSelectNode: (node: InitiativeTreeNode) => void;
   onInitiativeChanged: (initiative: InitiativeDto) => void;
   /** L'équipe a changé : l'initiative, ses membres et la trace sont relus. */
@@ -64,6 +83,10 @@ export function InitiativeDataScreen({
   /** Supprimée ou quittée : elle n'est plus accessible. */
   onInitiativeGone: (initiativeId: string) => void;
   onActionCreated: () => void;
+  onStakeholdersChanged: () => void;
+  onNeedsChanged: () => void;
+  /** Un lien avec un ticket a été créé ou retiré. */
+  onLinksChanged: () => void;
 }) {
   const { t, locale } = useI18n();
   const { open } = usePanels();
@@ -73,6 +96,8 @@ export function InitiativeDataScreen({
   const state = { archived: initiative.archivedAt != null };
   const path = pathToNode(tree, screenNodeKey(screen) ?? tree.key);
   const crumbs = path.slice(0, -1);
+  // Élément introuvable : le fil d'Ariane s'arrête à sa branche.
+  const branchCrumbs = (branch: 'stakeholders' | 'needs') => pathToNode(tree, treeNodeKey({ kind: 'branch', branch }));
   const childNode = (ref: TreeNodeRef) => tree.children.find((c) => c.key === treeNodeKey(ref));
   const me = members.find((m) => m.isMe);
   const archivedBadge = initiative.archivedAt && <span className="badge">{t('initiative.archived')}</span>;
@@ -192,7 +217,7 @@ export function InitiativeDataScreen({
         >
           <BranchToolbar>
             {canEditStakeholders(initiative) && (
-              <button type="button" onClick={() => open({ kind: 'stakeholder', initiativeId })}>
+              <button type="button" onClick={() => open({ kind: 'createStakeholder', initiativeId })}>
                 <Plus />
                 {t('stakeholders.new')}
               </button>
@@ -212,7 +237,7 @@ export function InitiativeDataScreen({
         <DataScreen {...inInitiative} title={t('tree.needs')}>
           <BranchToolbar>
             {canEditNeeds(initiative) && (
-              <button type="button" onClick={() => open({ kind: 'need', initiativeId })}>
+              <button type="button" onClick={() => open({ kind: 'createNeed', initiativeId })}>
                 <Plus />
                 {t('needs.new')}
               </button>
@@ -222,6 +247,81 @@ export function InitiativeDataScreen({
           {data.needs.length === 0 && <EmptyState subject="needs" title={t('needs.sectionEmpty')} hint={t('empty.needsHint')} />}
         </DataScreen>
       );
+    case 'stakeholder': {
+      const stakeholder = data.stakeholders.find((s) => s.id === screen.stakeholderId);
+      if (!stakeholder) {
+        return (
+          <MissingElement kind={<StakeholderKicker />} pending={pending} crumbs={branchCrumbs('stakeholders')} onCrumb={onSelectNode} />
+        );
+      }
+      const origin = originatedBy(stakeholder.id, data.needs, data.requirements);
+      return (
+        <DataScreen
+          {...common}
+          kind={<StakeholderKicker />}
+          title={stakeholder.name}
+          tabs={tabsOf(STAKEHOLDER_TABS, 'stakeholderTab', { origin: origin.needs.length + origin.requirements.length })}
+          tab={screen.tab}
+          onTab={(tab) => onNavigate({ ...screen, tab })}
+        >
+          {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
+          {screen.tab === 'sheet' ? (
+            <StakeholderSheet
+              initiative={initiative}
+              members={members}
+              stakeholders={data.stakeholders}
+              stakeholder={stakeholder}
+              babok={babok}
+              actionsVersion={actionsVersion}
+              onChanged={onStakeholdersChanged}
+              onDeleted={() => {
+                onStakeholdersChanged();
+                onReplace({ kind: 'stakeholders', initiativeId, tab: 'list' });
+              }}
+            />
+          ) : (
+            <StakeholderOrigin needs={origin.needs} requirements={origin.requirements} />
+          )}
+        </DataScreen>
+      );
+    }
+    case 'need': {
+      const need = data.needs.find((n) => n.id === screen.needId);
+      if (!need) {
+        return <MissingElement kind={t('need.kicker')} pending={pending} crumbs={branchCrumbs('needs')} onCrumb={onSelectNode} />;
+      }
+      const requirements = requirementsOfNeed(need.id, data.requirements);
+      return (
+        <DataScreen
+          {...common}
+          kind={t('need.kicker')}
+          reference={need.reference}
+          title={need.title}
+          badges={<span className="badge">{t(`needNature.${need.nature}`)}</span>}
+          tabs={tabsOf(NEED_TABS, 'needTab', { requirements: requirements.length })}
+          tab={screen.tab}
+          onTab={(tab) => onNavigate({ ...screen, tab })}
+        >
+          {initiative.archivedAt && <p className="notice">{t('initiative.archived')}</p>}
+          {screen.tab === 'sheet' && (
+            <NeedSheet
+              initiative={initiative}
+              need={need}
+              stakeholders={data.stakeholders}
+              onChanged={onNeedsChanged}
+              onDeleted={() => {
+                onNeedsChanged();
+                onReplace({ kind: 'needs', initiativeId });
+              }}
+            />
+          )}
+          {screen.tab === 'requirements' && <NeedRequirements requirements={requirements} />}
+          {screen.tab === 'links' && (
+            <NeedLinks initiative={initiative} need={need} version={actionsVersion} onChanged={onLinksChanged} />
+          )}
+        </DataScreen>
+      );
+    }
     case 'requirements':
       return (
         <DataScreen {...inInitiative} title={t('tree.requirements')}>
@@ -260,6 +360,29 @@ function TeamTab({
     <TeamMembers initiative={data.initiative} members={data.members} onChanged={onTeamChanged} onLeft={onLeft} />
   ) : (
     <OwnerDesignations designations={data.designations} />
+  );
+}
+
+/**
+ * Élément introuvable : tout juste créé, il arrive avec le rechargement ; sinon
+ * il n'existe pas ou plus (supprimé ailleurs, adresse ancienne).
+ */
+function MissingElement({
+  kind,
+  pending,
+  crumbs,
+  onCrumb,
+}: {
+  kind: ReactNode;
+  pending: boolean;
+  crumbs: InitiativeTreeNode[];
+  onCrumb: (node: InitiativeTreeNode) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <DataScreen crumbs={crumbs} onCrumb={onCrumb} kind={kind} title={t('common.loading')}>
+      {!pending && <ErrorMessage error={{ key: 'error.http', params: { status: 404 } }} />}
+    </DataScreen>
   );
 }
 

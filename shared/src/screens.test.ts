@@ -82,3 +82,32 @@ test('changer d’onglet est un autre écran, pour « Précédent »', () => {
   assert.equal(sameScreen(overview, { ...overview, tab: 'members' }), false);
   assert.equal(sameScreen(overview, parseScreenPath(`/initiatives/${ID}/overview`)), true);
 });
+
+const ELEMENT = '9c8b7a6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
+
+test('une partie prenante et un besoin ont leur adresse, et chacun de leurs onglets ; la Fiche est celle de l’adresse nue', () => {
+  const cases = [
+    [{ kind: 'stakeholder', initiativeId: ID, stakeholderId: ELEMENT, tab: 'sheet' }, `/initiatives/${ID}/stakeholders/${ELEMENT}`],
+    [{ kind: 'stakeholder', initiativeId: ID, stakeholderId: ELEMENT, tab: 'origin' }, `/initiatives/${ID}/stakeholders/${ELEMENT}/origin`],
+    [{ kind: 'need', initiativeId: ID, needId: ELEMENT, tab: 'sheet' }, `/initiatives/${ID}/needs/${ELEMENT}`],
+    [{ kind: 'need', initiativeId: ID, needId: ELEMENT, tab: 'requirements' }, `/initiatives/${ID}/needs/${ELEMENT}/requirements`],
+    [{ kind: 'need', initiativeId: ID, needId: ELEMENT, tab: 'links' }, `/initiatives/${ID}/needs/${ELEMENT}/links`],
+  ] as const;
+  for (const [screen, path] of cases) {
+    assert.equal(screenPath(screen), path);
+    assert.deepEqual(parseScreenPath(path), screen, path);
+  }
+  // La matrice reste l'onglet du nœud Parties prenantes.
+  assert.deepEqual(parseScreenPath(`/initiatives/${ID}/stakeholders/matrix`), { kind: 'stakeholders', initiativeId: ID, tab: 'matrix' });
+});
+
+test('un onglet inconnu d’une partie prenante ou d’un besoin mène à l’accueil', () => {
+  for (const path of [
+    `/initiatives/${ID}/stakeholders/${ELEMENT}/inconnu`,
+    `/initiatives/${ID}/needs/${ELEMENT}/origin`,
+    `/initiatives/${ID}/needs/${ELEMENT}/links/x`,
+    `/initiatives/${ID}/stakeholders/pas-un-id`,
+  ]) {
+    assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
+  }
+});

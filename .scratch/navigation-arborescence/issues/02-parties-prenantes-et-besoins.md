@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Coque, arborescence et fiche de l'initiative
 
-**Status:** ready-for-agent
+**Status:** ready-for-human (implémenté le 21.11.2026, à valider par la responsable fonctionnelle)
 
 Règles : [spec](../spec.md) N11 à N13, N15, N16.
 
