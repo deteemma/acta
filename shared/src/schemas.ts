@@ -1,7 +1,7 @@
 // Schémas de validation partagés par l'API, le web et le mobile.
 import { z } from 'zod';
 import { LOCALES } from './i18n.js';
-import { INITIATIVE_ROLES } from './roles.js';
+import { can, INITIATIVE_ROLES } from './roles.js';
 
 export const initiativeRoleSchema = z.enum(INITIATIVE_ROLES);
 
@@ -91,6 +91,13 @@ export interface InitiativeDto {
   /** Une référence a déjà été attribuée dans l'initiative : son code ne change plus (ticket 09). */
   codeFrozen: boolean;
 }
+
+/**
+ * Le code d'une initiative se modifie par le propriétaire seul, tant qu'aucune
+ * référence n'a été attribuée (ticket 09) et que l'initiative n'est pas archivée.
+ */
+export const canEditInitiativeCode = (initiative: Pick<InitiativeDto, 'myRole' | 'codeFrozen' | 'archivedAt'>) =>
+  can(initiative.myRole, 'editCode', { archived: initiative.archivedAt != null }) && !initiative.codeFrozen;
 
 export interface InitiativeMemberDto {
   userId: string;

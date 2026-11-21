@@ -40,7 +40,7 @@ export function TextWithReferences({ text }: { text: string }) {
   return <Inlines nodes={splitReferences(text)} />;
 }
 
-/** Les titres commencent sous celui du panneau (h2). */
+/** Les titres commencent sous ceux de l'écran (h1, puis h2). */
 const HEADING_TAGS = { 1: 'h3', 2: 'h4', 3: 'h5' } as const;
 
 export function RichText({ source }: { source: string }) {

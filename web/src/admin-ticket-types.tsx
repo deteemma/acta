@@ -146,7 +146,7 @@ export function TicketTypesSection() {
 
   return (
     <section>
-      <h3 className="visually-hidden">{t('admin.ticketTypes')}</h3>
+      <h2 className="visually-hidden">{t('admin.ticketTypes')}</h2>
       <p>
         <small>{t('admin.ticketTypesHint')}</small>
       </p>

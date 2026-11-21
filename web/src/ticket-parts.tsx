@@ -10,7 +10,6 @@ import {
   ticketHistory,
   type TicketChange,
   type TicketEpicRef,
-  type TicketRow,
   type TicketStatus,
   type TicketType,
   type TicketVersionDto,
@@ -18,17 +17,10 @@ import {
 import type { ReactNode } from 'react';
 import { useI18n } from './i18n';
 import { TicketStatusBadge, useTicketLabels } from './ticket-types';
-import { formatDate } from './initiative-panels';
-import { type PanelContent, usePanels } from './panels';
+import { formatDate } from './initiative-sheet';
+import { useOpenNode } from './references';
 import { RichText } from './rich-text';
 import { formatDateTime } from './team-section';
-
-/** Fiche d'un ticket : l'Action a la sienne. */
-export function ticketTarget(initiativeId: string, ticket: Pick<TicketRow, 'id' | 'type'>): PanelContent {
-  return ticket.type === 'action'
-    ? { kind: 'action', initiativeId, actionId: ticket.id }
-    : { kind: 'ticket', initiativeId, ticketId: ticket.id };
-}
 
 /** Statut d'un ticket, livré ou ajouté, coloré selon sa famille. */
 export function TicketStatusLabel({ type, status }: { type: TicketType; status: TicketStatus }) {
@@ -64,10 +56,10 @@ export function EpicSelect({
 /** Epic d'un ticket en lecture seule : un clic ouvre sa fiche. */
 export function EpicLink({ initiativeId, epic }: { initiativeId: string; epic: TicketEpicRef | null }) {
   const { t } = useI18n();
-  const { open } = usePanels();
+  const openNode = useOpenNode();
   if (!epic) return <small>{t('tickets.noEpic')}</small>;
   return (
-    <button type="button" className="link" onClick={() => open({ kind: 'ticket', initiativeId, ticketId: epic.id })}>
+    <button type="button" className="link" onClick={() => openNode(initiativeId, { kind: 'ticket', id: epic.id })}>
       <span className="code">{epic.reference}</span> {epic.title}
     </button>
   );

@@ -21,30 +21,29 @@ import { useState } from 'react';
 import { api } from './api';
 import { ErrorMessage, teamRefusalError, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { usePanels } from './panels';
+import { useScreens } from './screens';
 import { useUnsavedForm } from './unsaved-changes';
 
 /** Date et heure d'une désignation, dans la langue de l'interface. */
 export const formatDateTime = (locale: Locale, date: string) =>
   new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' }).format(new Date(date));
 
-export function TeamSection({
+/** Onglet Membres : membres, rôles, « BA de l'équipe », départ et invitation. */
+export function TeamMembers({
   initiative,
   members,
-  designations,
   onChanged,
   onLeft,
 }: {
   initiative: InitiativeDto;
   members: InitiativeMemberDto[];
-  designations: OwnerDesignationDto[];
   /** L'équipe a changé : recharger l'initiative, ses membres et la trace. */
   onChanged: () => void;
   /** L'utilisateur a quitté l'initiative. */
   onLeft: () => void;
 }) {
-  const { t, locale } = useI18n();
-  const { open } = usePanels();
+  const { t } = useI18n();
+  const { goTo } = useScreens();
   const [error, setError] = useState<UiError | null>(null);
   const [confirmingRemoval, setConfirmingRemoval] = useState<InitiativeMemberDto | null>(null);
 
@@ -111,7 +110,7 @@ export function TeamSection({
           const controls = controlsFor(member);
           return (
             <li key={member.userId}>
-              <button type="button" className="link" onClick={() => open({ kind: 'member', member })}>
+              <button type="button" className="link" onClick={() => void goTo({ kind: 'member', initiativeId: initiative.id, userId: member.userId })}>
                 {name}
               </button>
               {member.isMe && <small> ({t('member.you')})</small>}
@@ -156,7 +155,16 @@ export function TeamSection({
         })}
       </ul>
       {can(initiative.myRole, 'manageMembers', state) && <InviteForm initiativeId={initiative.id} onInvited={onChanged} />}
-      <h4>{t('team.ownerHistory')}</h4>
+    </section>
+  );
+}
+
+/** Onglet Désignations : trace des désignations de propriétaire (ADR-0015). */
+export function OwnerDesignations({ designations }: { designations: OwnerDesignationDto[] }) {
+  const { t, locale } = useI18n();
+  return (
+    <section className="team">
+      <h2 className="visually-hidden">{t('team.ownerHistory')}</h2>
       {designations.length === 0 ? (
         <p>
           <small>{t('team.ownerHistoryEmpty')}</small>

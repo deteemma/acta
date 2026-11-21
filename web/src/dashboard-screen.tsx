@@ -1,0 +1,79 @@
+// Tableau de bord de l'initiative (ticket 12 ; nœud de l'arborescence, ADR-0021) :
+// onglet Tâches BABOK, les actions par domaine de connaissance puis par tâche du
+// BABOK ; onglet Actions suggérées. Règles dans @app/shared (dashboard.ts).
+import { type ActionDto, type BabokDto, initiativeDashboard } from '@app/shared';
+import { useEffect, useState } from 'react';
+import { ActionList, StatusLabel } from './actions';
+import { api } from './api';
+import { BabokName } from './babok-screens';
+import { ErrorMessage, toUiError, type UiError } from './errors';
+import { useI18n } from './i18n';
+import { useTicketTypes } from './ticket-types';
+
+/** Onglet Tâches BABOK : couverture du BABOK par les actions de l'initiative. */
+export function DashboardTasks({
+  initiativeId,
+  babok,
+  actionsVersion,
+}: {
+  initiativeId: string;
+  babok: BabokDto;
+  /** Change à chaque écriture sur une action : le tableau se recharge. */
+  actionsVersion: number;
+}) {
+  const { t } = useI18n();
+  const ticketTypes = useTicketTypes();
+  const [actions, setActions] = useState<ActionDto[] | null>(null);
+  const [error, setError] = useState<UiError | null>(null);
+
+  useEffect(() => {
+    api.listActions(initiativeId).then(setActions, (e: unknown) => setError(toUiError(e)));
+  }, [initiativeId, actionsVersion]);
+
+  return (
+    <>
+      <ErrorMessage error={error} />
+      {actions && <h2 className="group-title">{t('dashboard.coverageGroup')}</h2>}
+      {actions &&
+        initiativeDashboard(ticketTypes, babok, actions).map(({ knowledgeArea, tasks, coveredTaskCount }) => {
+          const coverage = t('dashboard.coverage', { covered: coveredTaskCount, total: tasks.length });
+          return (
+            <section key={knowledgeArea.id} className="dashboard-area">
+              <div className="dashboard-area-head">
+                <h3>
+                  <span className="code">{knowledgeArea.section}</span> <BabokName element={knowledgeArea} />
+                </h3>
+                <small>{coverage}</small>
+              </div>
+              {/* Barre de couverture (refonte du design, ticket 04) : part des tâches couvertes. */}
+              <div className="coverage-bar" role="img" aria-label={coverage}>
+                <span style={{ width: `${tasks.length ? (100 * coveredTaskCount) / tasks.length : 0}%` }} />
+              </div>
+              <div className="dashboard-tasks">
+                {tasks.map(({ task, actions: ofTask, countByStatus, covered }) => (
+                  <details key={task.id} className="dashboard-task">
+                    <summary>
+                      <span className="code">{task.section}</span>
+                      <span className="dashboard-task-name">
+                        <BabokName element={task} />
+                      </span>
+                      <span className="action-meta">
+                        {covered ? (
+                          Object.entries(countByStatus).filter(([, count]) => count > 0).map(([status, count]) => (
+                            <StatusLabel key={status} status={status} count={count} />
+                          ))
+                        ) : (
+                          <span className="badge tone-negative">{t('dashboard.uncovered')}</span>
+                        )}
+                      </span>
+                    </summary>
+                    {ofTask.length > 0 ? <ActionList actions={ofTask} babok={babok} /> : <p>{t('dashboard.noActions')}</p>}
+                  </details>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+    </>
+  );
+}

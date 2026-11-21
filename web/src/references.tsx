@@ -1,16 +1,14 @@
 // Références citées dans un texte (ticket 10) : reconnues par @app/shared
 // (rich-text.ts), reliées à leur objet si elles existent dans une initiative
-// dont je suis membre, avec un aperçu au survol ; un clic ouvre la fiche, ou la
-// page en pleine page (ticket 22).
-import type { ReferenceCategory, ReferenceDto } from '@app/shared';
+// dont je suis membre, avec un aperçu au survol ; un clic ouvre son nœud (N16).
+import type { ReferenceDto, TreeNodeRef } from '@app/shared';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useId, useState } from 'react';
 import { api } from './api';
 import { useTicketLabels } from './ticket-types';
 import { useI18n } from './i18n';
-import { type PanelContent, usePanels } from './panels';
+import { nodeDestination } from './initiative-tree';
 import { StatusLabel } from './requirement-statuses';
 import { useScreens } from './screens';
-import { ticketTarget } from './ticket-parts';
 
 const ReferencesContext = createContext<ReadonlyMap<string, ReferenceDto>>(new Map());
 
@@ -27,39 +25,46 @@ export function ReferencesProvider({ version, children }: { version: number; chi
 export const useReferences = () => useContext(ReferencesContext);
 
 /**
- * Ouvre un objet référencé : sa fiche en panneau, ou, pour une page, l'écran
- * Pages sur elle. `replace` : la fiche remplace le dernier panneau (palette).
+ * Ouvre un objet référencé (N16) : change d'initiative si besoin et affiche son
+ * nœud à droite.
  */
-export function useOpenReference(): (item: ReferenceDto, options?: { replace?: boolean }) => void {
-  const { open, replace } = usePanels();
-  const { goTo } = useScreens();
+export function useOpenReference(): (item: ReferenceDto) => void {
+  const openNode = useOpenNode();
   return useCallback(
-    (item, options) => {
-      if (item.category === 'page') {
-        void goTo({ kind: 'pages', initiativeId: item.initiativeId, pageId: item.id });
-        return;
-      }
-      const target = referenceTarget({ ...item, category: item.category });
-      if (!target) return;
-      if (options?.replace) replace(target);
-      else open(target);
+    (item) => {
+      const ref = referenceNode(item);
+      if (ref) openNode(item.initiativeId, ref);
     },
-    [goTo, open, replace],
+    [openNode],
   );
 }
 
-/** Fiche d'un objet référencé, autre qu'une page. */
-function referenceTarget(item: ReferenceDto & { category: Exclude<ReferenceCategory, 'page'> }): PanelContent | null {
+/**
+ * Ouvre le nœud d'un élément (lien vers une partie prenante, un besoin, un ticket…) :
+ * ferme les fenêtres de dialogue, avec l'alerte, et l'affiche à droite.
+ */
+export function useOpenNode(): (initiativeId: string, ref: TreeNodeRef) => void {
+  const { goTo } = useScreens();
+  return useCallback(
+    (initiativeId, ref) => {
+      void goTo(nodeDestination(initiativeId, ref));
+    },
+    [goTo],
+  );
+}
+
+/** Nœud de l'arborescence d'un objet référencé. */
+function referenceNode(item: ReferenceDto): TreeNodeRef | null {
   switch (item.category) {
     case 'need':
-      return { kind: 'need', initiativeId: item.initiativeId, needId: item.id };
     case 'requirement':
-      return { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.id };
+    case 'page':
+      return { kind: item.category, id: item.id };
     case 'scenario':
-      // La fiche de son exigence, sur lui (D20) ; jamais une création d'exigence.
-      return item.scenario && { kind: 'requirement', initiativeId: item.initiativeId, requirementId: item.scenario.requirementId, scenarioId: item.id };
+      // L'exigence qui l'affiche, sur lui (D20).
+      return item.scenario && { kind: 'scenario', id: item.id, requirementId: item.scenario.requirementId };
     default:
-      return ticketTarget(item.initiativeId, { id: item.id, type: item.category });
+      return { kind: 'ticket', id: item.id };
   }
 }
 

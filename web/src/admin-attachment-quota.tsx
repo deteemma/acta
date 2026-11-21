@@ -52,7 +52,7 @@ export function AttachmentQuotaSection() {
 
   return (
     <section>
-      <h3 className="visually-hidden">{t('admin.attachments')}</h3>
+      <h2 className="visually-hidden">{t('admin.attachments')}</h2>
       <p>
         <small>{t('admin.attachmentsHint')}</small>
       </p>

@@ -13,12 +13,12 @@ import {
 } from '@app/shared';
 import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ActionList } from './action-panels';
+import { ActionList } from './actions';
 import { api } from './api';
 import { EmptyState } from './empty-state';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { usePanels } from './panels';
+import { useDialogs } from './dialogs';
 import { useTicketLabels, useTicketTypes } from './ticket-types';
 
 export function MyActions({
@@ -32,7 +32,7 @@ export function MyActions({
   version: number;
 }) {
   const { t } = useI18n();
-  const { open } = usePanels();
+  const { open } = useDialogs();
   const [actions, setActions] = useState<ActionDto[]>([]);
   const ticketTypes = useTicketTypes();
   const { statusLabel } = useTicketLabels();

@@ -11,11 +11,11 @@ import {
   SUGGESTED_ACTIONS_SHOWN,
 } from '@app/shared';
 import { useEffect, useState } from 'react';
-import { BabokPreview } from './action-panels';
+import { BabokPreview } from './actions';
 import { api } from './api';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
-import { usePanels } from './panels';
+import { useOpenNode } from './references';
 
 export function SuggestedActions({
   initiative,
@@ -28,7 +28,7 @@ export function SuggestedActions({
   onActionCreated: () => void;
 }) {
   const { t, locale } = useI18n();
-  const { open } = usePanels();
+  const openNode = useOpenNode();
   const [suggestions, setSuggestions] = useState<SuggestedAction[] | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,7 +55,7 @@ export function SuggestedActions({
       const { title } = suggestedActionText(babok, locale, suggestion);
       const action = await api.createAction(initiative.id, suggestedActionInput(suggestion, title));
       onActionCreated();
-      open({ kind: 'action', initiativeId: initiative.id, actionId: action.id });
+      openNode(initiative.id, { kind: 'ticket', id: action.id });
     } catch (e) {
       setError(toUiError(e));
       // La situation a pu changer entre-temps (refus `suggestionNotOffered`).

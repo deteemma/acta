@@ -1,5 +1,6 @@
-// Palette de commandes (Ctrl+K / Cmd+K) : accès direct à la fiche d'une
-// initiative, d'un objet référencé (ticket 09, scénarios compris : phase 3, ticket 06) ou d'un élément du référentiel BABOK.
+// Palette de commandes (Ctrl+K / Cmd+K) : accès direct à une initiative, à un
+// objet référencé (ticket 09, scénarios compris : phase 3, ticket 06), ouvert
+// dans son nœud (N16), ou à un élément du référentiel BABOK.
 import {
   type BabokDto,
   type BabokElementDto,
@@ -11,10 +12,10 @@ import {
 } from '@app/shared';
 import { type KeyboardEvent, useEffect, useState } from 'react';
 import { api } from './api';
-import { BabokName } from './babok-panels';
+import { BabokName } from './babok-screens';
 import { useTicketLabels } from './ticket-types';
 import { useI18n } from './i18n';
-import { Panel, usePanels } from './panels';
+import { Dialog, useDialogs } from './dialogs';
 import { useOpenReference } from './references';
 import { useScreens } from './screens';
 
@@ -27,7 +28,7 @@ export const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 
 /** Ouvre la palette au raccourci Ctrl+K (Cmd+K sur Mac), depuis n'importe quel écran. */
 export function usePaletteShortcut() {
-  const { stack, open } = usePanels();
+  const { stack, open } = useDialogs();
   const paletteOpen = stack.at(-1)?.content.kind === 'palette';
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
@@ -54,8 +55,7 @@ export function Palette({
 }) {
   const { t } = useI18n();
   const { categoryLabel } = useTicketLabels();
-  const { replace } = usePanels();
-  const { showInitiative } = useScreens();
+  const { goTo, showInitiative } = useScreens();
   const openReference = useOpenReference();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
@@ -78,9 +78,9 @@ export function Palette({
       case 'initiative':
         return showInitiative(result.item.id);
       case 'reference':
-        return openReference(result.item, { replace: true });
+        return openReference(result.item);
       case 'babok':
-        return replace({ kind: 'babokElement', elementId: result.item.id });
+        return void goTo({ kind: 'babokElement', elementId: result.item.id });
     }
   };
 
@@ -96,7 +96,7 @@ export function Palette({
   }
 
   return (
-    <Panel title={t('palette.label')} variant="palette" onClose={onClose}>
+    <Dialog title={t('palette.label')} variant="palette" onClose={onClose}>
       <input
         data-autofocus
         role="combobox"
@@ -144,6 +144,6 @@ export function Palette({
         ))}
       </ul>
       <p role="status">{results.length === 0 && t('palette.noResults')}</p>
-    </Panel>
+    </Dialog>
   );
 }

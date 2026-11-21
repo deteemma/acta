@@ -1,6 +1,7 @@
 // Administration des modèles de page (ticket 30, décisions 09 point 6 et 14 point
 // 3) : liste par domaine de connaissance, avec la mention « livré » ou « ajouté »
-// et l'état ; un modèle s'ouvre en panneau, un onglet par langue, en lecture seule
+// et l'état ; un modèle s'ouvre dans la zone de droite, avec son adresse
+// (navigation par arborescence, N3 et N12), un onglet par langue, en lecture seule
 // s'il est livré, avec l'éditeur de page (sans image) s'il est ajouté. Les
 // contrôles et les refus suivent @app/shared (page-template-admin.ts).
 import {
@@ -22,17 +23,18 @@ import {
 } from '@app/shared';
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { api, ApiError } from './api';
-import { BabokName } from './babok-panels';
+import { BabokName } from './babok-screens';
+import { type Crumb, ScreenLayout } from './data-screen';
 import { ErrorMessage, toUiError, type UiError } from './errors';
 import { useI18n } from './i18n';
 import { PageContent } from './page-content';
-import { Panel, useCloseSilently, usePanels } from './panels';
+import { useScreens } from './screens';
 import { useUnsavedForm } from './unsaved-changes';
 
 // Tiptap n'est chargé qu'à l'ouverture d'un modèle ajouté (ADR-0019, point 5).
 const PageEditor = lazy(() => import('./page-editor'));
 
-// ── Liste partagée entre l'onglet et les panneaux ─────────────────────────────
+// ── Liste partagée entre l'onglet et l'écran d'un modèle ─────────────────────
 
 let templates: AdminPageTemplateDto[] | null = null;
 const listeners = new Set<() => void>();
@@ -90,7 +92,7 @@ const taskIdsOf = (babok: BabokDto) => babok.tasks.map((task) => task.id);
 
 export function PageTemplatesSection({ babok }: { babok: BabokDto | null }) {
   const { t, locale } = useI18n();
-  const { open } = usePanels();
+  const { goTo } = useScreens();
   const list = useAdminPageTemplates();
   const [error, setError] = useState<UiError | null>(null);
 
@@ -101,7 +103,7 @@ export function PageTemplatesSection({ babok }: { babok: BabokDto | null }) {
   const groups = babok && list ? pageTemplateGroups(babok, list, locale, { withInactive: true }) : [];
   return (
     <section>
-      <h3 className="visually-hidden">{t('admin.pageTemplates')}</h3>
+      <h2 className="visually-hidden">{t('admin.pageTemplates')}</h2>
       <p>
         <small>{t('admin.pageTemplatesHint')}</small>
       </p>
@@ -118,7 +120,7 @@ export function PageTemplatesSection({ babok }: { babok: BabokDto | null }) {
                   <button
                     type="button"
                     className="link"
-                    onClick={() => open({ kind: 'pageTemplate', templateId: template.id })}
+                    onClick={() => void goTo({ kind: 'pageTemplate', templateId: template.id })}
                   >
                     {template.name[locale]}
                   </button>
@@ -138,7 +140,7 @@ export function PageTemplatesSection({ babok }: { babok: BabokDto | null }) {
         </section>
       ))}
       <p>
-        <button type="button" onClick={() => open({ kind: 'pageTemplate' })}>
+        <button type="button" onClick={() => void goTo({ kind: 'pageTemplate', templateId: null })}>
           {t('admin.pageTemplate.addTitle')}
         </button>
       </p>
@@ -157,17 +159,40 @@ function TemplateBadges({ template }: { template: AdminPageTemplateDto }) {
   );
 }
 
-// ── Panneau d'un modèle ──────────────────────────────────────────────────────
+// ── Écran d'un modèle ────────────────────────────────────────────────────────
 
-export function PageTemplatePanel({
+export function PageTemplateScreen({
   babok,
   templateId,
-  onClose,
+}: {
+  babok: BabokDto | null;
+  /** null : ajout d'un modèle. */
+  templateId: string | null;
+}) {
+  const { t } = useI18n();
+  const { goTo } = useScreens();
+  const crumbs = [
+    { key: 'admin', label: t('admin.title'), onSelect: () => void goTo({ kind: 'admin', tab: 'accounts' }) },
+    { key: 'page-templates', label: t('admin.pageTemplates'), onSelect: () => void goTo({ kind: 'admin', tab: 'page-templates' }) },
+  ];
+  if (!babok) {
+    return (
+      <ScreenLayout crumbs={crumbs} kind={t('admin.pageTemplate.kicker')} title={t('common.loading')}>
+        {null}
+      </ScreenLayout>
+    );
+  }
+  return <PageTemplate babok={babok} templateId={templateId} crumbs={crumbs} />;
+}
+
+function PageTemplate({
+  babok,
+  templateId,
+  crumbs,
 }: {
   babok: BabokDto;
-  /** Absent : ajout d'un modèle. */
-  templateId?: string;
-  onClose: () => void;
+  templateId: string | null;
+  crumbs: Crumb[];
 }) {
   const { t, locale } = useI18n();
   const list = useAdminPageTemplates();
@@ -193,11 +218,20 @@ export function PageTemplatePanel({
   }
 
   return (
-    <Panel
-      title={template ? template.name[locale] : t('admin.pageTemplate.new')}
-      kicker={t('admin.pageTemplate.kicker')}
+    <ScreenLayout
+      crumbs={crumbs}
+      kind={t('admin.pageTemplate.kicker')}
+      title={
+        template
+          ? template.name[locale]
+          : !templateId
+            ? t('admin.pageTemplate.new')
+            : // Modèle introuvable, une fois la liste lue : le message le dit sous le titre.
+              list
+              ? t('admin.pageTemplate.kicker')
+              : t('common.loading')
+      }
       badges={template && <TemplateBadges template={template} />}
-      onClose={onClose}
     >
       <ErrorMessage error={error} />
       {done && <p className="notice">{done}</p>}
@@ -236,7 +270,7 @@ export function PageTemplatePanel({
           onDone={setDone}
         />
       )}
-    </Panel>
+    </ScreenLayout>
   );
 }
 
@@ -290,7 +324,7 @@ const noFiles = () => [];
 
 /**
  * Modèle ajouté, ou à ajouter : tâche BABOK facultative, puis nom et contenu dans
- * chaque langue. Déclaré par useUnsavedForm : fermer le panneau déclenche l'alerte.
+ * chaque langue. Déclaré par useUnsavedForm : quitter l'écran déclenche l'alerte.
  */
 function AddedTemplateForm({
   babok,
@@ -306,8 +340,7 @@ function AddedTemplateForm({
   onDone: (message: string | null) => void;
 }) {
   const { t, locale } = useI18n();
-  const { replaceSaved } = usePanels();
-  const closeSilently = useCloseSilently();
+  const { replaceScreen, replaceSavedScreen } = useScreens();
   const [name, setName] = useState<Record<Locale, string>>(template?.name ?? { fr: '', en: '' });
   const [taskId, setTaskId] = useState(template?.taskId ?? '');
   const [docs, setDocs] = useState<Record<Locale, PageDoc | null>>({ fr: null, en: null });
@@ -348,7 +381,7 @@ function AddedTemplateForm({
       // Le modèle ajouté : le seul absent de la liste d'avant.
       const created = next.find((item) => !list.some((before) => before.id === item.id));
       onDone(t('admin.pageTemplate.addedNotice', { name: input.name[locale] }));
-      if (created) replaceSaved({ kind: 'pageTemplate', templateId: created.id });
+      if (created) replaceSavedScreen({ kind: 'pageTemplate', templateId: created.id });
       return true;
     }
     onDone(t('admin.pageTemplate.saved', { name: input.name[locale] }));
@@ -364,7 +397,8 @@ function AddedTemplateForm({
       () => api.deletePageTemplate(current.id),
       onError,
     );
-    if (next) closeSilently();
+    // Le modèle n'existe plus : la liste des modèles prend sa place, sans étape pour « Précédent ».
+    if (next) replaceScreen({ kind: 'admin', tab: 'page-templates' });
   }
 
   return (

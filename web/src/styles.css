@@ -325,8 +325,232 @@ ul.dense-list > li {
 .sidebar details.archived {
   padding-inline-start: var(--space-2);
 }
+/*
+ * Navigation par arborescence (ADR-0021) : sélecteur d'initiative, arborescence
+ * qui défile seule, puis « Mes actions », référentiel et administration en bas.
+ */
+.sidebar {
+  overflow: hidden;
+}
 .sidebar-end {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.initiative-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.initiative-picker label {
+  flex: 1;
+  min-width: 0;
+}
+.initiative-picker select {
+  width: 100%;
+}
+.tree-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin-top: var(--space-2);
+}
+.muted {
+  color: var(--muted);
+}
+.tree,
+.tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tree [role='treeitem']:focus-visible {
+  outline: none;
+}
+.tree [role='treeitem']:focus-visible > .tree-node {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.tree-node {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+}
+.tree-node:hover {
+  background: var(--bg);
+}
+.tree-node.is-selected {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+/* Pages : glisser sur le haut d'une ligne la place avant, sur le reste en fait une sous-page. */
+.tree-node[draggable='true'] {
+  border-top: 2px solid transparent;
+}
+.tree-node.is-dragging {
+  opacity: 0.5;
+}
+.tree-node.drop-before {
+  border-top-color: var(--accent);
+}
+.tree-node.drop-inside {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+.tree-add {
+  margin-left: auto;
+  visibility: hidden;
+}
+.tree-node:hover .tree-add,
+.tree-node.is-selected .tree-add,
+.shell-narrow .tree-add {
+  visibility: visible;
+}
+.tree-status {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+}
+.tree-status:empty {
+  display: none;
+}
+.tree-node.is-selected .tree-title {
+  font-weight: 600;
+}
+.tree-twisty {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  min-height: 2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+}
+.tree-twisty svg {
+  width: 1rem;
+  height: 1rem;
+}
+/* Libellés alignés à gauche, la référence courte avant le titre (N10). */
+.tree-label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 2rem;
+  padding-inline-end: var(--space-2);
+  cursor: pointer;
+}
+.tree-label .code {
+  flex: none;
+  /* Largeur fixe : les titres d'un même niveau commencent à la même colonne. */
+  min-width: 7ch;
+}
+.tree-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree-count {
+  margin-inline-start: auto;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--tone-neutral-bg);
+  color: var(--tone-neutral-fg);
+  font-size: var(--text-badge);
+  font-weight: 600;
+}
+.tabs [role='tab'] .tree-count {
+  margin-inline-start: var(--space-1);
+}
+/* Petit écran : l'arborescence est repliée, affichée par-dessus l'écran de données (N4). */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 4;
+  width: min(22rem, 90vw);
+  box-shadow: var(--shadow-popover);
+}
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  background: var(--backdrop);
+}
+/* Écran de données (N11) : fil d'Ariane, en-tête, onglets. */
+.data-screen {
+  max-width: 64rem;
+}
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.crumbs li + li::before {
+  content: '›';
+  padding-inline: var(--space-2);
+}
+.crumbs button.link {
+  color: var(--muted);
+  text-decoration: underline;
+}
+.data-head {
+  margin: var(--space-2) 0 var(--space-4);
+}
+.page .data-head h1 {
+  margin: var(--space-1) 0 var(--space-2);
+}
+.data-head h1:focus {
+  outline: none;
+}
+.data-kind {
+  color: var(--muted);
+}
+.data-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.branch-toolbar {
+  margin-bottom: var(--space-4);
+}
+.branch-toolbar:empty {
+  display: none;
+}
+.overview-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+.overview-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 5rem;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: inherit;
+  font-weight: 400;
+  text-align: start;
+}
+.overview-count strong {
+  font-size: var(--text-page-title);
 }
 .code {
   font-family: var(--font-mono);
@@ -376,62 +600,19 @@ ul.dense-list > li {
 .multiline {
   max-width: 75ch;
 }
-/* Petit écran : la barre latérale passe au-dessus de la page. */
 @media (max-width: 48rem) {
-  .shell {
-    flex-direction: column;
-  }
-  .sidebar {
-    position: static;
-    flex: none;
-    height: auto;
-    border-inline-end: none;
-    border-bottom: 1px solid var(--border);
-  }
   .topbar,
   .page {
     padding-inline: var(--space-4);
   }
 }
 
-/* Coque de navigation (ticket 02) */
-:root {
-  --panel-width: min(32rem, 100%);
-}
 /*
- * Grand écran : le panneau latéral s'ancre à droite, la page se resserre à côté.
- * Le bouton « + Action » de la page passe sous le panneau : celui du panneau le remplace.
- */
-.panel-docked {
-  position: fixed;
-  inset: 0 0 0 auto;
-  z-index: 2;
-  /* Le navigateur ne fait défiler que les panneaux modaux. */
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-/* Plus précis que .panel-side, écrit plus bas. */
-.panel-side.panel-docked {
-  width: var(--docked-current-width);
-  max-width: none;
-}
-/* L'en-tête (titre, fermeture) reste visible au défilement. */
-.panel-side .panel-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--surface);
-}
-body:has(.panel-docked[open]) .shell-main {
-  margin-inline-end: var(--docked-current-width);
-}
-/*
- * Largeurs réglables (resize.tsx) : la poignée règle --sidebar-width et
- * --docked-panel-width ; les bornes valent aussi si la fenêtre change de taille.
+ * Largeur réglable de la barre latérale (resize.tsx) : la poignée règle
+ * --sidebar-width ; les bornes valent aussi si la fenêtre change de taille.
  */
 :root {
-  --sidebar-current-width: clamp(12rem, var(--sidebar-width, 15rem), 24rem);
-  --docked-current-width: clamp(24rem, var(--docked-panel-width, 32rem), 60vw);
+  --sidebar-current-width: clamp(14rem, var(--sidebar-width, 18rem), 28rem);
 }
 .resize-handle {
   position: fixed;
@@ -462,9 +643,6 @@ body.resizing .resize-handle::after {
 .sidebar-resize {
   left: calc(var(--sidebar-current-width) - 0.25rem);
 }
-.panel-resize {
-  right: calc(var(--docked-current-width) - 0.25rem);
-}
 body.resizing {
   cursor: col-resize;
   user-select: none;
@@ -473,9 +651,6 @@ body.resizing {
   .sidebar-resize {
     display: none;
   }
-}
-body:has(.panel-docked[open]) .shell > .fab {
-  display: none;
 }
 .links {
   list-style: none;
@@ -523,56 +698,49 @@ kbd {
   box-shadow: var(--shadow-fab);
 }
 
-.panel {
+/* Fenêtres de dialogue : palette et créations (navigation par arborescence, N15). */
+.modal {
   padding: 0;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-panel);
 }
-.panel::backdrop {
+.modal::backdrop {
   background: var(--backdrop);
 }
-/* Panneau latéral : à droite, la liste reste visible. */
-.panel-side {
-  margin: 0 0 0 auto;
-  width: var(--panel-width);
-  max-width: 100%;
-  height: 100dvh;
-  max-height: 100dvh;
-  animation: slide-in-right 0.15s ease-out;
-}
-.panel-palette {
+.modal-palette {
   margin: 12vh auto auto;
   width: min(36rem, calc(100% - var(--space-8)));
   border-radius: var(--radius-lg);
 }
-.panel-header {
+/* Création en fenêtre de dialogue centrée. */
+.modal-dialog {
+  margin: auto;
+  width: min(32rem, calc(100% - var(--space-8)));
+  max-height: calc(100dvh - var(--space-8));
+  border-radius: var(--radius-lg);
+}
+.modal-header {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-4) var(--space-3) var(--space-6);
   border-bottom: 1px solid var(--border);
 }
-.panel-title {
+.modal-title {
   flex: 1;
   min-width: 0;
 }
-.panel-header h2 {
+.modal-header h2 {
   margin: 0;
 }
-.panel-kicker {
+.modal-kicker {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
   color: var(--muted);
   font-size: var(--text-small);
-}
-.panel-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  margin-top: var(--space-2);
 }
 /* Fiche d'un objet (refonte du design, ticket 04) : groupes titrés, sections avec compteur. */
 .group-title {
@@ -585,8 +753,8 @@ kbd {
   text-transform: uppercase;
   color: var(--muted);
 }
-.panel-body > .group-title:first-child,
-.panel-body > .notice + .group-title {
+:is(.modal-body, .data-body) > .group-title:first-child,
+:is(.modal-body, .data-body) > .notice + .group-title {
   margin-top: 0;
 }
 .section-header h4 {
@@ -612,7 +780,7 @@ form.stacked .code-name {
   grid-template-columns: 8rem minmax(0, 1fr);
   gap: var(--space-3);
 }
-.panel-close {
+.modal-close {
   width: 2.25rem;
   padding: 0;
   background: none;
@@ -622,25 +790,18 @@ form.stacked .code-name {
   cursor: pointer;
   color: inherit;
 }
-.panel-handle {
-  display: none;
-}
-.panel-body {
+.modal-body {
   padding: var(--space-6) var(--space-6) var(--space-8);
 }
-/* Le bouton flottant ne recouvre pas le bas du contenu (ex. « Créer le compte »). */
-.panel:has(> .fab) > .panel-body {
-  padding-bottom: calc(3.5rem + 2 * var(--space-6));
-}
-.panel dl {
+:is(.modal, .data-body) dl {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: var(--space-1) var(--space-4);
 }
-.panel dt {
+:is(.modal, .data-body) dt {
   color: var(--muted);
 }
-.panel dd {
+:is(.modal, .data-body) dd {
   margin: 0;
 }
 form.stacked {
@@ -717,7 +878,7 @@ details.archived .links {
   color: var(--muted);
 }
 /* Référentiel BABOK (ticket 06) */
-.babok-area h4 {
+.babok-area h2 {
   margin: var(--space-4) 0 var(--space-1);
 }
 details.babok-item {
@@ -745,52 +906,15 @@ details.babok-item .links {
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
-.panel-palette input {
+.modal-palette input {
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Petit écran : plein écran, glissé depuis le bas, refermé en glissant vers le bas. */
 @media (max-width: 40rem) {
-  .panel-side {
-    margin: 0;
-    width: 100%;
-    height: 100dvh;
-    border: none;
-    animation: slide-up 0.2s ease-out;
-  }
-  .panel-side .panel-header {
-    padding-top: var(--space-6);
-    touch-action: none;
-  }
-  .panel-side .panel-handle {
-    display: block;
-    position: absolute;
-    top: var(--space-2);
-    left: calc(50% - 1.5rem);
-    width: 3rem;
-    height: 0.3rem;
-    border-radius: var(--radius-pill);
-    background: var(--border);
-  }
   .fab {
     right: var(--space-4);
     bottom: var(--space-4);
-  }
-}
-@keyframes slide-in-right {
-  from {
-    transform: translateX(100%);
-  }
-}
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .panel {
-    animation: none;
   }
 }
 /* Alerte de modifications non enregistrées (phase 2, ticket 15) */
@@ -865,10 +989,10 @@ form.invite h4 {
   gap: var(--space-4);
   margin-top: var(--space-8);
 }
-.panel-body .section-header {
+.modal-body .section-header {
   margin-top: var(--space-6);
 }
-.panel-body .group-title + .section-header {
+.modal-body .group-title + .section-header {
   margin-top: 0;
 }
 .section-buttons {
@@ -911,10 +1035,6 @@ form.invite h4 {
 }
 .action-row.list-head {
   display: none;
-}
-.action-row.selected,
-.action-row.selected:hover {
-  background: var(--accent-soft);
 }
 .action-title {
   font-weight: 500;
@@ -959,15 +1079,6 @@ form.invite h4 {
   /* L'aperçu de la tâche déborde de sa cellule. */
   .page .action-task:has(.babok-preview:is(:hover, :focus-within)) {
     overflow: visible;
-  }
-}
-/* Panneau ancré : la liste est plus étroite, les colonnes cèdent la place. */
-@media (min-width: 64rem) and (max-width: 100rem) {
-  body:has(.panel-docked[open]) .page .action-row {
-    display: flex;
-  }
-  body:has(.panel-docked[open]) .page .action-row.list-head {
-    display: none;
   }
 }
 .filter-chips {
@@ -1197,28 +1308,6 @@ form.invite h4 {
   margin-top: var(--space-4);
 }
 /* Parties prenantes (ticket 08) */
-.stakeholder-views {
-  margin-top: 0;
-}
-/* Onglets : Liste / Matrice. */
-.stakeholder-views [role='group'] {
-  display: flex;
-  gap: var(--space-1);
-  border-bottom: 1px solid var(--border);
-}
-.stakeholder-views [role='group'] button {
-  margin-bottom: -1px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: none;
-  color: var(--muted);
-}
-.stakeholder-views [role='group'] button[aria-pressed='true'] {
-  border-bottom-color: var(--accent);
-  color: var(--text);
-  font-weight: 600;
-}
 /* Ligne d'une partie prenante : nom et rôles à gauche, nature et niveaux à droite (ticket 04, lot 1). */
 .stakeholder-list li.stakeholder-row {
   display: grid;
@@ -1435,7 +1524,7 @@ button.icon-only {
   align-items: center;
   gap: var(--space-2);
 }
-.panel-close .lucide {
+.modal-close .lucide {
   width: 1.375rem;
   height: 1.375rem;
 }
@@ -1547,7 +1636,7 @@ main.signed-out {
     display: none;
   }
 }
-/* Champs côte à côte dans une fiche (ticket 04, lot 1) : passent à la ligne si le panneau est étroit. */
+/* Champs côte à côte dans une fiche (ticket 04, lot 1) : passent à la ligne si la place manque. */
 form.stacked .field-row {
   display: flex;
   flex-wrap: wrap;
@@ -1622,8 +1711,9 @@ button.link.pill:hover {
   border-color: var(--accent);
   text-decoration: none;
 }
-.babok-area h4 {
+.babok-area h2 {
   margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-section-title);
 }
 .babok-summary {
   max-width: 75ch;
@@ -1711,9 +1801,8 @@ button.link.pill:hover {
   color: var(--muted);
   white-space: nowrap;
 }
-/* Pas au-dessus de la ligne ouverte, mise en évidence (.selected). */
-.ticket-table tbody tr.ticket-group-row:not(.selected),
-.ticket-compact li.ticket-group-row:not(.selected) {
+.ticket-table tbody tr.ticket-group-row,
+.ticket-compact li.ticket-group-row {
   background: var(--bg);
 }
 .ticket-table .ticket-group-row td {
@@ -1724,9 +1813,6 @@ button.link.pill:hover {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-2);
-}
-.tickets .panel-kicker {
-  margin-bottom: var(--space-1);
 }
 .ticket-filters {
   display: flex;
@@ -1768,9 +1854,9 @@ button.link.pill:hover {
   vertical-align: -0.1em;
 }
 /*
- * Panneau ouvert : le titre reste sur une ligne (entier dans son info-bulle et dans
- * la fiche) et garde sa place ; les colonnes secondaires s'effacent une à une selon
- * la largeur disponible, celle que laissent la barre latérale et le panneau.
+ * Le titre reste sur une ligne (entier dans son info-bulle et dans la fiche) et
+ * garde sa place ; les colonnes secondaires s'effacent une à une selon la largeur
+ * que laisse la barre latérale.
  */
 .ticket-table-area {
   container-type: inline-size;
@@ -1823,11 +1909,6 @@ button.link.pill:hover {
 }
 .ticket-table tbody tr:hover {
   background: var(--bg);
-}
-.ticket-table tr.selected,
-.ticket-table tr.selected:hover,
-.ticket-compact li.selected {
-  background: var(--accent-soft);
 }
 .ticket-table small {
   display: block;
@@ -1884,7 +1965,7 @@ button.link.pill:hover {
     display: none;
   }
 }
-/* Panneau très élargi à la main : le titre garde encore sa place. */
+/* Barre latérale très élargie à la main : le titre garde encore sa place. */
 @container (max-width: 28rem) {
   .ticket-table .col-status {
     display: none;
@@ -1923,7 +2004,7 @@ button.link.pill:hover {
   gap: var(--space-1) var(--space-2);
   margin-top: var(--space-1);
 }
-/* Petit écran : liste compacte sur deux lignes ; la fiche prend toute la largeur (.panel-side). */
+/* Petit écran : liste compacte sur deux lignes. */
 @media (max-width: 40rem) {
   .ticket-table-area {
     display: none;
@@ -1933,97 +2014,13 @@ button.link.pill:hover {
   }
 }
 
-/* ── Pages (ticket 22) : arborescence à gauche, document en pleine page ────── */
-.pages-layout {
-  display: grid;
-  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
-  gap: var(--space-6);
-  align-items: start;
-  margin-top: var(--space-4);
+/* ── Pages (ticket 22) : liste du nœud Pages, page dans l'écran de données ── */
+.page-list li {
+  display: block;
 }
-.pages-tree {
-  position: sticky;
-  top: var(--space-2);
-  border-right: 1px solid var(--border);
-  padding-right: var(--space-3);
-}
-.page-tree {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.page-tree-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: 2rem;
-  padding-block: var(--space-1);
-  padding-inline-end: var(--space-1);
-  border-radius: var(--radius-md);
-  border-top: 2px solid transparent;
-  cursor: pointer;
-}
-.page-tree-row:hover {
-  background: var(--accent-soft);
-}
-.page-tree-row.selected {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-weight: 600;
-}
-.page-tree-row:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-.page-tree-row.dragging {
-  opacity: 0.5;
-}
-/* Glissement : sur le haut de la ligne, avant elle ; sur le reste, sous-page. */
-.page-tree-row.drop-before {
-  border-top-color: var(--accent);
-}
-.page-tree-row.drop-inside {
-  outline: 2px dashed var(--accent);
-  outline-offset: -2px;
-}
-.page-tree-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.page-tree-add {
-  visibility: hidden;
-}
-.page-tree-row:hover .page-tree-add,
-.page-tree-row:focus-within .page-tree-add,
-.page-tree-row.selected .page-tree-add {
-  visibility: visible;
-}
-.page-tree-blocked {
-  font-size: var(--text-small);
-}
-.page-tree-blocked:empty {
-  display: none;
-}
-.page-tree-hint,
-.pages-tree-empty,
-.pages-choose,
 .page-empty {
   color: var(--muted);
   font-size: var(--text-small);
-}
-.pages-document {
-  min-width: 0;
-  max-width: 52rem;
-}
-.page-view-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2);
 }
 .page-view-title {
   margin: 0;
@@ -2262,50 +2259,7 @@ button.link.pill:hover {
   cursor: default;
 }
 
-/* Petit écran : l'arborescence au-dessus du document (décision 13, point 7). */
-@media (max-width: 40rem) {
-  .pages-layout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
-  }
-  .pages-tree {
-    position: static;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 0 0 var(--space-3);
-  }
-  .page-tree-add {
-    visibility: visible;
-  }
-}
-
-/* ── Enregistrements et versions (ticket 23) : historique en volet à droite ── */
-.page-with-history {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, 20rem);
-  gap: var(--space-6);
-  align-items: start;
-}
-.page-with-history-center {
-  min-width: 0;
-}
-.page-history {
-  position: sticky;
-  top: var(--space-2);
-  border-left: 1px solid var(--border);
-  padding-left: var(--space-3);
-  max-height: calc(100vh - var(--space-4));
-  overflow-y: auto;
-}
-.page-history-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.page-history-header h2 {
-  margin: 0;
-  font-size: var(--text-body);
-}
+/* ── Enregistrements et versions (ticket 23) : onglet Historique de la page ── */
 .checkbox {
   display: inline-flex;
   align-items: center;
@@ -2408,20 +2362,6 @@ button.link.pill:hover {
 .page-diff del {
   background: var(--tone-negative-bg);
   color: var(--tone-negative-fg);
-}
-
-/* Petit écran : l'historique sous la page. */
-@media (max-width: 64rem) {
-  .page-with-history {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .page-history {
-    position: static;
-    max-height: none;
-    border-left: none;
-    border-top: 1px solid var(--border);
-    padding: var(--space-3) 0 0;
-  }
 }
 
 /* Liens (ticket 19) : nature vue de ce ticket, puis l'objet lié ; « Retirer » en fin de ligne. */

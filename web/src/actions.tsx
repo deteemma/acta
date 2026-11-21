@@ -1,0 +1,707 @@
+// Actions (ticket 07) : fiche d'une action, affichée dans l'écran de son ticket
+// (ticket-screen.tsx), création rapide en fenêtre de dialogue (N15), liste.
+// Règles dans @app/shared (actions.ts, roles.ts).
+import {
+  memberName,
+  ACTION_DESCRIPTION_MAX_LENGTH,
+  ACTION_TITLE_MAX_LENGTH,
+  type ActionDto,
+  type ActionStatus,
+  type BabokDto,
+  type BabokElementDto,
+  babokEnglishName,
+  can,
+  canBeAssignee,
+  canCreateActionIn,
+  chosenValue,
+  createActionSchema,
+  englishTermTooltip,
+  findBabokElement,
+  type InitiativeDto,
+  type InitiativeMemberDto,
+  type StakeholderDto,
+  type ActionOrigin,
+  analysisObjectLinks,
+  type AnalysisObjectRef,
+  rankTechniques,
+  selectableTicketStatuses,
+  suggestTasks,
+  type TechniqueCounts,
+  type TechniqueDto,
+  type TechniqueUsage,
+  techniqueChoices,
+  tasksOfKnowledgeArea,
+  ticketEpicOptions,
+  type TicketRow,
+  ticketStatusTone,
+  updateActionSchema,
+} from '@app/shared';
+import { useEffect, useId, useState } from 'react';
+import { api, ApiError } from './api';
+import { useTicketLabels, useTicketTypes } from './ticket-types';
+import { ErrorMessage, toUiError, type UiError } from './errors';
+import { useI18n } from './i18n';
+import { formatDate } from './initiative-sheet';
+import { Dialog, useCloseSilently, useDialogs } from './dialogs';
+import { useScreens } from './screens';
+import { useOpenNode } from './references';
+import { RichText, RichTextEditor } from './rich-text';
+import { StakeholderLink } from './stakeholder-screen';
+import { EpicLink, EpicSelect, TicketAudit } from './ticket-parts';
+import { useUnsavedForm } from './unsaved-changes';
+
+const canEditActions = (action: Pick<ActionDto, 'initiative'>) =>
+  can(action.initiative.myRole, 'editActions', { archived: action.initiative.archived });
+
+/**
+ * Tâche ou technique : son numéro et son nom, avec un aperçu au survol ou au
+ * focus (nom anglais en français, résumé) ; le clic ouvre sa fiche.
+ */
+export function BabokPreview({ element }: { element: BabokElementDto }) {
+  const { t, locale } = useI18n();
+  const { goTo } = useScreens();
+  const english = babokEnglishName(element, locale);
+  // Une même tâche peut apparaître plusieurs fois dans une liste.
+  const previewId = useId();
+  return (
+    <span className="babok-preview">
+      <button
+        type="button"
+        className="link"
+        aria-describedby={previewId}
+        onClick={() => void goTo({ kind: 'babokElement', elementId: element.id })}
+      >
+        <strong>{element.section}</strong> {element.name[locale]}
+      </button>
+      <span role="tooltip" id={previewId} className="preview-card">
+        <small>
+          {t(`babok.${element.kind}`)} · {t('babok.section', { section: element.section })}
+        </small>
+        {english && <em lang="en">{english}</em>}
+        <span>{element.summary[locale]}</span>
+      </span>
+    </span>
+  );
+}
+
+/** Statut d'une action, livré ou ajouté ; avec `count`, le nombre d'actions à ce statut (tableau de bord). */
+export function StatusLabel({ status, count }: { status: ActionStatus; count?: number }) {
+  const { t } = useI18n();
+  const types = useTicketTypes();
+  const label = useTicketLabels().statusLabel('action', status);
+  return (
+    <span className={`badge status tone-${ticketStatusTone(types, 'action', status)}`}>
+      {count === undefined ? label : t('dashboard.statusCount', { status: label, count })}
+    </span>
+  );
+}
+
+/** Liste d'actions ; `showInitiative` pour « Mes actions », toutes initiatives confondues. */
+export function ActionList({
+  actions,
+  babok,
+  showInitiative,
+}: {
+  actions: ActionDto[];
+  babok: BabokDto | null;
+  showInitiative?: boolean;
+}) {
+  const { t, locale } = useI18n();
+  const openNode = useOpenNode();
+  if (actions.length === 0) return null;
+  return (
+    <ul className={`links dense-list action-list${showInitiative ? ' with-initiative' : ''}`}>
+      {/* En-têtes de colonnes, sur grand écran ; chaque cellule reste lisible seule. */}
+      <li className="action-row list-head" aria-hidden="true">
+        {showInitiative && <span>{t('action.initiative')}</span>}
+        <span>{t('action.title')}</span>
+        <span>{t('action.task')}</span>
+        {!showInitiative && <span>{t('action.assignee')}</span>}
+        <span>{t('action.dueDate')}</span>
+        <span>{t('action.status')}</span>
+      </li>
+      {actions.map((a) => {
+        const task = babok && findBabokElement(babok, a.taskId);
+        return (
+          <li key={a.id} className="action-row">
+            {showInitiative && <span className="code">{a.initiative.code}</span>}
+            <button
+              type="button"
+              className="link action-title"
+              onClick={() => openNode(a.initiative.id, { kind: 'ticket', id: a.id })}
+            >
+              <span className="code">{a.reference}</span> {a.title}
+            </button>
+            <span className="action-task">{task && <BabokPreview element={task} />}</span>
+            {/* Liste d'une initiative : le responsable, signalé s'il ne peut plus l'être. */}
+            {!showInitiative && (
+              <small>
+                <AssigneeName assignee={a.assignee} />
+              </small>
+            )}
+            <small className="due">
+              {a.dueDate ? formatDate(locale, a.dueDate) : t('action.noDueDate')}
+              {showInitiative && a.initiative.archived && ` · ${t('initiative.archived')}`}
+            </small>
+            <span>
+              <StatusLabel status={a.status} />
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Tâches du référentiel, groupées par domaine de connaissance. */
+export function TaskOptions({ babok }: { babok: BabokDto }) {
+  const { locale } = useI18n();
+  return babok.knowledgeAreas.map((area) => (
+    <optgroup key={area.id} label={`${area.section} ${area.name[locale]}`}>
+      {tasksOfKnowledgeArea(babok, area.id).map((task) => (
+        <option key={task.id} value={task.id} title={babokEnglishName(task, locale)}>
+          {task.section} {task.name[locale]}
+        </option>
+      ))}
+    </optgroup>
+  ));
+}
+
+/** Les 50 techniques, celles de la tâche en tête. */
+export function TechniqueOptions({ babok, taskId }: { babok: BabokDto; taskId: string }) {
+  const { t, locale } = useI18n();
+  const { ofTask, others } = techniqueChoices(babok, taskId);
+  const options = (list: typeof ofTask) =>
+    list.map((technique) => (
+      <option key={technique.id} value={technique.id} title={babokEnglishName(technique, locale)}>
+        {technique.section} {technique.name[locale]}
+      </option>
+    ));
+  return (
+    <>
+      <option value="">{t('action.noTechnique')}</option>
+      {ofTask.length > 0 && <optgroup label={t('action.techniquesOfTask')}>{options(ofTask)}</optgroup>}
+      <optgroup label={t('action.otherTechniques')}>{options(others)}</optgroup>
+    </>
+  );
+}
+
+/** Libellé d'un terme du BABOK, l'anglais en info-bulle. */
+export function TermLabel({ term }: { term: 'babok.task' | 'babok.technique' }) {
+  const { t, locale } = useI18n();
+  return (
+    <span title={englishTermTooltip(locale, term)}>
+      {t(term === 'babok.task' ? 'action.task' : 'action.technique')}
+    </span>
+  );
+}
+
+/**
+ * Onglet Fiche d'une Action : champs modifiables, ou en lecture seule (lecteur,
+ * initiative archivée), auteurs et dates, suppression.
+ */
+export function ActionSheet({
+  babok,
+  action,
+  members,
+  stakeholders,
+  rows,
+  onSaved,
+  onDeleted,
+}: {
+  babok: BabokDto;
+  action: ActionDto;
+  members: InitiativeMemberDto[];
+  stakeholders: StakeholderDto[];
+  rows: TicketRow[];
+  onSaved: (action: ActionDto) => void;
+  onDeleted: () => void;
+}) {
+  return (
+    <>
+      {canEditActions(action) ? (
+        <ActionForm babok={babok} action={action} members={members} stakeholders={stakeholders} rows={rows} onSaved={onSaved} />
+      ) : (
+        <ActionDetails babok={babok} action={action} />
+      )}
+      <TicketAudit ticket={action} />
+      {canEditActions(action) && <DeleteAction action={action} onDeleted={onDeleted} />}
+    </>
+  );
+}
+
+function AssigneeName({ assignee }: { assignee: ActionDto['assignee'] }) {
+  const { t } = useI18n();
+  return (
+    <>
+      {memberName(assignee)}
+      {!assignee.eligible && <small> · {t('action.assigneeNotEligible')}</small>}
+    </>
+  );
+}
+
+/** Fiche en lecture seule : lecteur, ou initiative archivée. */
+function ActionDetails({ babok, action }: { babok: BabokDto; action: ActionDto }) {
+  const { t, locale } = useI18n();
+  const task = findBabokElement(babok, action.taskId);
+  const technique = action.techniqueId ? findBabokElement(babok, action.techniqueId) : undefined;
+  const notSet = <small>{t('initiative.notSet')}</small>;
+  return (
+    <dl>
+      <dt>{t('action.status')}</dt>
+      <dd><StatusLabel status={action.status} /></dd>
+      <dt>{t('action.assignee')}</dt>
+      <dd><AssigneeName assignee={action.assignee} /></dd>
+      <dt>{t('action.dueDate')}</dt>
+      <dd>{action.dueDate ? formatDate(locale, action.dueDate) : t('action.noDueDate')}</dd>
+      <dt>{t('ticket.epic')}</dt>
+      <dd><EpicLink initiativeId={action.initiative.id} epic={action.epic} /></dd>
+      <dt><TermLabel term="babok.task" /></dt>
+      <dd>{task ? <BabokPreview element={task} /> : action.taskId}</dd>
+      <dt><TermLabel term="babok.technique" /></dt>
+      <dd>{technique ? <BabokPreview element={technique} /> : notSet}</dd>
+      <dt>{t('action.stakeholders')}</dt>
+      <dd>
+        {action.stakeholders.length === 0 ? (
+          <small>{t('action.noStakeholders')}</small>
+        ) : (
+          <ul className="links">
+            {action.stakeholders.map((s) => (
+              <li key={s.id}>
+                <StakeholderLink initiativeId={action.initiative.id} stakeholder={s} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </dd>
+      <dt>{t('action.description')}</dt>
+      <dd>{action.description ? <RichText source={action.description} /> : notSet}</dd>
+    </dl>
+  );
+}
+
+function ActionForm({
+  babok,
+  action,
+  members,
+  stakeholders,
+  rows,
+  onSaved,
+}: {
+  babok: BabokDto;
+  action: ActionDto;
+  members: InitiativeMemberDto[];
+  /** Parties prenantes de l'initiative, que l'on peut lier à l'action. */
+  stakeholders: StakeholderDto[];
+  /** Tickets de l'initiative, d'où viennent les Epics proposés. */
+  rows: TicketRow[];
+  onSaved: (action: ActionDto) => void;
+}) {
+  const { t } = useI18n();
+  const [title, setTitle] = useState(action.title);
+  const [status, setStatus] = useState(action.status);
+  // Liste relue à l'ouverture : un statut ajouté ou désactivé entre-temps est à jour.
+  const ticketTypes = useTicketTypes({ fresh: true });
+  const { statusLabel } = useTicketLabels();
+  const [taskId, setTaskId] = useState(action.taskId);
+  const [techniqueId, setTechniqueId] = useState(action.techniqueId ?? '');
+  const [assigneeId, setAssigneeId] = useState(action.assignee.userId);
+  const [dueDate, setDueDate] = useState(action.dueDate ?? '');
+  const [epicId, setEpicId] = useState(action.epic?.id ?? '');
+  const [description, setDescription] = useState(action.description ?? '');
+  const [stakeholderIds, setStakeholderIds] = useState<readonly string[]>(action.stakeholders.map((s) => s.id));
+  const [error, setError] = useState<UiError | null>(null);
+  const [saved, setSaved] = useState(false);
+  const submit = useUnsavedForm(
+    { title, status, taskId, techniqueId, assigneeId, dueDate, epicId, description, stakeholderIds },
+    save,
+  );
+
+  const toggleStakeholder = (id: string) =>
+    setStakeholderIds((current) => (current.includes(id) ? current.filter((s) => s !== id) : [...current, id]));
+
+  const task = findBabokElement(babok, taskId);
+  const technique = techniqueId ? findBabokElement(babok, techniqueId) : undefined;
+  // Responsables possibles ; l'actuel reste affiché s'il ne l'est plus.
+  const assignees = members.filter((m) => canBeAssignee(m.role));
+  const keepsIneligible = !assignees.some((m) => m.userId === action.assignee.userId);
+
+  async function save(): Promise<boolean> {
+    setSaved(false);
+    // Même schéma de validation que l'API (@app/shared).
+    const parsed = updateActionSchema.safeParse({
+      title,
+      status,
+      taskId,
+      techniqueId: techniqueId || null,
+      ...(assigneeId !== action.assignee.userId ? { assigneeId } : {}),
+      dueDate: dueDate || null,
+      epicId: epicId || null,
+      description,
+      stakeholderIds,
+    });
+    if (!parsed.success) {
+      setError({ key: 'action.invalid' });
+      return false;
+    }
+    try {
+      onSaved(await api.updateAction(action.initiative.id, action.id, parsed.data));
+      setError(null);
+      setSaved(true);
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError && e.status === 400 && !e.refusal ? { key: 'action.invalid' } : toUiError(e));
+      return false;
+    }
+  }
+
+  return (
+    <form className="stacked" onSubmit={submit} onChange={() => setSaved(false)}>
+      <label>
+        {t('action.title')}
+        <input value={title} maxLength={ACTION_TITLE_MAX_LENGTH} onChange={(e) => setTitle(e.target.value)} />
+      </label>
+      <label>
+        {t('action.status')}
+        <select value={status} onChange={(e) => setStatus(e.target.value as ActionStatus)}>
+          {selectableTicketStatuses(ticketTypes, 'action', action.status).map((s) => (
+            <option key={s.code} value={s.code}>
+              {statusLabel('action', s.code)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        {t('action.assignee')}
+        <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+          {keepsIneligible && (
+            <option value={action.assignee.userId}>
+              {memberName(action.assignee)} · {t('action.assigneeNotEligible')}
+            </option>
+          )}
+          {assignees.map((m) => (
+            <option key={m.userId} value={m.userId}>
+              {memberName(m)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        {t('action.dueDate')}
+        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+      </label>
+      <EpicSelect epics={ticketEpicOptions(rows)} value={epicId} onChange={setEpicId} />
+      <label>
+        <TermLabel term="babok.task" />
+        <select value={taskId} onChange={(e) => setTaskId(e.target.value)}>
+          <TaskOptions babok={babok} />
+        </select>
+      </label>
+      {task && <BabokPreview element={task} />}
+      <label>
+        <TermLabel term="babok.technique" />
+        <select value={techniqueId} onChange={(e) => setTechniqueId(e.target.value)}>
+          <TechniqueOptions babok={babok} taskId={taskId} />
+        </select>
+      </label>
+      {technique && <BabokPreview element={technique} />}
+      <fieldset>
+        <legend>{t('action.stakeholders')}</legend>
+        {stakeholders.length === 0 && <small>{t('stakeholders.sectionEmpty')}</small>}
+        {stakeholders.map((s) => (
+          <label key={s.id} className="inline">
+            <input type="checkbox" checked={stakeholderIds.includes(s.id)} onChange={() => toggleStakeholder(s.id)} />
+            {s.name}
+          </label>
+        ))}
+      </fieldset>
+      <RichTextEditor
+        label={t('action.description')}
+        value={description}
+        maxLength={ACTION_DESCRIPTION_MAX_LENGTH}
+        onChange={(value) => {
+          setDescription(value);
+          setSaved(false);
+        }}
+      />
+      <button type="submit">{t('action.save')}</button>
+      <ErrorMessage error={error} />
+      <p role="status">{saved && t('action.saved')}</p>
+    </form>
+  );
+}
+
+/** Suppression après confirmation ; une action liée à un autre objet s'annule plutôt (refus `linked`). */
+function DeleteAction({ action, onDeleted }: { action: ActionDto; onDeleted: () => void }) {
+  const { t } = useI18n();
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<UiError | null>(null);
+
+  async function remove() {
+    try {
+      await api.deleteAction(action.initiative.id, action.id);
+      onDeleted();
+    } catch (e) {
+      setConfirming(false);
+      setError(toUiError(e));
+    }
+  }
+
+  return (
+    <section className="owner-actions">
+      {confirming ? (
+        <div role="alertdialog" aria-labelledby="action-delete-confirm" className="confirm">
+          <p id="action-delete-confirm">{t('action.deleteConfirm', { reference: action.reference, title: action.title })}</p>
+          <button type="button" autoFocus onClick={() => setConfirming(false)}>
+            {t('common.cancel')}
+          </button>{' '}
+          <button type="button" className="danger" onClick={() => void remove()}>
+            {t('action.deleteConfirmButton')}
+          </button>
+        </div>
+      ) : (
+        <>
+          <button type="button" className="danger" onClick={() => setConfirming(true)}>
+            {t('action.delete')}
+          </button>
+          <p>
+            <small>{t('action.deleteHint')}</small>
+          </p>
+        </>
+      )}
+      <ErrorMessage error={error} />
+    </section>
+  );
+}
+
+/** Bouton « Nouvelle action » d'une fiche : l'action est créée depuis cet objet et liée à lui (ticket 13). */
+export function NewActionButton({ initiative, from }: { initiative: InitiativeDto; from: AnalysisObjectRef }) {
+  const { t } = useI18n();
+  const { open } = useDialogs();
+  if (!canCreateActionIn(initiative)) return null;
+  return (
+    <button type="button" onClick={() => open({ kind: 'createAction', initiativeId: initiative.id, from })}>
+      {t('actions.new')}
+    </button>
+  );
+}
+
+/** Objet d'origine, chargé pour la tâche proposée (statut d'une exigence) et son nom. */
+interface LoadedOriginObject {
+  origin: ActionOrigin;
+  name: string;
+}
+
+async function loadOriginObject(initiativeId: string, from: AnalysisObjectRef): Promise<LoadedOriginObject> {
+  switch (from.kind) {
+    case 'stakeholder': {
+      const stakeholder = (await api.listStakeholders(initiativeId)).find((s) => s.id === from.id);
+      return { origin: { kind: 'stakeholder' }, name: stakeholder?.name ?? '' };
+    }
+    case 'need': {
+      const need = await api.getNeed(initiativeId, from.id);
+      return { origin: { kind: 'need' }, name: `${need.reference} ${need.title}` };
+    }
+    case 'requirement': {
+      const requirement = await api.getRequirement(initiativeId, from.id);
+      return {
+        origin: { kind: 'requirement', status: requirement.status },
+        name: `${requirement.reference} ${requirement.title}`,
+      };
+    }
+  }
+}
+
+/**
+ * Création rapide, ouverte par le bouton flottant « + Action » ou le bouton
+ * « Nouvelle action » d'une fiche : initiative, titre, tâche BABOK, technique ;
+ * la personne qui crée en est responsable. Tâches proposées selon l'origine et
+ * techniques classées par usage : @app/shared (suggestions.ts) ; la première
+ * tâche proposée est présélectionnée. En fenêtre de dialogue (N15) : l'action
+ * créée s'ouvre ensuite dans l'écran de données.
+ */
+export function CreateActionDialog({
+  babok,
+  initiatives,
+  initiativeId,
+  from,
+  onCreated,
+  onClose,
+}: {
+  babok: BabokDto;
+  initiatives: InitiativeDto[];
+  /** Initiative proposée d'abord (celle de l'écran d'où l'on vient). */
+  initiativeId?: string;
+  /** Objet de l'initiative `initiativeId` depuis lequel l'action est créée. */
+  from?: AnalysisObjectRef;
+  /** Créée : les listes se rechargent, l'écran de données l'affiche. */
+  onCreated: (action: ActionDto) => void;
+  onClose: () => void;
+}) {
+  const { t, locale } = useI18n();
+  const closeSilently = useCloseSilently();
+  const editable = initiatives.filter(canCreateActionIn);
+  const proposed = editable.find((i) => i.id === initiativeId);
+  // Sans droit d'écriture sur l'initiative de l'objet, on ne part pas de cet objet.
+  const originObject = proposed ? from : undefined;
+  const [chosenInitiative, setChosenInitiative] = useState(proposed?.id ?? editable[0]?.id ?? '');
+  const [title, setTitle] = useState('');
+  // Tâche choisie par le BA ; à défaut, la première tâche proposée est présélectionnée.
+  const [chosenTask, setChosenTask] = useState<string | null>(null);
+  const [techniqueId, setTechniqueId] = useState('');
+  const [loadedActions, setLoadedActions] = useState<{ initiativeId: string; actions: ActionDto[] } | null>(null);
+  const [applicationCounts, setApplicationCounts] = useState<TechniqueCounts>({});
+  const [loadedOriginObject, setLoadedOriginObject] = useState<LoadedOriginObject | null>(null);
+  const [error, setError] = useState<UiError | null>(null);
+
+  useEffect(() => {
+    api.techniqueUsage().then(setApplicationCounts, (e: unknown) => setError(toUiError(e)));
+  }, []);
+
+  useEffect(() => {
+    if (!chosenInitiative) return;
+    api.listActions(chosenInitiative).then(
+      (actions) => setLoadedActions({ initiativeId: chosenInitiative, actions }),
+      (e: unknown) => setError(toUiError(e)),
+    );
+  }, [chosenInitiative]);
+  // Actions de l'initiative choisie ; null tant qu'elles se chargent.
+  const initiativeActions = loadedActions?.initiativeId === chosenInitiative ? loadedActions.actions : null;
+
+  // Partant d'un objet, l'initiative est figée : celle de l'objet.
+  const originKind = originObject?.kind;
+  const originId = originObject?.id;
+  useEffect(() => {
+    if (!originKind || !originId) return;
+    loadOriginObject(chosenInitiative, { kind: originKind, id: originId }).then(setLoadedOriginObject, (e: unknown) =>
+      setError(toUiError(e)),
+    );
+  }, [chosenInitiative, originKind, originId]);
+
+  const origin: ActionOrigin | null = originObject
+    ? (loadedOriginObject?.origin ?? null)
+    : initiativeActions && { kind: 'initiative', hasActions: initiativeActions.length > 0 };
+  const suggestions = origin ? suggestTasks(origin) : [];
+  const taskId = chosenTask ?? suggestions[0]?.taskId ?? '';
+
+  const task = taskId ? findBabokElement(babok, taskId) : undefined;
+  const techniques = rankTechniques(babok, taskId, initiativeActions ?? [], applicationCounts);
+  const technique = techniqueId ? findBabokElement(babok, techniqueId) : undefined;
+  // La tâche présélectionnée fait partie des valeurs de départ, même si elle arrive après l'ouverture.
+  const submit = useUnsavedForm(
+    {
+      initiative: chosenInitiative,
+      title,
+      task: chosenValue(taskId, suggestions[0]?.taskId),
+      technique: techniqueId,
+    },
+    create,
+  );
+
+  async function create(): Promise<boolean> {
+    // Même schéma de validation que l'API (@app/shared).
+    const parsed = createActionSchema.safeParse({
+      title,
+      taskId,
+      techniqueId: techniqueId || null,
+      ...(originObject && analysisObjectLinks(originObject)),
+    });
+    if (!parsed.success || !chosenInitiative) {
+      setError({ key: 'action.invalid' });
+      return false;
+    }
+    try {
+      const action = await api.createAction(chosenInitiative, parsed.data);
+      // Saisie enregistrée : pas d'alerte.
+      closeSilently();
+      onCreated(action);
+      return true;
+    } catch (e) {
+      setError(toUiError(e));
+      return false;
+    }
+  }
+
+  const techniqueOption = (item: TechniqueDto, usage?: TechniqueUsage) => (
+    <option key={item.id} value={item.id} title={babokEnglishName(item, locale)}>
+      {item.section} {item.name[locale]}
+      {usage && ` · ${t('suggestion.techniqueUsage', { ...usage })}`}
+    </option>
+  );
+
+  return (
+    <Dialog title={t('actions.new')} onClose={onClose}>
+      {editable.length === 0 ? (
+        <p className="notice">{t('actions.noEditableInitiative')}</p>
+      ) : (
+        <form className="stacked" onSubmit={submit}>
+          <label>
+            {t('action.initiative')}
+            <select value={chosenInitiative} disabled={!!originObject} onChange={(e) => setChosenInitiative(e.target.value)}>
+              {editable.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.code} · {i.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {loadedOriginObject && <p>{t('action.linkedTo', { name: loadedOriginObject.name })}</p>}
+          <label>
+            {t('action.title')}
+            <input data-autofocus value={title} maxLength={ACTION_TITLE_MAX_LENGTH} onChange={(e) => setTitle(e.target.value)} />
+          </label>
+          {suggestions.length > 0 && (
+            <fieldset className="suggestions">
+              <legend>{t('suggestion.tasks')}</legend>
+              <ul>
+                {suggestions.map((s) => {
+                  const suggested = findBabokElement(babok, s.taskId);
+                  return (
+                    suggested && (
+                      <li key={s.taskId}>
+                        <button
+                          type="button"
+                          aria-pressed={taskId === s.taskId}
+                          title={babokEnglishName(suggested, locale)}
+                          onClick={() => setChosenTask(s.taskId)}
+                        >
+                          <strong>{suggested.section}</strong> {suggested.name[locale]}
+                        </button>{' '}
+                        <small>{t(`suggestion.task.${s.reason}`)}</small>
+                      </li>
+                    )
+                  );
+                })}
+              </ul>
+            </fieldset>
+          )}
+          <label>
+            <TermLabel term="babok.task" />
+            <select value={taskId} onChange={(e) => setChosenTask(e.target.value)}>
+              <option value="" disabled>
+                {t('action.chooseTask')}
+              </option>
+              <TaskOptions babok={babok} />
+            </select>
+          </label>
+          {task && <BabokPreview element={task} />}
+          <label>
+            <TermLabel term="babok.technique" />
+            <select value={techniqueId} onChange={(e) => setTechniqueId(e.target.value)}>
+              <option value="">{t('action.noTechnique')}</option>
+              {techniques.suggested.length > 0 && (
+                <optgroup label={t('suggestion.techniques')}>
+                  {techniques.suggested.map((s) => techniqueOption(s.technique, s.usage))}
+                </optgroup>
+              )}
+              <optgroup label={t('action.otherTechniques')}>{techniques.others.map((o) => techniqueOption(o))}</optgroup>
+            </select>
+          </label>
+          {technique && <BabokPreview element={technique} />}
+          <button type="submit">{t('action.create')}</button>
+        </form>
+      )}
+      <ErrorMessage error={error} />
+    </Dialog>
+  );
+}

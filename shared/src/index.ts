@@ -9,6 +9,7 @@ export * from './feature-export.js';
 export * from './gherkin-check.js';
 export * from './design-tokens.js';
 export * from './i18n.js';
+export * from './initiative-tree.js';
 export * from './links.js';
 export * from './needs.js';
 export * from './pages.js';
