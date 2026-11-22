@@ -9,7 +9,14 @@ nom anglais, le nom français proposé et un résumé rédigé pour ACTA en fran
 et en anglais. Les résumés sont écrits pour ACTA, dans le ton des résumés du
 BABOK déjà livrés (migration `0009`) ; ils ne reprennent aucun texte de l'IIBA.
 
-## Avertissement : ce qui est le moins sûr
+## Validation
+
+Validé par la responsable fonctionnelle le 22.11.2026, contre son exemplaire
+de l'Extension Agile v2 : liste des éléments, numéros de section, noms,
+résumés et relations technique ↔ horizon. Les points ci-dessous, d'abord
+signalés comme incertains, sont donc confirmés.
+
+## Avertissement initial : ce qui était le moins sûr
 
 Claude n'a pas eu accès au texte de l'Extension Agile v2 pour établir ce
 fichier. Sont reconstitués de mémoire, et donc à contrôler en priorité contre
@@ -128,55 +135,47 @@ place dans l'ordre alphabétique.
 
 ## Relations technique agile ↔ horizons (D2, D4)
 
-Les « ? » sont des propositions de Claude, faites de mémoire, et non des
-relations lues dans l'ouvrage. D2 ne retient que les relations que l'ouvrage
-énonce explicitement : ne remplacer un « ? » par « X » que si le texte l'énonce,
-effacer les autres, ajouter les relations manquantes, puis remplacer « à
-confirmer » par « confirmé ». Les noms ne sont donnés que comme repère :
-seuls comptent la section et le nom du tableau du chapitre 7.
+Relations vérifiées par la responsable fonctionnelle contre son exemplaire
+(D2, D4) : chaque « X » est énoncé par l'ouvrage. Les noms ne sont donnés
+que comme repère : seuls comptent la section et le nom du tableau du
+chapitre 7.
 
 | Section | Technique agile | horizon Stratégie | horizon Initiative | horizon Livraison | État |
 |---|---|:-:|:-:|:-:|---|
-| 7.1 | Affinage du backlog | | ? | ? | à confirmer |
-| 7.2 | Développement piloté par le comportement (BDD) | | | ? | à confirmer |
-| 7.3 | Planification éclair | | ? | ? | à confirmer |
-| 7.4 | Cartographie des impacts | ? | ? | | à confirmer |
-| 7.5 | Récits de situation | | ? | ? | à confirmer |
-| 7.6 | Analyse de Kano | | ? | ? | à confirmer |
-| 7.7 | Produit minimum viable (MVP) | ? | ? | | à confirmer |
-| 7.8 | Personas | ? | ? | ? | à confirmer |
-| 7.9 | Atelier de planification | | ? | ? | à confirmer |
-| 7.10 | Kanban de portefeuille | ? | | | à confirmer |
-| 7.11 | Feuille de route produit | ? | ? | | à confirmer |
-| 7.12 | Modèle d'alignement sur la finalité | ? | ? | | à confirmer |
-| 7.13 | Options réelles | ? | ? | ? | à confirmer |
-| 7.14 | Estimation relative | | ? | ? | à confirmer |
-| 7.15 | Rétrospectives | ? | ? | ? | à confirmer |
-| 7.16 | Revues | | ? | ? | à confirmer |
-| 7.17 | Spikes | | ? | ? | à confirmer |
-| 7.18 | Décomposition des récits | | ? | ? | à confirmer |
-| 7.19 | Élaboration des récits | | | ? | à confirmer |
-| 7.20 | Cartographie des récits | | ? | ? | à confirmer |
-| 7.21 | Scénarimage | | ? | ? | à confirmer |
-| 7.22 | Modélisation de la valeur | ? | ? | | à confirmer |
-| 7.23 | Cartographie de la chaîne de valeur | ? | ? | | à confirmer |
-| 7.24 | Élaboration de la vision | ? | ? | | à confirmer |
+| 7.1 | Affinage du backlog | | X | X | confirmé |
+| 7.2 | Développement piloté par le comportement (BDD) | | | X | confirmé |
+| 7.3 | Planification éclair | | X | X | confirmé |
+| 7.4 | Cartographie des impacts | X | X | | confirmé |
+| 7.5 | Récits de situation | | X | X | confirmé |
+| 7.6 | Analyse de Kano | | X | X | confirmé |
+| 7.7 | Produit minimum viable (MVP) | X | X | | confirmé |
+| 7.8 | Personas | X | X | X | confirmé |
+| 7.9 | Atelier de planification | | X | X | confirmé |
+| 7.10 | Kanban de portefeuille | X | | | confirmé |
+| 7.11 | Feuille de route produit | X | X | | confirmé |
+| 7.12 | Modèle d'alignement sur la finalité | X | X | | confirmé |
+| 7.13 | Options réelles | X | X | X | confirmé |
+| 7.14 | Estimation relative | | X | X | confirmé |
+| 7.15 | Rétrospectives | X | X | X | confirmé |
+| 7.16 | Revues | | X | X | confirmé |
+| 7.17 | Spikes | | X | X | confirmé |
+| 7.18 | Décomposition des récits | | X | X | confirmé |
+| 7.19 | Élaboration des récits | | | X | confirmé |
+| 7.20 | Cartographie des récits | | X | X | confirmé |
+| 7.21 | Scénarimage | | X | X | confirmé |
+| 7.22 | Modélisation de la valeur | X | X | | confirmé |
+| 7.23 | Cartographie de la chaîne de valeur | X | X | | confirmé |
+| 7.24 | Élaboration de la vision | X | X | | confirmé |
 
-## Questions pour la relecture
+## Décisions de relecture (22.11.2026)
 
-1. Les chapitres sont-ils bien le ch. 4 pour les principes, le ch. 5 pour les
-   horizons et le ch. 7 pour les techniques ? La liste des 24 techniques
-   (Lightweight Documentation comprise ou non) et leur numérotation
-   correspondent-elles à votre exemplaire ? Les noms anglais sont-ils
-   orthographiés comme dans l'ouvrage (« Behaviour », « Modelling ») ?
-2. D3 met le terme anglais en info-bulle. Le BABOK livré a toutefois un
-   précédent, « Récits utilisateurs (User Stories) ». Garde-t-on de même un
-   sigle anglais dans le nom français (BDD, MVP) ?
-3. « Revues » (7.16) porte le même nom que la technique BABOK 10.37 : le
-   préfixe EA suffit-il, ou faut-il un nom plus précis ?
-4. « Backlog » : avec ou sans majuscule, par cohérence avec « Gestion du
-   Backlog » (BABOK 10.2) ?
-5. Les noms d'horizon commencent-ils par une minuscule dans les listes et les
-   pastilles (« horizon Stratégie ») ?
-6. L'identifiant stable proposé (`ae-` suivi du numéro de section) vous
-   convient-il ?
+1. Chapitres, liste des 24 techniques (sans Lightweight Documentation),
+   numéros de section et noms anglais : conformes à l'ouvrage.
+2. Les noms français sont ceux des tableaux, sigles compris (BDD, MVP) ;
+   le terme anglais est en info-bulle (D3).
+3. « Revues » (7.16) garde ce nom ; le préfixe EA le distingue de la
+   technique BABOK 10.37.
+4. « Affinage du backlog » s'écrit avec une minuscule à « backlog ».
+5. Les noms d'horizon s'écrivent « horizon Stratégie », « horizon
+   Initiative », « horizon Livraison ».
+6. Identifiant stable : `ae-` suivi du numéro de section.
