@@ -109,6 +109,7 @@ const babok: BabokDto = {
     { kind: 'task', id: '4.1', section: '4.1', knowledgeAreaId: '4', name: text('Prepare for Elicitation', 'Préparer l’élicitation'), summary: text('…', '…'), techniqueIds: ['10.5', '10.25'] },
   ],
   techniques: [technique('10.1'), technique('10.5'), technique('10.25'), technique('10.37')],
+  agile: { principles: [], horizons: [], techniques: [] },
 };
 
 test('techniques proposées : les 50, celles de la tâche en tête, chaque groupe dans l’ordre du référentiel', () => {

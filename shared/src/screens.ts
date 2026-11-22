@@ -37,9 +37,15 @@ export type TicketTab = (typeof TICKET_TABS)[number];
 /** Onglets d'une page : Contenu, Liens, Commentaires, Pièces jointes, Historique. */
 export const PAGE_TABS = ['content', 'links', 'comments', 'attachments', 'history'] as const;
 export type PageTab = (typeof PAGE_TABS)[number];
-/** Onglets du référentiel BABOK : Domaines et tâches, Techniques. */
-export const BABOK_TABS = ['areas', 'techniques'] as const;
+/**
+ * Onglets du référentiel : Domaines et tâches, Techniques, puis ceux de
+ * l'Extension Agile, Principes agiles, Horizons, Techniques agiles (D7).
+ */
+export const AGILE_BABOK_TABS = ['principles', 'horizons', 'agile-techniques'] as const;
+export const BABOK_TABS = ['areas', 'techniques', ...AGILE_BABOK_TABS] as const;
 export type BabokTab = (typeof BABOK_TABS)[number];
+/** Onglet de l'Extension Agile. */
+export const isAgileBabokTab = (tab: BabokTab): boolean => (AGILE_BABOK_TABS as readonly string[]).includes(tab);
 /**
  * Onglets de l'administration : Comptes, Initiatives sans propriétaire,
  * Acronymes, Statuts d'exigence, Types de ticket, Modèles de page, Pièces jointes.
@@ -52,7 +58,10 @@ export type Screen =
   /** Hors de l'arborescence, dans la zone de droite (N3). */
   | { kind: 'alerts' }
   | { kind: 'babok'; tab: BabokTab }
-  /** Domaine, tâche ou technique, désigné par sa section (ex. « 3.1 »). */
+  /**
+   * Domaine, tâche ou technique, désigné par sa section (ex. « 3.1 ») ; principe,
+   * horizon ou technique agile, par son identifiant stable (ex. « ae-7.17 »).
+   */
   | { kind: 'babokElement'; elementId: string }
   | { kind: 'admin'; tab: AdminTab }
   /** Modèle de page de l'administration ; `null` : ajout d'un modèle. */
@@ -87,8 +96,8 @@ const ID = new RegExp(`^${UUID}$`, 'i');
 const INITIATIVE_PATH = new RegExp(`^/initiatives/(${UUID})((?:/[^/]+)*)/?$`, 'i');
 /** Segment de l'ajout d'un modèle de page. */
 const NEW_TEMPLATE = 'new';
-/** Identifiant d'un élément du référentiel : sa section. */
-const BABOK_ELEMENT = /^\d+(?:\.\d+)*$/;
+/** Identifiant d'un élément du référentiel : sa section, précédée de « ae- » pour l'Extension Agile. */
+const BABOK_ELEMENT = /^(?:ae-)?\d+(?:\.\d+)*$/;
 
 /** Segment d'onglet : absent pour le premier onglet. */
 const tabSegment = (tabs: readonly string[], tab: string) => (tab === tabs[0] ? '' : `/${tab}`);

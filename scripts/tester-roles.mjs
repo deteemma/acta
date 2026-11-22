@@ -38,6 +38,7 @@ const SECTIONS = [
   '28-contexte-et-langue',
   '29-historique-des-scenarios',
   '30-scenarios-dans-la-palette',
+  '31-referentiel-agile',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);

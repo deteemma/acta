@@ -21,7 +21,7 @@ const element = (row: ElementRow) => ({
   summary: { en: row.summary_en, fr: row.summary_fr },
 });
 
-/** Référentiel BABOK (ticket 06, ADR-0012), identique pour tous : lecture seule. */
+/** Référentiel BABOK (ticket 06, ADR-0012) et de l'Extension Agile, identiques pour tous : lecture seule. */
 @Injectable()
 export class BabokService {
   constructor(private readonly database: DatabaseService) {}
@@ -49,6 +49,15 @@ export class BabokService {
       .select(['l.task_id', 'l.technique_id'])
       .orderBy('t.position')
       .execute();
+    const agilePrinciples = await tx.selectFrom('agile_principle').select(ELEMENT_COLUMNS).orderBy('position').execute();
+    const horizons = await tx.selectFrom('agile_horizon').select(ELEMENT_COLUMNS).orderBy('position').execute();
+    const agileTechniques = await tx.selectFrom('agile_technique').select(ELEMENT_COLUMNS).orderBy('position').execute();
+    const horizonLinks = await tx
+      .selectFrom('agile_technique_horizon as l')
+      .innerJoin('agile_horizon as h', 'h.id', 'l.horizon_id')
+      .select(['l.technique_id', 'l.horizon_id'])
+      .orderBy('h.position')
+      .execute();
     return {
       knowledgeAreas: knowledgeAreas.map((row) => ({ kind: 'knowledgeArea' as const, ...element(row) })),
       tasks: tasks.map((row) => ({
@@ -58,6 +67,16 @@ export class BabokService {
         techniqueIds: links.filter((l) => l.task_id === row.id).map((l) => l.technique_id),
       })),
       techniques: techniques.map((row) => ({ kind: 'technique' as const, ...element(row) })),
+      // Extension Agile (migration 0035) : consultable par tous, module activé ou non (D6).
+      agile: {
+        principles: agilePrinciples.map((row) => ({ kind: 'agilePrinciple' as const, ...element(row) })),
+        horizons: horizons.map((row) => ({ kind: 'agileHorizon' as const, ...element(row) })),
+        techniques: agileTechniques.map((row) => ({
+          kind: 'agileTechnique' as const,
+          ...element(row),
+          horizonIds: horizonLinks.filter((l) => l.technique_id === row.id).map((l) => l.horizon_id),
+        })),
+      },
     };
   }
 

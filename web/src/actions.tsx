@@ -10,6 +10,7 @@ import {
   type BabokDto,
   type BabokElementDto,
   babokEnglishName,
+  babokSectionLabel,
   can,
   canBeAssignee,
   canCreateActionIn,
@@ -71,11 +72,11 @@ export function BabokPreview({ element }: { element: BabokElementDto }) {
         aria-describedby={previewId}
         onClick={() => void goTo({ kind: 'babokElement', elementId: element.id })}
       >
-        <strong>{element.section}</strong> {element.name[locale]}
+        <strong>{babokSectionLabel(element, locale)}</strong> {element.name[locale]}
       </button>
       <span role="tooltip" id={previewId} className="preview-card">
         <small>
-          {t(`babok.${element.kind}`)} · {t('babok.section', { section: element.section })}
+          {t(`babok.${element.kind}`)} · {t('babok.section', { section: babokSectionLabel(element, locale) })}
         </small>
         {english && <em lang="en">{english}</em>}
         <span>{element.summary[locale]}</span>

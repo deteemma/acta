@@ -20,6 +20,7 @@ const babok: BabokDto = {
     { kind: 'task', id: '4.1', section: '4.1', knowledgeAreaId: '4', name: text('Prepare for Elicitation', 'Préparer l’élicitation'), summary, techniqueIds: [] },
   ],
   techniques: [],
+  agile: { principles: [], horizons: [], techniques: [] },
 };
 
 const person = { userId: 'alice', email: 'alice@exemple.test', displayName: 'alice' };

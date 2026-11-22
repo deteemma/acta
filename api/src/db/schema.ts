@@ -484,8 +484,22 @@ export interface BabokTaskTechniqueTable {
   technique_id: string;
 }
 
+/** Référentiel de l'Extension Agile (migration 0035) : lecture seule, aucune écriture possible. */
+export type AgilePrincipleTable = BabokElementColumns;
+export type AgileHorizonTable = BabokElementColumns;
+export type AgileTechniqueTable = BabokElementColumns;
+
+export interface AgileTechniqueHorizonTable {
+  technique_id: string;
+  horizon_id: string;
+}
+
 export interface Database {
   action_stakeholder: ActionStakeholderTable;
+  agile_horizon: AgileHorizonTable;
+  agile_principle: AgilePrincipleTable;
+  agile_technique: AgileTechniqueTable;
+  agile_technique_horizon: AgileTechniqueHorizonTable;
   app_settings: AppSettingsTable;
   app_user: AppUserTable;
   attachment: AttachmentTable;
