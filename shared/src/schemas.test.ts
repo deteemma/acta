@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addMemberSchema, canEditInitiativeCode, createAccountSchema, updateInitiativeSchema, updateMemberSchema } from './schemas.js';
+import {
+  addMemberSchema,
+  canEditInitiativeCode,
+  canToggleAgileExtension,
+  createAccountSchema,
+  createInitiativeSchema,
+  updateInitiativeSchema,
+  updateMemberSchema,
+} from './schemas.js';
 
 const valid = (input: unknown) => updateInitiativeSchema.safeParse(input).success;
 
@@ -78,4 +86,18 @@ test('le code d’une initiative ne se modifie que par le propriétaire, tant qu
   assert.equal(canEditInitiativeCode({ ...base, myRole: 'contributor' }), false);
   assert.equal(canEditInitiativeCode({ ...base, codeFrozen: true }), false);
   assert.equal(canEditInitiativeCode({ ...base, archivedAt: '2026-11-01T00:00:00Z' }), false);
+});
+
+test('Extension Agile : activée ou désactivée par la fiche, jamais à la création (D10)', () => {
+  assert.equal(updateInitiativeSchema.parse({ agileExtensionEnabled: true }).agileExtensionEnabled, true);
+  assert.equal(valid({ agileExtensionEnabled: null }), false);
+  assert.equal('agileExtensionEnabled' in createInitiativeSchema.parse({ code: 'AG', name: 'Agile', agileExtensionEnabled: true }), false);
+});
+
+test('Extension Agile : le propriétaire seul l’active ou la désactive, jamais sur une initiative archivée (D11)', () => {
+  const base = { myRole: 'owner', archivedAt: null } as const;
+  assert.equal(canToggleAgileExtension(base), true);
+  assert.equal(canToggleAgileExtension({ ...base, myRole: 'contributor' }), false);
+  assert.equal(canToggleAgileExtension({ ...base, myRole: 'reader' }), false);
+  assert.equal(canToggleAgileExtension({ ...base, archivedAt: '2026-11-01T00:00:00Z' }), false);
 });

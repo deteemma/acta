@@ -55,6 +55,8 @@ export interface InitiativeTable {
   planned_end_date: Optional<string>;
   archived_at: ColumnType<Date | null, undefined, Date | string | null>;
   archived_by: Optional<string>;
+  /** Extension Agile activée ; désactivée à la création (Extension Agile, D10). */
+  agile_extension_enabled: Generated<boolean>;
   created_by: Generated<string>;
   created_at: Timestamp;
   updated_at: Timestamp;

@@ -71,6 +71,14 @@ export class InitiativesService {
       if (input.code !== undefined && input.code !== current.code && !can(role, 'editCode')) {
         throw new ForbiddenException();
       }
+      // L'Extension Agile : propriétaire seul (D11) ; renvoyer la valeur inchangée reste permis.
+      if (
+        input.agileExtensionEnabled !== undefined &&
+        input.agileExtensionEnabled !== current.agile_extension_enabled &&
+        !can(role, 'toggleAgileExtension')
+      ) {
+        throw new ForbiddenException();
+      }
       // Dès qu'une référence a été attribuée, le code ne change plus.
       if (input.code !== undefined && input.code !== current.code && current.code_frozen) {
         throw referenceRefusal('codeFrozen');
@@ -85,6 +93,7 @@ export class InitiativesService {
             analysis_approach: input.analysisApproach,
             start_date: input.startDate,
             planned_end_date: input.plannedEndDate,
+            agile_extension_enabled: input.agileExtensionEnabled,
             updated_at: sql`now()`,
           })
           .where('id', '=', initiativeId)
@@ -287,6 +296,7 @@ export class InitiativesService {
         sql<string | null>`i.start_date::text`.as('start_date'),
         sql<string | null>`i.planned_end_date::text`.as('planned_end_date'),
         'i.archived_at',
+        'i.agile_extension_enabled',
         'i.created_at',
         'm.role',
         sql<boolean>`initiative_has_references(i.id)`.as('code_frozen'),
@@ -303,6 +313,7 @@ function toDto(row: {
   start_date: string | null;
   planned_end_date: string | null;
   archived_at: Date | null;
+  agile_extension_enabled: boolean;
   created_at: Date;
   role: InitiativeDto['myRole'];
   code_frozen: boolean;
@@ -319,6 +330,7 @@ function toDto(row: {
     createdAt: row.created_at.toISOString(),
     myRole: row.role,
     codeFrozen: row.code_frozen,
+    agileExtensionEnabled: row.agile_extension_enabled,
   };
 }
 

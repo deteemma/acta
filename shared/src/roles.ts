@@ -58,6 +58,8 @@ export const INITIATIVE_PERMISSIONS = {
   editAttachments: 'contributor',
   /** Créer, modifier, ordonner et supprimer les scénarios Gherkin d'une exigence (phase 3, D17). */
   editScenarios: 'contributor',
+  /** Activer ou désactiver l'Extension Agile sur l'initiative (Extension Agile, D11). */
+  toggleAgileExtension: 'owner',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;
