@@ -82,7 +82,15 @@ await check('alice (propriétaire) la désactive par l’API : 200', async () =>
   assert.equal(r.status, 200);
   assert.equal(r.body.agileExtensionEnabled, false);
 });
-await check('les initiatives existantes ont l’Extension Agile désactivée (D10)', async () => {
-  const r = await asUserInDb(alice.sub, `SELECT count(*)::int AS n FROM initiative WHERE agile_extension_enabled AND id <> $1`, [aeInitiativeId]);
-  assert.equal(r.rows[0].n, 0);
+// Une colonne ajoutée NOT NULL DEFAULT false prend la valeur false sur toutes
+// les lignes existantes. On vérifie la colonne plutôt que les données : une
+// initiative réelle peut avoir été activée depuis la migration.
+await check('les initiatives existantes ont l’Extension Agile désactivée : colonne non nulle, false par défaut (D10)', async () => {
+  const r = await asUserInDb(
+    alice.sub,
+    `SELECT column_default, is_nullable FROM information_schema.columns
+     WHERE table_name = 'initiative' AND column_name = 'agile_extension_enabled'`,
+    [],
+  );
+  assert.deepEqual(r.rows, [{ column_default: 'false', is_nullable: 'NO' }]);
 });

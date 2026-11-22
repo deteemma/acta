@@ -138,6 +138,14 @@ export function agileTechniquesOfHorizon(babok: BabokDto, horizonId: string): Ag
   return babok.agile.techniques.filter((technique) => technique.horizonIds.includes(horizonId));
 }
 
+/**
+ * Techniques agiles proposées pour une action, en une liste simple triée par
+ * numéro de section (7.2 avant 7.10) ; « Aucune » vient en tête, côté écran (D15).
+ */
+export function agileTechniqueChoices(babok: BabokDto): AgileTechniqueDto[] {
+  return [...babok.agile.techniques].sort((a, b) => a.section.localeCompare(b.section, 'en', { numeric: true }));
+}
+
 /** Texte cherché par la palette : numéros affichés dans les deux langues et noms. */
 const searchText = (element: BabokElementDto): string =>
   [...new Set([babokSectionLabel(element, 'fr'), babokSectionLabel(element, 'en')]), element.name.fr, element.name.en].join(' ');

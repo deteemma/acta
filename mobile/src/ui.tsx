@@ -1,6 +1,6 @@
 // Éléments d'interface communs aux écrans des actions. Couleurs, police et
 // espacements du thème (refonte du design, ticket 06).
-import { type BabokElementDto, babokEnglishName, type Locale, type StatusTone } from '@app/shared';
+import { type BabokElementDto, babokEnglishName, babokSectionLabel, type Locale, type StatusTone } from '@app/shared';
 import { type LucideIcon, X } from 'lucide-react-native';
 import { type ComponentRef, type ReactNode, useEffect, useRef } from 'react';
 import { Modal, Pressable, Text as RNText, SafeAreaView, ScrollView, StyleSheet, type TextProps, View } from 'react-native';
@@ -125,7 +125,7 @@ export function EmptyState({ icon: Icon, title, hint }: { icon: LucideIcon; titl
  */
 export function babokLabel(element: BabokElementDto, locale: Locale): string {
   const english = babokEnglishName(element, locale);
-  return `${element.section} ${element.name[locale]}${english ? ` (${english})` : ''}`;
+  return `${babokSectionLabel(element, locale)} ${element.name[locale]}${english ? ` (${english})` : ''}`;
 }
 
 /** Date et heure (création, modification), dans la langue de l'interface. */

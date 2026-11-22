@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   type ActionDto,
   type ActionStatus,
@@ -7,6 +7,7 @@ import {
   checkTicketFields,
   type CreateActionInput,
   type NeedRefDto,
+  offersAgileTechnique,
   type RequirementRefDto,
   sortByName,
   sortByReference,
@@ -72,6 +73,7 @@ export class ActionsService {
         throw actionRefusal('suggestionNotOffered');
       }
       if (input.epicId) await checkEpic(tx, initiativeId, input.epicId);
+      if (input.agileTechniqueId) await checkAgileExtension(tx, initiativeId);
       if (input.stakeholderIds) await this.checkStakeholders(tx, initiativeId, input.stakeholderIds);
       if (input.needIds) await this.checkNeeds(tx, initiativeId, input.needIds);
       if (input.requirementIds) await this.checkRequirements(tx, initiativeId, input.requirementIds);
@@ -86,6 +88,7 @@ export class ActionsService {
             description: input.description ?? null,
             task_id: input.taskId,
             technique_id: input.techniqueId ?? null,
+            agile_technique_id: input.agileTechniqueId ?? null,
             assignee_id: assigneeId,
             due_date: input.dueDate ?? null,
             epic_id: input.epicId ?? null,
@@ -120,6 +123,10 @@ export class ActionsService {
         await checkAssignee(tx, initiativeId, input.assigneeId);
       }
       if (input.epicId && input.epicId !== current.epic?.id) await checkEpic(tx, initiativeId, input.epicId);
+      // Retirer la technique agile reste permis ; en poser une demande le module activé (D14).
+      if (input.agileTechniqueId && input.agileTechniqueId !== current.agileTechniqueId) {
+        await checkAgileExtension(tx, initiativeId);
+      }
       // Statut du type Action, actif, ou celui que l'action porte déjà (ticket 29).
       if (input.status !== undefined) {
         const refusal = checkTicketFields(await loadTicketTypes(tx), 'action', { status: input.status }, current.status);
@@ -155,6 +162,7 @@ export class ActionsService {
                   description: input.description,
                   task_id: input.taskId,
                   technique_id: input.techniqueId,
+                  agile_technique_id: input.agileTechniqueId,
                   assignee_id: input.assigneeId,
                   due_date: input.dueDate,
                   epic_id: input.epicId,
@@ -352,12 +360,14 @@ export class ActionsService {
         'i.code as initiative_code',
         'i.name as initiative_name',
         'i.archived_at as initiative_archived_at',
+        'i.agile_extension_enabled as initiative_agile_extension_enabled',
         'mine.role as my_role',
         'a.reference',
         'a.title',
         'a.description',
         'a.task_id',
         'a.technique_id',
+        'a.agile_technique_id',
         'a.assignee_id',
         'au.email as assignee_email',
         'au.display_name as assignee_display_name',
@@ -404,6 +414,7 @@ function toDto(
       name: r.initiative_name,
       archived: r.initiative_archived_at != null,
       myRole: r.my_role,
+      agileExtensionEnabled: r.initiative_agile_extension_enabled,
     },
     reference: r.reference,
     title: r.title,
@@ -411,6 +422,7 @@ function toDto(
     // Une Action a toujours une tâche et un responsable (contrainte ticket_action_fields).
     taskId: r.task_id!,
     techniqueId: r.technique_id,
+    agileTechniqueId: r.agile_technique_id,
     assignee: {
       userId: r.assignee_id!,
       email: r.assignee_email,
@@ -441,10 +453,30 @@ async function write(run: () => Promise<unknown>): Promise<void> {
     if (isEpicViolation(error)) throw ticketRefusal('unknownEpic');
     const statusRefusal = ticketStatusViolation(error);
     if (statusRefusal) throw ticketRefusal(statusRefusal);
-    // Tâche ou technique absente du référentiel.
-    if (isConstraintViolation(error, 'ticket_task_id_fkey') || isConstraintViolation(error, 'ticket_technique_id_fkey')) {
+    // Tâche, technique ou technique agile absente du référentiel.
+    if (
+      isConstraintViolation(error, 'ticket_task_id_fkey') ||
+      isConstraintViolation(error, 'ticket_technique_id_fkey') ||
+      isConstraintViolation(error, 'ticket_agile_technique_id_fkey')
+    ) {
       throw actionRefusal('unknownBabokElement');
     }
+    // Module désactivé entre-temps (D14).
+    if (isConstraintViolation(error, 'ticket_agile_extension_enabled')) throw actionRefusal('agileExtensionDisabled');
+    // Créée depuis une action suggérée (D16) : déjà refusé par le schéma partagé.
+    if (isConstraintViolation(error, 'ticket_agile_technique_suggested')) throw new BadRequestException();
     throw error;
+  }
+}
+
+/** Première barrière : une technique agile ne se pose que si l'Extension Agile est activée (D6, D14). */
+async function checkAgileExtension(tx: Tx, initiativeId: string): Promise<void> {
+  const initiative = await tx
+    .selectFrom('initiative')
+    .select('agile_extension_enabled')
+    .where('id', '=', initiativeId)
+    .executeTakeFirst();
+  if (!offersAgileTechnique({ agileExtensionEnabled: initiative?.agile_extension_enabled ?? false })) {
+    throw actionRefusal('agileExtensionDisabled');
   }
 }

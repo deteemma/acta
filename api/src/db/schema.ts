@@ -90,6 +90,8 @@ export interface TicketTable {
   /** Action seulement ; obligatoire pour elle (contrainte ticket_action_fields). */
   task_id: Optional<string>;
   technique_id: Optional<string>;
+  /** Technique agile (Extension Agile, D14) ; seulement si le module est activé sur l'initiative. */
+  agile_technique_id: Optional<string>;
   /** Obligatoire pour l'Action, facultatif pour les autres types. */
   assignee_id: Optional<string>;
   /** Dernière attribution (migration 0016) : écrite par un déclencheur. */

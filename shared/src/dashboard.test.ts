@@ -29,11 +29,12 @@ const person = { userId: 'alice', email: 'alice@exemple.test', displayName: 'ali
 function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
   return {
     reference: 'CRM-AC-001',
-    initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor' },
+    initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor', agileExtensionEnabled: false },
     title: fields.id,
     description: null,
     taskId: '3.1',
     techniqueId: null,
+    agileTechniqueId: null,
     assignee: { ...person, eligible: true },
     assignedBy: person,
     assignedAt: '2026-10-01T08:00:00.000Z',

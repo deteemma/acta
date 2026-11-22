@@ -110,7 +110,7 @@ export function InitiativeForm({ initiative, onSaved }: { initiative: Initiative
       setSaved(true);
       return true;
     } catch (e) {
-      setError(e instanceof ApiError && e.status === 400 ? { key: 'initiative.invalid' } : toUiError(e));
+      setError(e instanceof ApiError && e.status === 400 && !e.refusal ? { key: 'initiative.invalid' } : toUiError(e));
       return false;
     }
   }

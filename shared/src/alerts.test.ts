@@ -12,11 +12,12 @@ const bruno = { userId: 'bruno', email: 'bruno@exemple.test', displayName: 'Brun
 function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
   return {
     reference: 'CRM-AC-001',
-    initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor' },
+    initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor', agileExtensionEnabled: false },
     title: fields.id,
     description: null,
     taskId: '3.1',
     techniqueId: null,
+    agileTechniqueId: null,
     assignee: { ...alice, eligible: true },
     assignedBy: bruno,
     assignedAt: '2026-10-20T12:00:00.000Z',
@@ -76,7 +77,7 @@ test('une action En attente garde ses alertes', () => {
 });
 
 test('aucune alerte pour une action d’une initiative archivée', () => {
-  const archived = { id: 'crm', code: 'CRM', name: 'CRM', archived: true, myRole: 'contributor' as const };
+  const archived = { id: 'crm', code: 'CRM', name: 'CRM', archived: true, myRole: 'contributor' as const, agileExtensionEnabled: false };
   assert.deepEqual(myAlerts(types, [action({ id: 'a1', initiative: archived, dueDate: '2026-10-01' })], me, today), []);
 });
 

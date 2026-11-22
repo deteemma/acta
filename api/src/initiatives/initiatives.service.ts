@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  AGILE_TECHNIQUES_IN_USE,
+  type AgileTechniquesInUseBody,
   can,
   checkInvitee,
   checkTeamChange,
@@ -79,6 +81,17 @@ export class InitiativesService {
       ) {
         throw new ForbiddenException();
       }
+      // Désactivation refusée tant qu'une action porte une technique agile, quel que soit son statut (D13).
+      if (input.agileExtensionEnabled === false && current.agile_extension_enabled) {
+        const { count } = await tx
+          .selectFrom('ticket')
+          .select((eb) => eb.fn.countAll<string>().as('count'))
+          .where('initiative_id', '=', initiativeId)
+          .where('type', '=', 'action')
+          .where('agile_technique_id', 'is not', null)
+          .executeTakeFirstOrThrow();
+        if (Number(count) > 0) throw agileTechniquesInUse(Number(count));
+      }
       // Dès qu'une référence a été attribuée, le code ne change plus.
       if (input.code !== undefined && input.code !== current.code && current.code_frozen) {
         throw referenceRefusal('codeFrozen');
@@ -102,6 +115,10 @@ export class InitiativesService {
         if (isUniqueViolation(error)) throw new ConflictException('Ce code d’initiative est déjà utilisé');
         // Référence attribuée entre-temps.
         if (isConstraintViolation(error, 'initiative_code_frozen')) throw referenceRefusal('codeFrozen');
+        // Technique agile posée entre-temps : la base donne le nombre d'actions (D13).
+        if (isConstraintViolation(error, 'initiative_agile_techniques_in_use')) {
+          throw agileTechniquesInUse(Number((error as { detail?: string }).detail));
+        }
         // Fin prévue avant le début, une fois combinée avec la date déjà enregistrée.
         if (isConstraintViolation(error, 'initiative_dates_order')) {
           throw new BadRequestException('La fin prévue précède le début');
@@ -302,6 +319,12 @@ export class InitiativesService {
         sql<boolean>`initiative_has_references(i.id)`.as('code_frozen'),
       ]);
   }
+}
+
+/** Refus de désactiver l'Extension Agile, avec le nombre d'actions concernées (D13). */
+function agileTechniquesInUse(count: number) {
+  const body: AgileTechniquesInUseBody & { statusCode: number } = { statusCode: 400, refusal: AGILE_TECHNIQUES_IN_USE, count };
+  return new BadRequestException(body);
 }
 
 function toDto(row: {

@@ -110,6 +110,16 @@ export const canEditInitiativeCode = (initiative: Pick<InitiativeDto, 'myRole' |
 export const canToggleAgileExtension = (initiative: Pick<InitiativeDto, 'myRole' | 'archivedAt'>) =>
   can(initiative.myRole, 'toggleAgileExtension', { archived: initiative.archivedAt != null });
 
+/**
+ * Refus de désactiver l'Extension Agile : des actions de l'initiative portent une
+ * technique agile, quel que soit leur statut ; leur nombre est dans le corps (D13).
+ */
+export const AGILE_TECHNIQUES_IN_USE = 'agileTechniquesInUse';
+export interface AgileTechniquesInUseBody {
+  refusal: typeof AGILE_TECHNIQUES_IN_USE;
+  count: number;
+}
+
 export interface InitiativeMemberDto {
   userId: string;
   email: string | null;

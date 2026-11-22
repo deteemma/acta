@@ -397,6 +397,8 @@ export interface TicketSnapshot {
   /** Action. */
   taskId: string | null;
   techniqueId: string | null;
+  /** Action : technique agile (Extension Agile, D16). */
+  agileTechniqueId: string | null;
   dueDate: string | null;
   /** Risque. */
   probability: RiskLevel | null;
@@ -428,7 +430,7 @@ export interface TicketHistoryEntry {
   changes: TicketChange[];
 }
 
-const TICKET_VALUE_FIELDS = ['title', 'description', 'status', 'taskId', 'techniqueId', 'dueDate', 'probability', 'impact'] as const;
+const TICKET_VALUE_FIELDS = ['title', 'description', 'status', 'taskId', 'techniqueId', 'agileTechniqueId', 'dueDate', 'probability', 'impact'] as const;
 const TICKET_STAKEHOLDER_FIELDS = ['stakeholders', 'questionedStakeholders'] as const;
 
 function ticketChangesBetween(before: TicketSnapshot, after: TicketSnapshot): TicketChange[] {

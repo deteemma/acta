@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   type BabokDto,
   babokEnglishName,
+  agileTechniqueChoices,
   agileTechniquesOfHorizon,
   babokSectionLabel,
   horizonsOfAgileTechnique,
@@ -125,4 +126,18 @@ test('un élément agile se retrouve par son identifiant stable ; la section seu
   assert.equal(findBabokElement(babok, 'ae-5.3')?.kind, 'agileHorizon');
   assert.equal(findBabokElement(babok, 'ae-7.16')?.kind, 'agileTechnique');
   assert.equal(findBabokElement(babok, '7.16'), undefined);
+});
+
+test('techniques agiles proposées pour une action : triées par numéro de section (D15)', () => {
+  const choices = agileTechniqueChoices({
+    ...babok,
+    agile: {
+      ...babok.agile,
+      techniques: [
+        ...babok.agile.techniques,
+        { kind: 'agileTechnique', id: 'ae-7.2', section: '7.2', name: text('Business Model Canvas', 'Business Model Canvas'), summary: text('…', '…'), horizonIds: [] },
+      ],
+    },
+  });
+  assert.deepEqual(ids(choices), ['ae-7.2', 'ae-7.10', 'ae-7.15', 'ae-7.16']);
 });

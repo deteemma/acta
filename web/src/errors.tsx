@@ -1,4 +1,6 @@
 import {
+  AGILE_TECHNIQUES_IN_USE,
+  type AgileTechniquesInUseBody,
   type AdminRefusal,
   isActionRefusal,
   isAdminRefusal,
@@ -27,6 +29,11 @@ export type UiError = { key: MessageKey; params?: Record<string, string | number
 export function toUiError(error: unknown): UiError {
   if (error instanceof ApiError) {
     if (isTeamRefusal(error.refusal)) return teamRefusalError(error.refusal);
+    // Désactivation de l'Extension Agile refusée : le nombre d'actions concernées (D13).
+    if (error.refusal === AGILE_TECHNIQUES_IN_USE) {
+      const { count } = error.body as AgileTechniquesInUseBody;
+      return { key: 'initiative.refusal.agileTechniquesInUse', params: { count } };
+    }
     if (isAdminRefusal(error.refusal)) return adminRefusalError(error.refusal);
     if (isActionRefusal(error.refusal)) return { key: `action.refusal.${error.refusal}` };
     if (isCommentRefusal(error.refusal)) return { key: `comment.refusal.${error.refusal}` };
