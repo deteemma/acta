@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Consultation du référentiel agile ; 03 — Activation du module sur une initiative
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 22.11.2026)
 
 Règles : [spécification](../spec.md), décisions D6, D13 à D17.
 
@@ -37,3 +37,7 @@ Deux points à signaler :
 
 1. **Test du ticket 03 modifié.** Le contrôle « les initiatives existantes ont l'Extension Agile désactivée » échouait. Il comptait toutes les initiatives activées, et « AG1 · Agile V1 », créée avant la migration, a été activée à la main depuis. Il vérifie maintenant que la colonne est non nulle et vaut « désactivée » par défaut, ce qui garantit D10 pour les initiatives existantes. La règle ne change pas.
 2. **Texte proposé, à confirmer ou corriger.** Le message de refus de désactivation ci-dessus. Le refus « Cette tâche, cette technique ou cette technique agile n'existe pas dans le référentiel » couvre désormais aussi la technique agile.
+
+**22.11.2026, responsable fonctionnelle** : messages de refus confirmés.
+
+**22.11.2026, responsable fonctionnelle** : ticket validé.
