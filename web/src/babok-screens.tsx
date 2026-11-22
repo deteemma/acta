@@ -1,14 +1,20 @@
-// Référentiel BABOK (ticket 06, ADR-0012) : consultation en lecture seule, dans
-// la zone de droite (navigation par arborescence, N3) ; ses deux onglets et
-// chacun de ses éléments ont leur adresse (N12).
+// Référentiel BABOK (ticket 06, ADR-0012) et de l'Extension Agile (Extension
+// Agile, ticket 02) : consultation en lecture seule, dans la zone de droite
+// (navigation par arborescence, N3), par tout utilisateur, module activé ou non
+// (D6) ; ses cinq onglets et chacun de ses éléments ont leur adresse (N12, D7).
 import {
+  agileTechniquesOfHorizon,
   BABOK_TABS,
   type BabokDto,
   type BabokTab,
   type BabokElementDto,
   babokEnglishName,
+  babokSectionLabel,
   englishTermTooltip,
   findBabokElement,
+  horizonsOfAgileTechnique,
+  isAgileBabokTab,
+  type MessageKey,
   tasksOfKnowledgeArea,
   tasksUsingTechnique,
   type TaskPageDto,
@@ -29,6 +35,7 @@ export function BabokName({ element }: { element: BabokElementDto }) {
 
 /** Lien vers la fiche d'un élément, qui s'ouvre dans la zone de droite. */
 function BabokLink({ element, pill = false }: { element: BabokElementDto; pill?: boolean }) {
+  const { locale } = useI18n();
   const { goTo } = useScreens();
   return (
     <button
@@ -40,7 +47,7 @@ function BabokLink({ element, pill = false }: { element: BabokElementDto; pill?:
         void goTo({ kind: 'babokElement', elementId: element.id });
       }}
     >
-      {!pill && <span className="code">{element.section}</span>} <BabokName element={element} />
+      {!pill && <span className="code">{babokSectionLabel(element, locale)}</span>} <BabokName element={element} />
     </button>
   );
 }
@@ -55,6 +62,18 @@ function BabokLinks({ elements }: { elements: BabokElementDto[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Groupe de la fiche : titre, nombre d'éléments liés, puis ceux-ci en pastilles. */
+function LinkedGroup({ title, elements }: { title: string; elements: BabokElementDto[] }) {
+  return (
+    <>
+      <h2 className="group-title">
+        {title} <span className="count">{elements.length}</span>
+      </h2>
+      <BabokLinks elements={elements} />
+    </>
   );
 }
 
@@ -73,20 +92,42 @@ function BabokItem({ element, linked }: { element: BabokElementDto; linked: Babo
   );
 }
 
-/** Vue d'ensemble, en deux onglets (validé le 01.11.2026) : les domaines et leurs tâches, les techniques. */
+type ListTab = Exclude<BabokTab, 'areas'>;
+
+/** Libellé de chaque onglet, sauf Domaines et tâches, et nombre d'éléments qu'il présente. */
+const LIST_TABS: Record<ListTab, { label: MessageKey; count: (babok: BabokDto) => number }> = {
+  techniques: { label: 'babok.techniques', count: (babok) => babok.techniques.length },
+  principles: { label: 'babok.agilePrinciples', count: (babok) => babok.agile.principles.length },
+  horizons: { label: 'babok.horizons', count: (babok) => babok.agile.horizons.length },
+  'agile-techniques': { label: 'babok.agileTechniques', count: (babok) => babok.agile.techniques.length },
+};
+
+/** Onglet qui liste les éléments d'un type, pour le fil d'Ariane de leur fiche. */
+const TAB_OF_KIND: Partial<Record<BabokElementDto['kind'], ListTab>> = {
+  technique: 'techniques',
+  agilePrinciple: 'principles',
+  agileHorizon: 'horizons',
+  agileTechnique: 'agile-techniques',
+};
+
+/**
+ * Vue d'ensemble, en cinq onglets : les domaines et leurs tâches, les techniques
+ * (validé le 01.11.2026), puis les principes agiles, les horizons et les
+ * techniques agiles (D7).
+ */
 export function BabokScreen({ babok, tab }: { babok: BabokDto | null; tab: BabokTab }) {
   const { t, locale } = useI18n();
   const { goTo } = useScreens();
-  const tabs: Tab<BabokTab>[] = BABOK_TABS.map((id) =>
-    id === 'areas'
-      ? { id, label: t('babok.areasTab') }
-      : {
-          id,
-          label: t('babok.techniques'),
-          tooltip: englishTermTooltip(locale, 'babok.techniques'),
-          ...(babok && { count: babok.techniques.length }),
-        },
-  );
+  const tabs: Tab<BabokTab>[] = BABOK_TABS.map((id) => {
+    if (id === 'areas') return { id, label: t('babok.areasTab') };
+    const term = LIST_TABS[id];
+    return {
+      id,
+      label: t(term.label),
+      tooltip: englishTermTooltip(locale, term.label),
+      ...(babok && { count: term.count(babok) }),
+    };
+  });
   return (
     <ScreenLayout
       crumbs={[]}
@@ -96,9 +137,29 @@ export function BabokScreen({ babok, tab }: { babok: BabokDto | null; tab: Babok
       tab={tab}
       onTab={(next) => void goTo({ kind: 'babok', tab: next })}
     >
-      <p className="notice">{t('babok.notice')}</p>
+      <p className="notice">{t(isAgileBabokTab(tab) ? 'babok.agileNotice' : 'babok.notice')}</p>
       {!babok ? (
         <p>{t('common.loading')}</p>
+      ) : tab === 'principles' ? (
+        <ul className="links">
+          {babok.agile.principles.map((principle) => (
+            <li key={principle.id}>
+              <BabokLink element={principle} />
+            </li>
+          ))}
+        </ul>
+      ) : tab === 'horizons' ? (
+        <div className="disclosure-list">
+          {babok.agile.horizons.map((horizon) => (
+            <BabokItem key={horizon.id} element={horizon} linked={agileTechniquesOfHorizon(babok, horizon.id)} />
+          ))}
+        </div>
+      ) : tab === 'agile-techniques' ? (
+        <div className="disclosure-list">
+          {babok.agile.techniques.map((technique) => (
+            <BabokItem key={technique.id} element={technique} linked={horizonsOfAgileTechnique(babok, technique)} />
+          ))}
+        </div>
       ) : tab === 'areas' ? (
         babok.knowledgeAreas.map((area) => (
           <section key={area.id} className="babok-area">
@@ -141,8 +202,9 @@ export function BabokElementScreen({ babok, elementId }: { babok: BabokDto | nul
       </ScreenLayout>
     );
   }
-  if (element.kind === 'technique') {
-    crumbs.push({ key: 'techniques', label: t('babok.techniques'), onSelect: () => void goTo({ kind: 'babok', tab: 'techniques' }) });
+  const listTab = TAB_OF_KIND[element.kind];
+  if (listTab) {
+    crumbs.push({ key: listTab, label: t(LIST_TABS[listTab].label), onSelect: () => void goTo({ kind: 'babok', tab: listTab }) });
   } else if (element.kind === 'task') {
     const area = findBabokElement(babok, element.knowledgeAreaId);
     if (area) {
@@ -157,7 +219,7 @@ export function BabokElementScreen({ babok, elementId }: { babok: BabokDto | nul
     <ScreenLayout
       crumbs={crumbs}
       kind={<span title={englishTermTooltip(locale, `babok.${element.kind}`)}>{t(`babok.${element.kind}`)}</span>}
-      reference={t('babok.section', { section: element.section })}
+      reference={t('babok.section', { section: babokSectionLabel(element, locale) })}
       title={element.name[locale]}
       titleTooltip={babokEnglishName(element, locale)}
     >
@@ -192,6 +254,12 @@ export function BabokElementScreen({ babok, elementId }: { babok: BabokDto | nul
           </h2>
           <BabokLinks elements={tasksUsingTechnique(babok, element.id)} />
         </>
+      )}
+      {element.kind === 'agileHorizon' && (
+        <LinkedGroup title={t('babok.agileTechniquesOfHorizon')} elements={agileTechniquesOfHorizon(babok, element.id)} />
+      )}
+      {element.kind === 'agileTechnique' && (
+        <LinkedGroup title={t('babok.horizonsOfAgileTechnique')} elements={horizonsOfAgileTechnique(babok, element)} />
       )}
     </ScreenLayout>
   );

@@ -5,6 +5,7 @@ import {
   type AnalysisApproach,
   can,
   canEditInitiativeCode,
+  canToggleAgileExtension,
   createInitiativeSchema,
   englishTermTooltip,
   type InitiativeDto,
@@ -35,6 +36,20 @@ function ApproachLabel({ approach }: { approach: AnalysisApproach }) {
   return <span title={englishTermTooltip(locale, `approach.${approach}`)}>{t(`approach.${approach}`)}</span>;
 }
 
+const agileExtensionLabel = (enabled: boolean) =>
+  enabled ? 'initiative.agileExtensionEnabled' : 'initiative.agileExtensionDisabled';
+
+/** Extension Agile activée ou désactivée, en lecture (Extension Agile, D11). */
+function AgileExtensionDetails({ initiative }: { initiative: InitiativeDto }) {
+  const { t, locale } = useI18n();
+  return (
+    <>
+      <dt title={englishTermTooltip(locale, 'initiative.agileExtension')}>{t('initiative.agileExtension')}</dt>
+      <dd>{t(agileExtensionLabel(initiative.agileExtensionEnabled))}</dd>
+    </>
+  );
+}
+
 /** Fiche en lecture seule : lecteur, ou initiative archivée. Le code est dans l'onglet Paramètres. */
 export function InitiativeDetails({ initiative }: { initiative: InitiativeDto }) {
   const { t, locale } = useI18n();
@@ -51,11 +66,15 @@ export function InitiativeDetails({ initiative }: { initiative: InitiativeDto })
       <dd>{initiative.startDate ? formatDate(locale, initiative.startDate) : notSet}</dd>
       <dt>{t('initiative.plannedEndDate')}</dt>
       <dd>{initiative.plannedEndDate ? formatDate(locale, initiative.plannedEndDate) : notSet}</dd>
+      <AgileExtensionDetails initiative={initiative} />
     </dl>
   );
 }
 
-/** Fiche modifiable : propriétaire et contributeurs. Le code est dans l'onglet Paramètres. */
+/**
+ * Fiche modifiable : propriétaire et contributeurs. Le code est dans l'onglet Paramètres.
+ * L'Extension Agile n'y est modifiable que par le propriétaire (D11).
+ */
 export function InitiativeForm({ initiative, onSaved }: { initiative: InitiativeDto; onSaved: (i: InitiativeDto) => void }) {
   const { t, locale } = useI18n();
   const [name, setName] = useState(initiative.name);
@@ -63,9 +82,11 @@ export function InitiativeForm({ initiative, onSaved }: { initiative: Initiative
   const [approach, setApproach] = useState<AnalysisApproach | null>(initiative.analysisApproach);
   const [startDate, setStartDate] = useState(initiative.startDate ?? '');
   const [plannedEndDate, setPlannedEndDate] = useState(initiative.plannedEndDate ?? '');
+  const canToggleAgile = canToggleAgileExtension(initiative);
+  const [agileExtension, setAgileExtension] = useState(initiative.agileExtensionEnabled);
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
-  const submit = useUnsavedForm({ name, description, approach, startDate, plannedEndDate }, save);
+  const submit = useUnsavedForm({ name, description, approach, startDate, plannedEndDate, agileExtension }, save);
 
   async function save(): Promise<boolean> {
     setSaved(false);
@@ -76,6 +97,8 @@ export function InitiativeForm({ initiative, onSaved }: { initiative: Initiative
       analysisApproach: approach,
       startDate: startDate || null,
       plannedEndDate: plannedEndDate || null,
+      // Envoyée par le propriétaire seul : un contributeur n'écrase pas un changement fait entre-temps.
+      ...(canToggleAgile ? { agileExtensionEnabled: agileExtension } : {}),
     });
     if (!parsed.success) {
       setError({ key: 'initiative.invalid' });
@@ -87,7 +110,7 @@ export function InitiativeForm({ initiative, onSaved }: { initiative: Initiative
       setSaved(true);
       return true;
     } catch (e) {
-      setError(e instanceof ApiError && e.status === 400 ? { key: 'initiative.invalid' } : toUiError(e));
+      setError(e instanceof ApiError && e.status === 400 && !e.refusal ? { key: 'initiative.invalid' } : toUiError(e));
       return false;
     }
   }
@@ -139,6 +162,26 @@ export function InitiativeForm({ initiative, onSaved }: { initiative: Initiative
           />
         </label>
       </div>
+      {canToggleAgile ? (
+        <fieldset>
+          <legend title={englishTermTooltip(locale, 'initiative.agileExtension')}>{t('initiative.agileExtension')}</legend>
+          {[true, false].map((enabled) => (
+            <label key={String(enabled)} className="inline">
+              <input
+                type="radio"
+                name="agileExtension"
+                checked={agileExtension === enabled}
+                onChange={() => setAgileExtension(enabled)}
+              />
+              {t(agileExtensionLabel(enabled))}
+            </label>
+          ))}
+        </fieldset>
+      ) : (
+        <dl>
+          <AgileExtensionDetails initiative={initiative} />
+        </dl>
+      )}
       <button type="submit">{t('initiative.save')}</button>
       <ErrorMessage error={error} />
       <p role="status">{saved && t('initiative.saved')}</p>

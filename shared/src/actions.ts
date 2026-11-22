@@ -44,24 +44,33 @@ export const suggestionKeySchema = z.string().regex(/^R(?:[1-9]|1[0-35]|14:\d+)$
 /** Identifiant d'une tâche (`4.1`) ou d'une technique (`10.33`) du référentiel BABOK. */
 const babokIdSchema = z.string().regex(/^\d+\.\d+$/);
 
+/** Identifiant d'une technique agile du référentiel de l'Extension Agile (`ae-7.15`). */
+const agileTechniqueIdSchema = z.string().regex(/^ae-\d+\.\d+$/);
+
 /**
  * Création d'une action : la création rapide fournit le titre et la tâche ; le
  * responsable est alors la personne qui crée l'action.
  */
-export const createActionSchema = z.object({
-  title: actionTitleSchema,
-  taskId: babokIdSchema,
-  techniqueId: babokIdSchema.nullable().optional(),
-  assigneeId: z.string().min(1).optional(),
-  dueDate: z.iso.date().nullable().optional(),
-  epicId: z.uuid().nullable().optional(),
-  description: actionDescriptionSchema.optional(),
-  stakeholderIds: stakeholderIdsSchema.optional(),
-  needIds: needIdsSchema.optional(),
-  requirementIds: requirementIdsSchema.optional(),
-  /** Suggestion de l'encart d'où l'action est créée (ticket 14) ; ne change plus. */
-  suggestionKey: suggestionKeySchema.optional(),
-});
+export const createActionSchema = z
+  .object({
+    title: actionTitleSchema,
+    taskId: babokIdSchema,
+    techniqueId: babokIdSchema.nullable().optional(),
+    /** Seulement si l'Extension Agile est activée sur l'initiative (Extension Agile, D14). */
+    agileTechniqueId: agileTechniqueIdSchema.nullable().optional(),
+    assigneeId: z.string().min(1).optional(),
+    dueDate: z.iso.date().nullable().optional(),
+    epicId: z.uuid().nullable().optional(),
+    description: actionDescriptionSchema.optional(),
+    stakeholderIds: stakeholderIdsSchema.optional(),
+    needIds: needIdsSchema.optional(),
+    requirementIds: requirementIdsSchema.optional(),
+    /** Suggestion de l'encart d'où l'action est créée (ticket 14) ; ne change plus. */
+    suggestionKey: suggestionKeySchema.optional(),
+  })
+  // Créée depuis une action suggérée : pas de technique agile ; elle peut en
+  // recevoir une ensuite, en modification (Extension Agile, D16).
+  .refine((input) => !input.suggestionKey || !input.agileTechniqueId, { path: ['agileTechniqueId'] });
 export type CreateActionInput = z.infer<typeof createActionSchema>;
 
 /** Modification d'une action : seuls les champs fournis changent. */
@@ -71,6 +80,7 @@ export const updateActionSchema = z
     description: actionDescriptionSchema,
     taskId: babokIdSchema,
     techniqueId: babokIdSchema.nullable(),
+    agileTechniqueId: agileTechniqueIdSchema.nullable(),
     assigneeId: z.string().min(1),
     dueDate: z.iso.date().nullable(),
     epicId: z.uuid().nullable(),
@@ -89,7 +99,15 @@ export type UpdateActionInput = z.infer<typeof updateActionSchema>;
 export interface ActionDto {
   id: string;
   /** Initiative de l'action, avec le rôle de l'utilisateur courant. */
-  initiative: { id: string; code: string; name: string; archived: boolean; myRole: InitiativeRole };
+  initiative: {
+    id: string;
+    code: string;
+    name: string;
+    archived: boolean;
+    myRole: InitiativeRole;
+    /** Le champ « Technique agile » n'apparaît que si l'Extension Agile est activée (D14). */
+    agileExtensionEnabled: boolean;
+  };
   /** Référence attribuée par la base (CODE-AC-NNN), en lecture seule. */
   reference: string;
   title: string;
@@ -98,6 +116,8 @@ export interface ActionDto {
   /** Tâche BABOK (identifiant du référentiel, ex. `4.1`). */
   taskId: string;
   techniqueId: string | null;
+  /** Technique agile (identifiant du référentiel agile, ex. `ae-7.15`), Extension Agile D14. */
+  agileTechniqueId: string | null;
   /** `eligible` : encore propriétaire ou contributeur de l'initiative. */
   assignee: MemberNameDto & { eligible: boolean };
   /** Auteur et date de la dernière attribution (ticket 15). */
@@ -202,12 +222,36 @@ export function techniqueChoices(babok: BabokDto, taskId: string): { ofTask: Tec
 }
 
 /**
+ * Une action ne porte une technique agile que dans une initiative où l'Extension
+ * Agile est activée : le champ n'y apparaît et ne s'y enregistre qu'alors (D6, D14).
+ */
+export const offersAgileTechnique = (initiative: { agileExtensionEnabled: boolean }) => initiative.agileExtensionEnabled;
+
+/**
+ * Technique agile à envoyer avec la fiche d'une action : la valeur choisie (vide =
+ * « Aucune »), ou rien si le champ n'est pas proposé ; une valeur cachée n'écrase
+ * jamais celle qui est enregistrée.
+ */
+export const agileTechniqueInput = (
+  initiative: { agileExtensionEnabled: boolean },
+  agileTechniqueId: string,
+): { agileTechniqueId?: string | null } =>
+  offersAgileTechnique(initiative) ? { agileTechniqueId: agileTechniqueId || null } : {};
+
+/**
  * Refus d'une écriture sur une action, renvoyés par l'API (`refusal`) :
  * - `assigneeNotEligible` : le responsable choisi n'est pas propriétaire ou contributeur ;
  * - `unknownBabokElement` : tâche ou technique absente du référentiel ;
  * - `linked` : l'action est liée à un autre objet ; utiliser le statut Annulée ;
- * - `suggestionNotOffered` : créée depuis une suggestion que l'encart ne propose pas (ou plus).
+ * - `suggestionNotOffered` : créée depuis une suggestion que l'encart ne propose pas (ou plus) ;
+ * - `agileExtensionDisabled` : technique agile dans une initiative où l'Extension Agile n'est pas activée (D14).
  */
-export const ACTION_REFUSALS = ['assigneeNotEligible', 'unknownBabokElement', 'linked', 'suggestionNotOffered'] as const;
+export const ACTION_REFUSALS = [
+  'assigneeNotEligible',
+  'unknownBabokElement',
+  'linked',
+  'suggestionNotOffered',
+  'agileExtensionDisabled',
+] as const;
 export type ActionRefusal = (typeof ACTION_REFUSALS)[number];
 export const isActionRefusal = (value: unknown): value is ActionRefusal => ACTION_REFUSALS.some((r) => r === value);

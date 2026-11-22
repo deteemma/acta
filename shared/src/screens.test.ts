@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseScreenPath, sameScreen, screenInitiativeId, screenPath } from './screens.js';
+import { BABOK_TABS, isAgileBabokTab, parseScreenPath, sameScreen, screenInitiativeId, screenPath } from './screens.js';
 
 const ID = '3f2b8c1e-5a7d-4e21-9c44-0d1e2f3a4b5c';
 
@@ -207,6 +207,32 @@ test('un domaine, une tâche ou une technique du référentiel a sa propre adres
     assert.equal(screenInitiativeId(screen), null);
   }
   for (const path of ['/babok/inconnu', '/babok/3.1/x', '/babok/3.', '/babok/techniques/x', '/alerts/x']) {
+    assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
+  }
+});
+
+test('les onglets du référentiel agile ont leur adresse, après Domaines et tâches et Techniques', () => {
+  assert.deepEqual(BABOK_TABS, ['areas', 'techniques', 'principles', 'horizons', 'agile-techniques']);
+  assert.deepEqual(BABOK_TABS.filter(isAgileBabokTab), ['principles', 'horizons', 'agile-techniques']);
+  const cases = [
+    [{ kind: 'babok', tab: 'principles' }, '/babok/principles'],
+    [{ kind: 'babok', tab: 'horizons' }, '/babok/horizons'],
+    [{ kind: 'babok', tab: 'agile-techniques' }, '/babok/agile-techniques'],
+  ] as const;
+  for (const [screen, path] of cases) {
+    assert.equal(screenPath(screen), path);
+    assert.deepEqual(parseScreenPath(path), screen, path);
+    assert.equal(screenInitiativeId(screen), null);
+  }
+});
+
+test('un principe, un horizon ou une technique agile a sa propre adresse, par son identifiant stable', () => {
+  for (const elementId of ['ae-4.1', 'ae-5.2', 'ae-7.17']) {
+    const screen = { kind: 'babokElement', elementId } as const;
+    assert.equal(screenPath(screen), `/babok/${elementId}`);
+    assert.deepEqual(parseScreenPath(`/babok/${elementId}`), screen);
+  }
+  for (const path of ['/babok/ae-', '/babok/ae-7.', '/babok/ea-7.17', '/babok/ae-7.17/x']) {
     assert.deepEqual(parseScreenPath(path), { kind: 'myActions' }, path);
   }
 });

@@ -1,9 +1,11 @@
 // Palette de commandes (Ctrl+K / Cmd+K) : accès direct à une initiative, à un
 // objet référencé (ticket 09, scénarios compris : phase 3, ticket 06), ouvert
-// dans son nœud (N16), ou à un élément du référentiel BABOK.
+// dans son nœud (N16), ou à un élément du référentiel BABOK ou de l'Extension
+// Agile (D9).
 import {
   type BabokDto,
   type BabokElementDto,
+  babokSectionLabel,
   type InitiativeDto,
   type ReferenceDto,
   searchBabok,
@@ -53,7 +55,7 @@ export function Palette({
   babok: BabokDto | null;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { categoryLabel } = useTicketLabels();
   const { goTo, showInitiative } = useScreens();
   const openReference = useOpenReference();
@@ -136,7 +138,7 @@ export function Palette({
               </>
             ) : (
               <>
-                <strong>{result.item.section}</strong> <BabokName element={result.item} />{' '}
+                <strong>{babokSectionLabel(result.item, locale)}</strong> <BabokName element={result.item} />{' '}
                 <small>· {t(`babok.${result.item.kind}`)}</small>
               </>
             )}

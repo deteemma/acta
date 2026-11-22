@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  AGILE_TECHNIQUES_IN_USE,
+  type AgileTechniquesInUseBody,
   can,
   checkInvitee,
   checkTeamChange,
@@ -71,6 +73,25 @@ export class InitiativesService {
       if (input.code !== undefined && input.code !== current.code && !can(role, 'editCode')) {
         throw new ForbiddenException();
       }
+      // L'Extension Agile : propriétaire seul (D11) ; renvoyer la valeur inchangée reste permis.
+      if (
+        input.agileExtensionEnabled !== undefined &&
+        input.agileExtensionEnabled !== current.agile_extension_enabled &&
+        !can(role, 'toggleAgileExtension')
+      ) {
+        throw new ForbiddenException();
+      }
+      // Désactivation refusée tant qu'une action porte une technique agile, quel que soit son statut (D13).
+      if (input.agileExtensionEnabled === false && current.agile_extension_enabled) {
+        const { count } = await tx
+          .selectFrom('ticket')
+          .select((eb) => eb.fn.countAll<string>().as('count'))
+          .where('initiative_id', '=', initiativeId)
+          .where('type', '=', 'action')
+          .where('agile_technique_id', 'is not', null)
+          .executeTakeFirstOrThrow();
+        if (Number(count) > 0) throw agileTechniquesInUse(Number(count));
+      }
       // Dès qu'une référence a été attribuée, le code ne change plus.
       if (input.code !== undefined && input.code !== current.code && current.code_frozen) {
         throw referenceRefusal('codeFrozen');
@@ -85,6 +106,7 @@ export class InitiativesService {
             analysis_approach: input.analysisApproach,
             start_date: input.startDate,
             planned_end_date: input.plannedEndDate,
+            agile_extension_enabled: input.agileExtensionEnabled,
             updated_at: sql`now()`,
           })
           .where('id', '=', initiativeId)
@@ -93,6 +115,10 @@ export class InitiativesService {
         if (isUniqueViolation(error)) throw new ConflictException('Ce code d’initiative est déjà utilisé');
         // Référence attribuée entre-temps.
         if (isConstraintViolation(error, 'initiative_code_frozen')) throw referenceRefusal('codeFrozen');
+        // Technique agile posée entre-temps : la base donne le nombre d'actions (D13).
+        if (isConstraintViolation(error, 'initiative_agile_techniques_in_use')) {
+          throw agileTechniquesInUse(Number((error as { detail?: string }).detail));
+        }
         // Fin prévue avant le début, une fois combinée avec la date déjà enregistrée.
         if (isConstraintViolation(error, 'initiative_dates_order')) {
           throw new BadRequestException('La fin prévue précède le début');
@@ -287,11 +313,18 @@ export class InitiativesService {
         sql<string | null>`i.start_date::text`.as('start_date'),
         sql<string | null>`i.planned_end_date::text`.as('planned_end_date'),
         'i.archived_at',
+        'i.agile_extension_enabled',
         'i.created_at',
         'm.role',
         sql<boolean>`initiative_has_references(i.id)`.as('code_frozen'),
       ]);
   }
+}
+
+/** Refus de désactiver l'Extension Agile, avec le nombre d'actions concernées (D13). */
+function agileTechniquesInUse(count: number) {
+  const body: AgileTechniquesInUseBody & { statusCode: number } = { statusCode: 400, refusal: AGILE_TECHNIQUES_IN_USE, count };
+  return new BadRequestException(body);
 }
 
 function toDto(row: {
@@ -303,6 +336,7 @@ function toDto(row: {
   start_date: string | null;
   planned_end_date: string | null;
   archived_at: Date | null;
+  agile_extension_enabled: boolean;
   created_at: Date;
   role: InitiativeDto['myRole'];
   code_frozen: boolean;
@@ -319,6 +353,7 @@ function toDto(row: {
     createdAt: row.created_at.toISOString(),
     myRole: row.role,
     codeFrozen: row.code_frozen,
+    agileExtensionEnabled: row.agile_extension_enabled,
   };
 }
 

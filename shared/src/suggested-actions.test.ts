@@ -52,6 +52,7 @@ const babok: BabokDto = {
     task('8.1', 'Measure Solution Performance', 'Mesurer la performance de la solution'),
   ],
   techniques: [],
+  agile: { principles: [], horizons: [], techniques: [] },
 };
 
 /** Initiative d'exemple, le 31.10.2026 ; seuls les champs utiles au test changent. */

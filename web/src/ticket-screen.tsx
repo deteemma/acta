@@ -10,6 +10,7 @@ import {
   type BabokDto,
   can,
   canBeAssignee,
+  agileTechniqueInput,
   createActionSchema,
   createTicketSchema,
   isAssigneeRequired,
@@ -20,6 +21,7 @@ import {
   memberName,
   type MessageKey,
   newTicketTypes,
+  offersAgileTechnique,
   RISK_LEVELS,
   selectableTicketStatuses,
   type RiskLevel,
@@ -37,7 +39,7 @@ import {
   updateTicketSchema,
 } from '@app/shared';
 import { useEffect, useState } from 'react';
-import { ActionSheet, TaskOptions, TechniqueOptions, TermLabel } from './actions';
+import { ActionSheet, AgileTechniqueField, TaskOptions, TechniqueOptions, TermLabel } from './actions';
 import { api, ApiError } from './api';
 import { DataScreen } from './data-screen';
 import { ErrorMessage, toUiError, type UiError } from './errors';
@@ -617,6 +619,7 @@ export function CreateTicketDialog({
   const [epicId, setEpicId] = useState(proposedEpicId ?? '');
   const [taskId, setTaskId] = useState('');
   const [techniqueId, setTechniqueId] = useState('');
+  const [agileTechniqueId, setAgileTechniqueId] = useState('');
   const [questionedIds, setQuestionedIds] = useState<readonly string[]>([]);
   const [probability, setProbability] = useState('');
   const [impact, setImpact] = useState('');
@@ -628,7 +631,20 @@ export function CreateTicketDialog({
   const initiativeId = initiative.id;
   const assigneeId = isAssigneeRequired(type) ? chosenAssignee || (myId ?? '') : chosenAssignee;
   const submit = useUnsavedForm(
-    { type, title, chosenAssignee, dueDate, epicId, taskId, techniqueId, questionedIds, probability, impact, description },
+    {
+      type,
+      title,
+      chosenAssignee,
+      dueDate,
+      epicId,
+      taskId,
+      techniqueId,
+      agileTechniqueId,
+      questionedIds,
+      probability,
+      impact,
+      description,
+    },
     create,
   );
 
@@ -649,6 +665,8 @@ export function CreateTicketDialog({
           ...epic,
           taskId,
           techniqueId: techniqueId || null,
+          // Initiative sans Extension Agile : le champ n'est ni affiché ni envoyé (D14).
+          ...agileTechniqueInput(initiative, agileTechniqueId),
           assigneeId: assigneeId || undefined,
         });
         if (!parsed.success) {
@@ -742,6 +760,9 @@ export function CreateTicketDialog({
                 <TechniqueOptions babok={babok} taskId={taskId} />
               </select>
             </label>
+            {offersAgileTechnique(initiative) && (
+              <AgileTechniqueField babok={babok} value={agileTechniqueId} onChange={setAgileTechniqueId} />
+            )}
           </>
         )}
         {ticketHasField(type, 'questionedStakeholders') && (

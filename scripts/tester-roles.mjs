@@ -38,6 +38,9 @@ const SECTIONS = [
   '28-contexte-et-langue',
   '29-historique-des-scenarios',
   '30-scenarios-dans-la-palette',
+  '31-referentiel-agile',
+  '32-activation-extension-agile',
+  '33-technique-agile-d-une-action',
 ];
 const run = {};
 for (const section of SECTIONS) run[section] = await import(`./roles/${section}.mjs`);
@@ -69,8 +72,16 @@ const { scInitiativeId } = run['27-scenarios'];
 const { clInitiativeId } = run['28-contexte-et-langue'];
 const { hsInitiativeId } = run['29-historique-des-scenarios'];
 const { spInitiativeId } = run['30-scenarios-dans-la-palette'];
+const { aeInitiativeId } = run['32-activation-extension-agile'];
+const { taInitiativeId } = run['33-technique-agile-d-une-action'];
 
 console.log('\nNettoyage');
+await check('alice supprime l’initiative de la technique agile d’une action : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${taInitiativeId}`)).status, 204);
+});
+await check('alice supprime l’initiative de l’activation de l’Extension Agile : 204', async () => {
+  assert.equal((await call(alice, 'DELETE', `/initiatives/${aeInitiativeId}`)).status, 204);
+});
 await check('alice supprime l’initiative des scénarios dans la palette : 204', async () => {
   assert.equal((await call(alice, 'DELETE', `/initiatives/${spInitiativeId}`)).status, 204);
 });

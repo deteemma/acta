@@ -55,6 +55,8 @@ export interface InitiativeTable {
   planned_end_date: Optional<string>;
   archived_at: ColumnType<Date | null, undefined, Date | string | null>;
   archived_by: Optional<string>;
+  /** Extension Agile activée ; désactivée à la création (Extension Agile, D10). */
+  agile_extension_enabled: Generated<boolean>;
   created_by: Generated<string>;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -88,6 +90,8 @@ export interface TicketTable {
   /** Action seulement ; obligatoire pour elle (contrainte ticket_action_fields). */
   task_id: Optional<string>;
   technique_id: Optional<string>;
+  /** Technique agile (Extension Agile, D14) ; seulement si le module est activé sur l'initiative. */
+  agile_technique_id: Optional<string>;
   /** Obligatoire pour l'Action, facultatif pour les autres types. */
   assignee_id: Optional<string>;
   /** Dernière attribution (migration 0016) : écrite par un déclencheur. */
@@ -484,8 +488,22 @@ export interface BabokTaskTechniqueTable {
   technique_id: string;
 }
 
+/** Référentiel de l'Extension Agile (migration 0035) : lecture seule, aucune écriture possible. */
+export type AgilePrincipleTable = BabokElementColumns;
+export type AgileHorizonTable = BabokElementColumns;
+export type AgileTechniqueTable = BabokElementColumns;
+
+export interface AgileTechniqueHorizonTable {
+  technique_id: string;
+  horizon_id: string;
+}
+
 export interface Database {
   action_stakeholder: ActionStakeholderTable;
+  agile_horizon: AgileHorizonTable;
+  agile_principle: AgilePrincipleTable;
+  agile_technique: AgileTechniqueTable;
+  agile_technique_horizon: AgileTechniqueHorizonTable;
   app_settings: AppSettingsTable;
   app_user: AppUserTable;
   attachment: AttachmentTable;

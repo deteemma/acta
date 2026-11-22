@@ -20,6 +20,7 @@ const babok: BabokDto = {
     { kind: 'task', id: '4.1', section: '4.1', knowledgeAreaId: '4', name: text('Prepare for Elicitation', 'Préparer l’élicitation'), summary, techniqueIds: [] },
   ],
   techniques: [],
+  agile: { principles: [], horizons: [], techniques: [] },
 };
 
 const person = { userId: 'alice', email: 'alice@exemple.test', displayName: 'alice' };
@@ -28,11 +29,12 @@ const person = { userId: 'alice', email: 'alice@exemple.test', displayName: 'ali
 function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
   return {
     reference: 'CRM-AC-001',
-    initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor' },
+    initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor', agileExtensionEnabled: false },
     title: fields.id,
     description: null,
     taskId: '3.1',
     techniqueId: null,
+    agileTechniqueId: null,
     assignee: { ...person, eligible: true },
     assignedBy: person,
     assignedAt: '2026-10-01T08:00:00.000Z',

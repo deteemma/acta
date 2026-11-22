@@ -49,6 +49,8 @@ export const updateInitiativeSchema = z
     analysisApproach: analysisApproachSchema.nullable(),
     startDate: optionalDateSchema,
     plannedEndDate: optionalDateSchema,
+    /** Extension Agile activée ; le propriétaire seul la change (Extension Agile, D11). */
+    agileExtensionEnabled: z.boolean(),
   })
   .partial()
   // Si les deux dates sont fournies, la fin prévue ne précède pas le début ;
@@ -90,6 +92,8 @@ export interface InitiativeDto {
   myRole: z.infer<typeof initiativeRoleSchema>;
   /** Une référence a déjà été attribuée dans l'initiative : son code ne change plus (ticket 09). */
   codeFrozen: boolean;
+  /** Extension Agile activée ; désactivée à la création (Extension Agile, D10). */
+  agileExtensionEnabled: boolean;
 }
 
 /**
@@ -98,6 +102,23 @@ export interface InitiativeDto {
  */
 export const canEditInitiativeCode = (initiative: Pick<InitiativeDto, 'myRole' | 'codeFrozen' | 'archivedAt'>) =>
   can(initiative.myRole, 'editCode', { archived: initiative.archivedAt != null }) && !initiative.codeFrozen;
+
+/**
+ * L'Extension Agile s'active et se désactive par le propriétaire seul, jamais sur
+ * une initiative archivée ; indépendamment de l'approche d'analyse (Extension Agile, D11, D12).
+ */
+export const canToggleAgileExtension = (initiative: Pick<InitiativeDto, 'myRole' | 'archivedAt'>) =>
+  can(initiative.myRole, 'toggleAgileExtension', { archived: initiative.archivedAt != null });
+
+/**
+ * Refus de désactiver l'Extension Agile : des actions de l'initiative portent une
+ * technique agile, quel que soit leur statut ; leur nombre est dans le corps (D13).
+ */
+export const AGILE_TECHNIQUES_IN_USE = 'agileTechniquesInUse';
+export interface AgileTechniquesInUseBody {
+  refusal: typeof AGILE_TECHNIQUES_IN_USE;
+  count: number;
+}
 
 export interface InitiativeMemberDto {
   userId: string;

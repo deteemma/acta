@@ -7,9 +7,12 @@ import {
   ACTION_TITLE_MAX_LENGTH,
   type ActionDto,
   type ActionStatus,
+  agileTechniqueChoices,
+  agileTechniqueInput,
   type BabokDto,
   type BabokElementDto,
   babokEnglishName,
+  babokSectionLabel,
   can,
   canBeAssignee,
   canCreateActionIn,
@@ -18,6 +21,7 @@ import {
   englishTermTooltip,
   findBabokElement,
   type InitiativeDto,
+  offersAgileTechnique,
   type InitiativeMemberDto,
   type StakeholderDto,
   type ActionOrigin,
@@ -71,11 +75,11 @@ export function BabokPreview({ element }: { element: BabokElementDto }) {
         aria-describedby={previewId}
         onClick={() => void goTo({ kind: 'babokElement', elementId: element.id })}
       >
-        <strong>{element.section}</strong> {element.name[locale]}
+        <strong>{babokSectionLabel(element, locale)}</strong> {element.name[locale]}
       </button>
       <span role="tooltip" id={previewId} className="preview-card">
         <small>
-          {t(`babok.${element.kind}`)} · {t('babok.section', { section: element.section })}
+          {t(`babok.${element.kind}`)} · {t('babok.section', { section: babokSectionLabel(element, locale) })}
         </small>
         {english && <em lang="en">{english}</em>}
         <span>{element.summary[locale]}</span>
@@ -186,6 +190,41 @@ export function TechniqueOptions({ babok, taskId }: { babok: BabokDto; taskId: s
   );
 }
 
+/**
+ * Champ « Technique agile », distinct de « Technique » : facultatif, une valeur
+ * au plus, « Aucune » en tête puis les techniques agiles par numéro de section ;
+ * la valeur choisie ouvre sa fiche. À n'afficher que si l'Extension Agile est
+ * activée sur l'initiative (Extension Agile, D14, D15, D8).
+ */
+export function AgileTechniqueField({
+  babok,
+  value,
+  onChange,
+}: {
+  babok: BabokDto;
+  value: string;
+  onChange: (agileTechniqueId: string) => void;
+}) {
+  const { t, locale } = useI18n();
+  const chosen = value ? findBabokElement(babok, value) : undefined;
+  return (
+    <>
+      <label>
+        <span title={englishTermTooltip(locale, 'babok.agileTechnique')}>{t('babok.agileTechnique')}</span>
+        <select value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="">{t('action.noTechnique')}</option>
+          {agileTechniqueChoices(babok).map((technique) => (
+            <option key={technique.id} value={technique.id} title={babokEnglishName(technique, locale)}>
+              {babokSectionLabel(technique, locale)} {technique.name[locale]}
+            </option>
+          ))}
+        </select>
+      </label>
+      {chosen && <BabokPreview element={chosen} />}
+    </>
+  );
+}
+
 /** Libellé d'un terme du BABOK, l'anglais en info-bulle. */
 export function TermLabel({ term }: { term: 'babok.task' | 'babok.technique' }) {
   const { t, locale } = useI18n();
@@ -245,6 +284,7 @@ function ActionDetails({ babok, action }: { babok: BabokDto; action: ActionDto }
   const { t, locale } = useI18n();
   const task = findBabokElement(babok, action.taskId);
   const technique = action.techniqueId ? findBabokElement(babok, action.techniqueId) : undefined;
+  const agileTechnique = action.agileTechniqueId ? findBabokElement(babok, action.agileTechniqueId) : undefined;
   const notSet = <small>{t('initiative.notSet')}</small>;
   return (
     <dl>
@@ -260,6 +300,12 @@ function ActionDetails({ babok, action }: { babok: BabokDto; action: ActionDto }
       <dd>{task ? <BabokPreview element={task} /> : action.taskId}</dd>
       <dt><TermLabel term="babok.technique" /></dt>
       <dd>{technique ? <BabokPreview element={technique} /> : notSet}</dd>
+      {offersAgileTechnique(action.initiative) && (
+        <>
+          <dt title={englishTermTooltip(locale, 'babok.agileTechnique')}>{t('babok.agileTechnique')}</dt>
+          <dd>{agileTechnique ? <BabokPreview element={agileTechnique} /> : notSet}</dd>
+        </>
+      )}
       <dt>{t('action.stakeholders')}</dt>
       <dd>
         {action.stakeholders.length === 0 ? (
@@ -305,6 +351,8 @@ function ActionForm({
   const { statusLabel } = useTicketLabels();
   const [taskId, setTaskId] = useState(action.taskId);
   const [techniqueId, setTechniqueId] = useState(action.techniqueId ?? '');
+  const agileEnabled = offersAgileTechnique(action.initiative);
+  const [agileTechniqueId, setAgileTechniqueId] = useState(action.agileTechniqueId ?? '');
   const [assigneeId, setAssigneeId] = useState(action.assignee.userId);
   const [dueDate, setDueDate] = useState(action.dueDate ?? '');
   const [epicId, setEpicId] = useState(action.epic?.id ?? '');
@@ -313,7 +361,7 @@ function ActionForm({
   const [error, setError] = useState<UiError | null>(null);
   const [saved, setSaved] = useState(false);
   const submit = useUnsavedForm(
-    { title, status, taskId, techniqueId, assigneeId, dueDate, epicId, description, stakeholderIds },
+    { title, status, taskId, techniqueId, agileTechniqueId, assigneeId, dueDate, epicId, description, stakeholderIds },
     save,
   );
 
@@ -334,6 +382,8 @@ function ActionForm({
       status,
       taskId,
       techniqueId: techniqueId || null,
+      // Module désactivé : le champ n'est ni affiché ni envoyé (D14).
+      ...agileTechniqueInput(action.initiative, agileTechniqueId),
       ...(assigneeId !== action.assignee.userId ? { assigneeId } : {}),
       dueDate: dueDate || null,
       epicId: epicId || null,
@@ -405,6 +455,7 @@ function ActionForm({
         </select>
       </label>
       {technique && <BabokPreview element={technique} />}
+      {agileEnabled && <AgileTechniqueField babok={babok} value={agileTechniqueId} onChange={setAgileTechniqueId} />}
       <fieldset>
         <legend>{t('action.stakeholders')}</legend>
         {stakeholders.length === 0 && <small>{t('stakeholders.sectionEmpty')}</small>}
@@ -549,6 +600,7 @@ export function CreateActionDialog({
   // Tâche choisie par le BA ; à défaut, la première tâche proposée est présélectionnée.
   const [chosenTask, setChosenTask] = useState<string | null>(null);
   const [techniqueId, setTechniqueId] = useState('');
+  const [agileTechniqueId, setAgileTechniqueId] = useState('');
   const [loadedActions, setLoadedActions] = useState<{ initiativeId: string; actions: ActionDto[] } | null>(null);
   const [applicationCounts, setApplicationCounts] = useState<TechniqueCounts>({});
   const [loadedOriginObject, setLoadedOriginObject] = useState<LoadedOriginObject | null>(null);
@@ -587,6 +639,8 @@ export function CreateActionDialog({
   const task = taskId ? findBabokElement(babok, taskId) : undefined;
   const techniques = rankTechniques(babok, taskId, initiativeActions ?? [], applicationCounts);
   const technique = techniqueId ? findBabokElement(babok, techniqueId) : undefined;
+  const agileInitiative = editable.find((i) => i.id === chosenInitiative) ?? { agileExtensionEnabled: false };
+  const agileEnabled = offersAgileTechnique(agileInitiative);
   // La tâche présélectionnée fait partie des valeurs de départ, même si elle arrive après l'ouverture.
   const submit = useUnsavedForm(
     {
@@ -594,6 +648,7 @@ export function CreateActionDialog({
       title,
       task: chosenValue(taskId, suggestions[0]?.taskId),
       technique: techniqueId,
+      agileTechnique: agileTechniqueId,
     },
     create,
   );
@@ -604,6 +659,8 @@ export function CreateActionDialog({
       title,
       taskId,
       techniqueId: techniqueId || null,
+      // Initiative sans Extension Agile : le champ n'est ni affiché ni envoyé (D14).
+      ...agileTechniqueInput(agileInitiative, agileTechniqueId),
       ...(originObject && analysisObjectLinks(originObject)),
     });
     if (!parsed.success || !chosenInitiative) {
@@ -698,6 +755,7 @@ export function CreateActionDialog({
             </select>
           </label>
           {technique && <BabokPreview element={technique} />}
+          {agileEnabled && <AgileTechniqueField babok={babok} value={agileTechniqueId} onChange={setAgileTechniqueId} />}
           <button type="submit">{t('action.create')}</button>
         </form>
       )}

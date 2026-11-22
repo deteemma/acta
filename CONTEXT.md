@@ -45,6 +45,10 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 | Technique | `babok_technique` | L'une des 50 techniques du BABOK, utilisables dans plusieurs tâches. |
 | Approche d'analyse | `analysis_approach` | Manière de conduire l'analyse sur une initiative : **prédictive** ou **adaptative** (tâche BABOK 3.1). |
 | Changement | `change` | Concept du BACCM : transformation en réponse à un besoin. Dans ACTA, il est porté par l'initiative. |
+| Extension Agile | `agile_extension` | Module de l'Extension Agile au Guide BABOK v2 (IIBA et Agile Alliance), activable par initiative. Son référentiel (principes, horizons, techniques agiles) suit les règles du référentiel BABOK ; il est consultable partout, mais utilisable seulement dans une initiative où le module est activé. Désactivé à la création d'une initiative ; activé ou désactivé ensuite par le propriétaire, sur la fiche de l'initiative, sauf si elle est archivée ; il ne se désactive pas tant qu'une action de l'initiative porte une technique agile ; indépendant de l'approche d'analyse. Noms français traduits pour ACTA, le terme anglais visible en info-bulle. |
+| Principe agile | `agile_principle` | L'un des 7 principes de l'analyse métier agile de l'Extension Agile (ch. 4). |
+| Horizon | `agile_horizon` | L'un des trois niveaux de l'Extension Agile (ch. 5) : horizon Stratégie, horizon Initiative, horizon Livraison. Toujours nommé avec le mot « horizon » : l'horizon Initiative n'est pas l'Initiative d'ACTA. |
+| Technique agile | `agile_technique` | L'une des techniques propres à l'Extension Agile (ch. 7), associée aux horizons où elle s'applique. Une action en porte au plus une, facultative, en plus de son éventuelle technique BABOK, seulement si le module est activé sur l'initiative. _À ne pas confondre avec_ Technique (du BABOK v3). |
 
 ### Objets d'analyse
 

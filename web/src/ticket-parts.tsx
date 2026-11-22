@@ -3,6 +3,7 @@
 // @app/shared (tickets.ts).
 import {
   type BabokDto,
+  babokSectionLabel,
   findBabokElement,
   memberName,
   type MemberNameDto,
@@ -134,6 +135,7 @@ const TICKET_FIELD_LABELS = {
   status: 'action.status',
   taskId: 'action.task',
   techniqueId: 'action.technique',
+  agileTechniqueId: 'babok.agileTechnique',
   dueDate: 'action.dueDate',
   probability: 'ticket.probability',
   impact: 'ticket.impact',
@@ -168,7 +170,7 @@ function TicketChangeLine({ type, babok, change }: { type: TicketType; babok: Ba
   const babokName = (id: string | null) => {
     if (!id) return empty;
     const element = babok && findBabokElement(babok, id);
-    return element ? `${element.section} ${element.name[locale]}` : id;
+    return element ? `${babokSectionLabel(element, locale)} ${element.name[locale]}` : id;
   };
   const value = (): [ReactNode, ReactNode] => {
     switch (change.field) {
@@ -178,6 +180,7 @@ function TicketChangeLine({ type, babok, change }: { type: TicketType; babok: Ba
         return [statusLabel(type, change.from), statusLabel(type, change.to)];
       case 'taskId':
       case 'techniqueId':
+      case 'agileTechniqueId':
         return [babokName(change.from), babokName(change.to)];
       case 'dueDate':
         return [

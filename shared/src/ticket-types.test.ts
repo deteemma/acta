@@ -255,6 +255,7 @@ const snapshot = (fields: Partial<TicketSnapshot> = {}): TicketSnapshot => ({
   status: 'todo',
   taskId: null,
   techniqueId: null,
+  agileTechniqueId: null,
   dueDate: null,
   probability: null,
   impact: null,
@@ -338,4 +339,11 @@ test('historique : retirer le responsable ou l’Epic est une modification', () 
     { field: 'assignee', from: person('alice'), to: null },
     { field: 'epic', from: lot, to: null },
   ]);
+});
+
+test('historique : la technique agile d’une action figure parmi les champs modifiés (Extension Agile, D16)', () => {
+  const [entry] = ticketHistory([
+    version('2026-11-22T08:00:00.000Z', snapshot({ techniqueId: '10.37' }), snapshot({ techniqueId: '10.37', agileTechniqueId: 'ae-7.15' })),
+  ]);
+  assert.deepEqual(entry!.changes, [{ field: 'agileTechniqueId', from: null, to: 'ae-7.15' }]);
 });

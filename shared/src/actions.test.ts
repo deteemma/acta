@@ -5,6 +5,7 @@ import {
   type ActionDto,
   canBeAssignee,
   canCreateActionIn,
+  agileTechniqueInput,
   createActionSchema,
   isOpenAction,
   selectMyActions,
@@ -22,12 +23,13 @@ const person = (userId: string) => ({ userId, email: `${userId}@exemple.test`, d
 /** Action d'exemple ; seuls les champs utiles au test changent. */
 function action(fields: Partial<ActionDto> & { id: string }): ActionDto {
   return {
-    initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor' },
+    initiative: { id: 'crm', code: 'CRM', name: 'CRM', archived: false, myRole: 'contributor', agileExtensionEnabled: false },
     reference: 'CRM-AC-001',
     title: fields.id,
     description: null,
     taskId: '4.1',
     techniqueId: null,
+    agileTechniqueId: null,
     assignee: { ...person('alice'), eligible: true },
     assignedBy: person('alice'),
     assignedAt: '2026-10-01T08:00:00.000Z',
@@ -58,7 +60,7 @@ test('« Mes actions » par défaut : les statuts non fermés (À faire, En cour
   assert.deepEqual(ids(selectMyActions(types, actions)), ['a', 'b', 'e']);
 });
 
-const archivedInitiative = { id: 'old', code: 'OLD', name: 'Ancienne', archived: true, myRole: 'contributor' as const };
+const archivedInitiative = { id: 'old', code: 'OLD', name: 'Ancienne', archived: true, myRole: 'contributor' as const, agileExtensionEnabled: false };
 
 test('« Mes actions » : initiative archivée masquée, sauf filtre sur cette initiative', () => {
   const actions = [action({ id: 'a' }), action({ id: 'b', initiative: archivedInitiative })];
@@ -67,7 +69,7 @@ test('« Mes actions » : initiative archivée masquée, sauf filtre sur cette i
 });
 
 test('« Mes actions » : filtre par initiative et par statuts choisis', () => {
-  const other = { id: 'erp', code: 'ERP', name: 'ERP', archived: false, myRole: 'owner' as const };
+  const other = { id: 'erp', code: 'ERP', name: 'ERP', archived: false, myRole: 'owner' as const, agileExtensionEnabled: false };
   const actions = [
     action({ id: 'a', status: 'done' }),
     action({ id: 'b', status: 'done', initiative: other }),
@@ -109,6 +111,7 @@ const babok: BabokDto = {
     { kind: 'task', id: '4.1', section: '4.1', knowledgeAreaId: '4', name: text('Prepare for Elicitation', 'Préparer l’élicitation'), summary: text('…', '…'), techniqueIds: ['10.5', '10.25'] },
   ],
   techniques: [technique('10.1'), technique('10.5'), technique('10.25'), technique('10.37')],
+  agile: { principles: [], horizons: [], techniques: [] },
 };
 
 test('techniques proposées : les 50, celles de la tâche en tête, chaque groupe dans l’ordre du référentiel', () => {
@@ -188,3 +191,32 @@ test('création rapide : initiatives où l’on peut créer une action (proprié
   assert.equal(canCreateActionIn({ myRole: 'owner', archivedAt: '2026-10-01T08:00:00.000Z' }), false);
 });
 
+
+test('technique agile d’une action : une au plus, facultative, avec ou sans technique BABOK (D14)', () => {
+  const created = createActionSchema.parse({ title: 'Rétro', taskId: '4.1', agileTechniqueId: 'ae-7.15' });
+  assert.equal(created.agileTechniqueId, 'ae-7.15');
+  assert.equal(createActionSchema.parse({ title: 'Rétro', taskId: '4.1' }).agileTechniqueId, undefined);
+  assert.equal(createActionSchema.safeParse({ title: 'Rétro', taskId: '4.1', techniqueId: '10.37', agileTechniqueId: 'ae-7.15' }).success, true);
+  assert.equal(createActionSchema.safeParse({ title: 'Rétro', taskId: '4.1', agileTechniqueId: ['ae-7.15', 'ae-7.16'] }).success, false);
+  assert.equal(createActionSchema.safeParse({ title: 'Rétro', taskId: '4.1', agileTechniqueId: '10.37' }).success, false);
+  assert.deepEqual(updateActionSchema.parse({ agileTechniqueId: null }), { agileTechniqueId: null });
+  assert.deepEqual(updateActionSchema.parse({ agileTechniqueId: 'ae-7.16' }), { agileTechniqueId: 'ae-7.16' });
+});
+
+test('une action créée depuis une action suggérée n’a pas de technique agile ; elle peut en recevoir une ensuite (D16)', () => {
+  assert.equal(createActionSchema.safeParse({ title: 'Suggérée', taskId: '4.1', suggestionKey: 'R1' }).success, true);
+  assert.equal(
+    createActionSchema.safeParse({ title: 'Suggérée', taskId: '4.1', suggestionKey: 'R1', agileTechniqueId: null }).success,
+    true,
+  );
+  assert.equal(
+    createActionSchema.safeParse({ title: 'Suggérée', taskId: '4.1', suggestionKey: 'R1', agileTechniqueId: 'ae-7.15' }).success,
+    false,
+  );
+});
+
+test('le champ « Technique agile » n’est proposé et envoyé que si l’Extension Agile est activée (D6, D14)', () => {
+  assert.deepEqual(agileTechniqueInput({ agileExtensionEnabled: true }, 'ae-7.15'), { agileTechniqueId: 'ae-7.15' });
+  assert.deepEqual(agileTechniqueInput({ agileExtensionEnabled: true }, ''), { agileTechniqueId: null });
+  assert.deepEqual(agileTechniqueInput({ agileExtensionEnabled: false }, 'ae-7.15'), {});
+});

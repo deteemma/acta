@@ -5,6 +5,7 @@ import {
   type ActionDto,
   type BabokDto,
   findBabokElement,
+  offersAgileTechnique,
   memberName,
   ticketStatusLabel,
   ticketStatusTone,
@@ -84,6 +85,13 @@ function ActionDetails({ action, babok }: { action: ActionDto; babok: BabokDto |
       <View style={ui.card}>
         <Field label={t('action.task')} value={babokName(action.taskId)} />
         <Field label={t('action.technique')} value={action.techniqueId ? babokName(action.techniqueId) : t('initiative.notSet')} />
+        {/* En lecture seule, comme la technique BABOK ; seulement si l'Extension Agile est activée (D14, D17). */}
+        {offersAgileTechnique(action.initiative) && (
+          <Field
+            label={t('babok.agileTechnique')}
+            value={action.agileTechniqueId ? babokName(action.agileTechniqueId) : t('initiative.notSet')}
+          />
+        )}
         <Field
           label={t('action.assignee')}
           value={memberName(action.assignee) + (action.assignee.eligible ? '' : ` · ${t('action.assigneeNotEligible')}`)}

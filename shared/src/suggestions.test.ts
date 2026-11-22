@@ -59,6 +59,7 @@ const babok: BabokDto = {
     { kind: 'task', id: '4.1', section: '4.1', knowledgeAreaId: '4', name: text('4.1'), summary: text('…'), techniqueIds: ['10.5', '10.25', '10.43'] },
   ],
   techniques: ['10.1', '10.5', '10.25', '10.43'].map(technique),
+  agile: { principles: [], horizons: [], techniques: [] },
 };
 
 /** Action d'une initiative, réduite à ce qui compte pour l'usage : sa technique. */

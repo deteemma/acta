@@ -18,6 +18,7 @@ const babok: BabokDto = {
     { kind: 'task', id: '6.1', section: '6.1', knowledgeAreaId: '6', name: text('Current', 'Actuel'), summary, techniqueIds: [] },
   ],
   techniques: [],
+  agile: { principles: [], horizons: [], techniques: [] },
 };
 
 const doc = { type: 'doc' as const, content: [] };
