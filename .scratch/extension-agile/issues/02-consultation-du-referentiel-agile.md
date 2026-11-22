@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Référentiel agile à relire
 
-**Status:** ready-for-human (à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 22.11.2026)
 
 Règles : [spécification](../spec.md), décisions D1, D2, D5 à D9.
 
@@ -30,3 +30,5 @@ Deux points ne sont pas dans la spécification. Merci de les confirmer ou de les
 2. **Palette.** Elle trouve un élément agile par son numéro préfixé dans les deux langues : en français, « AE 7.16 » trouve la technique aussi bien que « EA 7.16 ». C'est le même principe que le nom anglais, qui est cherché quelle que soit la langue. Conséquence : taper seulement « ae » ou « ea » fait apparaître tous les éléments agiles.
 
 **22.11.2026, responsable fonctionnelle** : bandeau des onglets agiles et recherche par préfixe dans les deux langues confirmés.
+
+**22.11.2026, responsable fonctionnelle** : ticket validé.
