@@ -28,3 +28,5 @@ Deux points ne sont pas dans la spécification. Merci de les confirmer ou de les
 
 1. **Bandeau des onglets agiles.** Les onglets BABOK affichent un bandeau qui renvoie à l'exemplaire du BABOK. Les trois onglets agiles affichent à la place : « Extension Agile au Guide BABOK v2 : noms traduits et résumés rédigés pour ACTA. Pour le détail, reportez-vous à votre exemplaire, à la section indiquée. » Le titre de l'écran reste « Référentiel BABOK v3 ».
 2. **Palette.** Elle trouve un élément agile par son numéro préfixé dans les deux langues : en français, « AE 7.16 » trouve la technique aussi bien que « EA 7.16 ». C'est le même principe que le nom anglais, qui est cherché quelle que soit la langue. Conséquence : taper seulement « ae » ou « ea » fait apparaître tous les éléments agiles.
+
+**22.11.2026, responsable fonctionnelle** : bandeau des onglets agiles et recherche par préfixe dans les deux langues confirmés.
