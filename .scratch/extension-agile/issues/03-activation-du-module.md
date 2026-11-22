@@ -2,7 +2,7 @@
 
 **What to build:** Le propriétaire d'une initiative active ou désactive l'Extension Agile depuis la fiche de l'initiative.
 
-**Status:** ready-for-human (réalisé, à valider par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 22.11.2026)
 
 Règles : [spécification](../spec.md), décisions D10 à D12.
 
@@ -27,3 +27,7 @@ Deux points ne sont pas dans la spécification. Merci de les confirmer ou de les
 
 1. **Enregistrement.** Le choix s'enregistre avec le bouton « Enregistrer » de la fiche, comme les autres champs, et non dès le clic. Quitter la fiche sans enregistrer déclenche l'alerte habituelle.
 2. **Téléphone.** Le champ n'apparaît pas sur le téléphone, ni en lecture ni en modification (la spécification ne prévoit sur le téléphone que la technique agile d'une action, D17).
+
+**22.11.2026, responsable fonctionnelle** : enregistrement par le bouton « Enregistrer » et absence du champ sur le téléphone confirmés.
+
+**22.11.2026, responsable fonctionnelle** : ticket validé.
