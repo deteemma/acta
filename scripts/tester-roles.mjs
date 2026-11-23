@@ -5,7 +5,7 @@
 // Lancé par scripts/tester-roles.sh, dans l'image de l'application.
 // Une section par fichier dans scripts/roles/, exécutées dans l'ordre ci-dessous :
 // une section peut s'appuyer sur les objets créés par les précédentes.
-import { admin, alice, assert, bruno, call, check, chloe, failures } from './roles/commun.mjs';
+import { admin, alice, assert, bruno, call, check, chloe, failedLabels, failures } from './roles/commun.mjs';
 
 const SECTIONS = [
   '01-initiatives',
@@ -191,5 +191,9 @@ await check('bruno (propriétaire) supprime son initiative, même archivée : 20
   assert.equal((await call(bruno, 'DELETE', `/initiatives/${otherInitiativeId}`)).status, 204);
 });
 
-console.log(failures ? `\n${failures} échec(s).` : '\nTous les contrôles sont passés.');
+console.log(
+  failures
+    ? `\n${failures} échec(s) :\n${failedLabels.map((label) => `  ✘ ${label}`).join('\n')}`
+    : '\nTous les contrôles sont passés.',
+);
 process.exit(failures ? 1 : 0);

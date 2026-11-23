@@ -7,19 +7,23 @@ Elle est la source de vérité fonctionnelle.
 
 - **Ne jamais inventer une règle de gestion.** Si une règle manque ou est ambiguë, s'arrêter et poser la question.
 - **ADR** : `docs/adr/0001` à `0011` sont non négociables. Ne jamais les modifier de sa propre initiative ; proposer un nouvel ADR (gabarit `0000-modele-adr.md`) et attendre une validation explicite.
-- **Langues** : identifiants de code en anglais ; documentation, tickets, messages à l'utilisateur en français. Glossaire dans `CONTEXT.md`.
+- **Français pour tout message à la responsable**, comptes rendus de fin de ticket, PR et déploiement compris (un hook `Stop` le vérifie). Documentation et tickets aussi en français.
+- **Identifiants de code en anglais.** Glossaire dans `CONTEXT.md`.
 - **Normes de code** (règles métier dans `shared/`, permissions, accès base, socle) : `CODING_STANDARDS.md`.
 - **Nouvelle entité d'une initiative** : suivre `docs/ajouter-entite-partagee.md`.
-- **Modifier un fichier** : outil Edit ou Write. Un script de plus de quelques lignes s'écrit d'abord dans le scratchpad avec Write, puis s'exécute : sous Git Bash, les longs heredocs à apostrophes échouent.
+- **Modifier un fichier** : outil Edit ou Write, plusieurs appels Edit dans une même réponse pour plusieurs changements (un hook refuse `python -` et `cat > fichier <<`). Un script qui n'édite pas le dépôt s'écrit d'abord dans le scratchpad avec Write, puis s'exécute.
 
 ## Commandes
+
+Outil Bash (Git Bash) par défaut ; la construction Docker seule passe par l'outil PowerShell.
 
 | Besoin | Commande |
 |---|---|
 | Installer | `pnpm install` |
 | Lint (+ RLS des migrations) / types | `pnpm lint` · `pnpm --filter @app/shared build && pnpm typecheck` |
-| Démarrer (Docker, socle démarré) | `docker compose up -d --build` |
-| Tester les permissions | `bash scripts/tester-roles.sh` (une section par fichier dans `scripts/roles/`) |
+| Démarrer (Docker, socle démarré) | **outil PowerShell** : `docker compose up -d --build` |
+| Tester les permissions | `bash scripts/tester-roles.sh 2>&1 \| tail -20` (échecs récapitulés à la fin ; une section par fichier dans `scripts/roles/`) |
+| Lire la base locale (diagnostic) | `bash scripts/sql.sh "SELECT …"` (lecture seule, toutes les lignes) |
 | Web en rechargement à chaud | `pnpm dev:web` (http://localhost:5173) |
 | Mobile | `pnpm dev:mobile` (lire `mobile/AGENTS.md` avant de toucher au code Expo) |
 | Déployer | `./deployer.sh <application> <version>` |

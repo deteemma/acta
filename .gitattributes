@@ -1,4 +1,6 @@
-* text=auto
+# Fichiers de travail en LF aussi sous Windows (core.autocrlf=true sinon les
+# passe en CRLF) : les éditions par script ne réécrivent plus les fins de ligne.
+* text=auto eol=lf
 *.sh text eol=lf
 *.sql text eol=lf
 *.ps1 text eol=crlf

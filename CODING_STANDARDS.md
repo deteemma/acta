@@ -35,6 +35,10 @@ et `pnpm test` n'est pas repris ici.
   (ou `asAdmin()`), sur son `tx` ; aucun `tx` conservé au-delà du rappel.
 - `scripts/roles/` couvre la nouvelle ressource sur les deux barrières (API et
   base), pour chaque rôle et pour l'initiative archivée.
+- Un contrôle de `scripts/roles/` ne porte que sur les lignes que sa section a
+  créées (ses initiatives, ses tickets). La base locale contient aussi les
+  données de validation de la responsable fonctionnelle : un contrôle sur toute
+  une table (« aucune initiative n'a… ») échoue dès qu'elle s'en sert.
 
 ## Langues
 
