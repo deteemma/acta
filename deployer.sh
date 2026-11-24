@@ -52,7 +52,7 @@ mkdir -p sauvegardes
 FICHIER="sauvegardes/$(lire_var APP_NAME)-avant-$VERSION-$(date +%Y%m%d-%H%M%S).dump"
 # Client PostgreSQL éphémère sur le réseau du socle, avec le compte propriétaire.
 docker run --rm --network socle -e URL="$(lire_var MIGRATIONS_DATABASE_URL)" \
-  postgres:17.11-alpine sh -c 'pg_dump --format=custom "$URL"' > "$FICHIER"
+  postgres:17.12-alpine sh -c 'pg_dump --format=custom "$URL"' > "$FICHIER"
 [ -s "$FICHIER" ] || { echo "Sauvegarde vide : déploiement interrompu." >&2; exit 1; }
 echo "• $FICHIER ($(du -h "$FICHIER" | cut -f1))"
 

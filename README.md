@@ -76,7 +76,7 @@ revenir à cet état (en cas de migration défaillante) :
 ```bash
 docker compose stop api
 docker run --rm -i --network socle -e URL="<MIGRATIONS_DATABASE_URL du .env>" \
-  postgres:17.11-alpine sh -c 'pg_restore --clean --if-exists --no-owner -d "$URL"' \
+  postgres:17.12-alpine sh -c 'pg_restore --clean --if-exists --no-owner -d "$URL"' \
   < sauvegardes/<fichier>.dump
 ./deployer.sh <application> <version précédente>
 ```
