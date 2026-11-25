@@ -11,12 +11,15 @@ export const env = process.env;
 export const API = `http://${env.APP_NAME}-api:3000/api`;
 const TOKEN_URL = env.OIDC_JWKS_URL.replace(/\/certs$/, '/token');
 export let failures = 0;
+/** Libellés des contrôles en échec, récapitulés en fin de sortie par tester-roles.mjs. */
+export const failedLabels = [];
 export async function check(label, fn) {
   try {
     await fn();
     console.log(`  ✔ ${label}`);
   } catch (error) {
     failures++;
+    failedLabels.push(label);
     console.log(`  ✘ ${label}\n      ${error.message}`);
   }
 }
