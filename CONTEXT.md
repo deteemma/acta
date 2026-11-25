@@ -109,6 +109,14 @@ complété au démarrage de chaque application (étape 2 du skill `nouvelle-appl
 | Conception | `design` | Livrable du BABOK (*Designs*) porté par une page liée aux exigences, pas par un objet propre. _À éviter_ : spécification. |
 | Suggestion | `suggestion` | Proposition de tâche BABOK, de technique ou d'action, produite par une règle fixe et accompagnée de sa justification. |
 
+### Aide à la décision
+
+| Français | Code (anglais) | Définition |
+|---|---|---|
+| Assistant | `assistant` | Aide à la décision du BA : lit une initiative avec les droits de la personne qui l'interroge, jamais davantage, puis répond et conseille ; la décision reste au BA. L'outil qui le fait fonctionner n'est jamais montré à l'utilisateur. _À ne pas confondre avec_ Suggestion, produite par une règle fixe. |
+| Demande à l'assistant | `assistant_request` | Question posée à l'assistant par un membre, sur une seule initiative ; traitée en différé : la réponse lui parvient quand elle est prête, sans qu'il ait à attendre. Privée à son auteur, conservée pour lui, effaçable par lui. |
+| Avis de l'assistant | `assistant_advice` | Réponse de l'assistant à une demande : texte libre, non vérifié par une règle, que le BA retient ou écarte. Complète les suggestions sans les remplacer. _À ne pas confondre avec_ Suggestion. |
+
 ### Saisie
 
 | Français | Code (anglais) | Définition |
