@@ -34,12 +34,13 @@ Un cadrage décisionnel de l'**assistant** d'ACTA, qui fonctionne avec Hermes Ag
 
 - [Capacités d'intégration de Hermes Agent](issues/01-capacites-integration-hermes.md) : différé possible en interrogeant Hermes (pas de rappel, résultat gardé une heure), donc la file est côté ACTA ; pas de jeton par utilisateur ; aucun isolement entre utilisateurs (mémoire, historique et skills à couper) ; outils dangereux actifs par défaut ; réseau commun à créer ; contexte Ollama à porter à 64 000 tokens.
 - [Valeur pour le BA des dix usages candidats](issues/03-valeur-des-usages.md) : usages 2 et 9 fusionnés en « faire le point », posé à la demande ; prioritaires : relire une page, prochaines étapes, préparer un atelier ; secondaires : traçabilité et cohérence, Gherkin, faire le point ; différables : technique BABOK, parties prenantes, question libre (risque fort).
+- [Cycle de vie d'une demande à l'assistant](issues/04-cycle-de-vie-demande.md) : demande isolée ouverte à tout membre, lecteur compris ; cinq statuts (En attente, En cours, Répondue, Échouée, Annulée) ; signal « Avis non lu » distinct de l'Alerte ; une demande non terminée par personne ; avis daté, jamais recalculé ; délai maximal paramétrable, pas de nouvelle tentative automatique ; masquage si l'auteur perd l'accès ; effacement définitif ; invisible pour l'administrateur.
 
 ## Zones floues
 
-- **Données fournies à l'assistant pour chaque usage du premier lot** : quelles pages, quels tickets, quelles exigences, quelle part du référentiel BABOK. Cela dépend de l'architecture de lecture et du premier lot.
+- **Données fournies à l'assistant pour chaque usage du premier lot** : quelles pages, quels tickets, quelles exigences, quelle part du référentiel BABOK. Cela dépend de l'architecture de lecture et du premier lot. On y décidera aussi ce qui compte comme un élément lu modifié depuis l'avis.
 - **Aspect du panneau dans ACTA** : où l'on pose la question, où arrive la réponse, comment distinguer un avis d'une suggestion. Une maquette viendra après le choix du premier lot.
-- **Spécification du premier lot** (`spec.md`) : se rédige une fois les tickets 04, 05 et 06 résolus.
+- **Spécification du premier lot** (`spec.md`) : se rédige une fois les tickets 05 et 06 résolus (le 04 l'est).
 - **Renforcement du serveur** : à examiner seulement si les mesures du modèle local le justifient.
 - **Plus tard, hors premier lot** : l'assistant qui agit de lui-même (point périodique, relecture lancée à l'enregistrement), la version mobile, la messagerie, les questions qui portent sur plusieurs initiatives.
 

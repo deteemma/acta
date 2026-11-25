@@ -16,6 +16,8 @@ Il faut aussi décider :
 - où vit la file d'attente des demandes asynchrones ;
 - quel réseau relie les deux conteneurs ;
 - comment l'API de Hermes est protégée ;
-- quels outils de Hermes sont coupés.
+- quels outils de Hermes sont coupés ;
+- ce que Hermes conserve des demandes (historique, sessions, journaux), et comment l'effacement par l'auteur s'y applique pour être réel et sans trace (ticket 04, règle 11) ;
+- comment ACTA vérifie les droits juste avant la lecture, et annule une demande dont l'auteur a perdu l'accès (ticket 04, règle 10).
 
 Résultat : un **ADR proposé**, sur le gabarit `docs/adr/0000-modele-adr.md`, soumis à la validation explicite de la responsable.
