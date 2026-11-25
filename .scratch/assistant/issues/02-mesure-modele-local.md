@@ -1,7 +1,7 @@
 # Ce que vaut le modèle local sur des tâches types d'ACTA
 
 Type: task
-Status: open
+Status: claimed
 Label: wayfinder:task
 
 ## Question
@@ -23,3 +23,8 @@ Résultat attendu, pour chaque tâche :
 - la taille de contexte utilisée ;
 - une appréciation de la qualité (exacte, utile, ou fausse et dangereuse) ;
 - un verdict faisable / limite / infaisable sur le matériel actuel.
+
+## Avancement
+
+- **25.11.2026, en attente** : le port SSH du serveur (51837) ne répond plus depuis le poste de la responsable, alors que https://acta.socle-eagtasq.fr répond. Le poste lui-même ne remplace pas le serveur (12 fils et 16 Go, contre 16 cœurs et 31 Go). La responsable rétablit l'accès (pare-feu ou fail2ban depuis la console OVH, ou autre réseau). Les mesures se feront ensuite sur le serveur, sans elle.
+- **Avant toute commande Docker locale** (extraction de l'initiative de démonstration avec `scripts/sql.sh`), repasser sur le contexte `desktop-linux` : le contexte `vps` était encore actif le 25.11.2026.

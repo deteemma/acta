@@ -32,6 +32,9 @@ Un cadrage décisionnel de l'**assistant** d'ACTA, qui fonctionne avec Hermes Ag
 
 <!-- une ligne par ticket résolu : [titre](lien) : résumé -->
 
+- [Capacités d'intégration de Hermes Agent](issues/01-capacites-integration-hermes.md) : différé possible en interrogeant Hermes (pas de rappel, résultat gardé une heure), donc la file est côté ACTA ; pas de jeton par utilisateur ; aucun isolement entre utilisateurs (mémoire, historique et skills à couper) ; outils dangereux actifs par défaut ; réseau commun à créer ; contexte Ollama à porter à 64 000 tokens.
+- [Valeur pour le BA des dix usages candidats](issues/03-valeur-des-usages.md) : usages 2 et 9 fusionnés en « faire le point », posé à la demande ; prioritaires : relire une page, prochaines étapes, préparer un atelier ; secondaires : traçabilité et cohérence, Gherkin, faire le point ; différables : technique BABOK, parties prenantes, question libre (risque fort).
+
 ## Zones floues
 
 - **Données fournies à l'assistant pour chaque usage du premier lot** : quelles pages, quels tickets, quelles exigences, quelle part du référentiel BABOK. Cela dépend de l'architecture de lecture et du premier lot.
