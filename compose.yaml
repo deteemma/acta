@@ -33,6 +33,9 @@ services:
       OIDC_AUDIENCE: ${OIDC_AUDIENCE:-api}
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-}
       COMPOSE_PROFILES: ${COMPOSE_PROFILES:-}
+      # Instance Hermes d'ACTA ; vides = assistant absent (AS25).
+      HERMES_URL: ${HERMES_URL:-}
+      HERMES_API_KEY: ${HERMES_API_KEY:-}
       NODE_OPTIONS: --max-old-space-size=256
     depends_on:
       migrations:
@@ -41,6 +44,7 @@ services:
       socle:
         # Nom sous lequel Caddy (socle) joint l'API.
         aliases: ["${APP_NAME}-api"]
+      assistant: {}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
       interval: 15s
@@ -69,6 +73,46 @@ services:
       socle:
         aliases: ["${APP_NAME}-powersync"]
 
+  # Instance Hermes réservée à ACTA (ADR-0022 points 6 à 11, ADR-0023, AS35-AS36).
+  # Ni réseau « socle », ni port publié, ni accès à Internet.
+  assistant:
+    # Version vérifiée au ticket 10 (Hermes Agent v0.23.4), épinglée par empreinte.
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent@sha256:ef0650d523ee1b5ab32c779acabc446d9936869a9932591553688a62bcf0c42f}
+    profiles: ["assistant"]
+    restart: unless-stopped
+    # Compte aussi le tmpfs de /opt/data (ADR-0023) : les deux se règlent ensemble.
+    mem_limit: ${ASSISTANT_MEM_LIMIT:-2g}
+    command: ["gateway", "run"]
+    environment:
+      API_SERVER_ENABLED: "true"
+      API_SERVER_HOST: 0.0.0.0
+      API_SERVER_KEY: ${HERMES_API_KEY:-}
+      # Lue par hermes/config.yaml (model.base_url).
+      OLLAMA_URL: ${OLLAMA_URL:-}
+    # Données de Hermes en mémoire vive : rien sur disque, rien dans les sauvegardes
+    # (ADR-0023, ADR-0010). Configuration fournie à chaque démarrage, en lecture seule.
+    tmpfs:
+      - /opt/data:size=${ASSISTANT_TMPFS_SIZE:-512m}
+    volumes:
+      - ./hermes/config.yaml:/opt/data/config.yaml:ro
+    networks:
+      - assistant
+      - assistant-modele
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8642/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
 networks:
   socle:
     external: true
+  # API ↔ Hermes, et rien d'autre (ADR-0022, point 9).
+  assistant:
+    internal: true
+  # Hermes ↔ Ollama, sans Internet. Ollama, hors d'ACTA, y est branché à la main
+  # (INSTALL.md, « Assistant ») : nom fixe pour cette commande.
+  assistant-modele:
+    name: ${APP_NAME}-assistant-modele
+    internal: true

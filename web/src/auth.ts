@@ -3,9 +3,16 @@ import { parseScreenPath, type PublicConfigDto, screenPath } from '@app/shared';
 import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts';
 
 let manager: UserManager | null = null;
+let publicConfig: PublicConfigDto | null = null;
+
+/** Assistant installé (AS25) : sinon, ni bouton, ni onglet, ni fil, ni compteur. */
+export function isAssistantInstalled(): boolean {
+  return publicConfig?.assistant === true;
+}
 
 export async function initAuth(): Promise<UserManager> {
   const config = (await (await fetch('/api/config')).json()) as PublicConfigDto;
+  publicConfig = config;
   manager = new UserManager({
     authority: config.oidcIssuerUrl,
     client_id: config.webClientId,

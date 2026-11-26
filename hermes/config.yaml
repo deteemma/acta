@@ -1,0 +1,46 @@
+# Configuration de l'instance Hermes d'ACTA (service « assistant » de compose.yaml).
+# Spécification de l'assistant : AS26, AS35, AS36 ; ADR-0022 (points 6 à 11), ADR-0023.
+# Montée en lecture seule dans /opt/data (mémoire vive) à chaque démarrage.
+# Vérifiée sur Hermes Agent v0.23.4 (ticket 10) : à relire à chaque mise à jour
+# de Hermes (outils, mémoire, journaux, écritures hors de /opt/data).
+model:
+  default: "qwen3.5:9b"
+  provider: "custom"
+  # Adresse d'Ollama sur le réseau interne, par variable d'environnement (ADR-0022, point 11).
+  base_url: "${OLLAMA_URL}/v1"
+  context_length: 65536
+  ollama_num_ctx: 65536
+
+# Aucun outil : liste explicite vide pour la plateforme API (AS26, AS36).
+# La recherche dans l'historique (session_search) est un outil : elle est donc coupée.
+platform_toolsets:
+  api_server: []
+
+# Ni mémoire ni profil d'utilisateur (AS36).
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+  nudge_interval: 0
+
+# Pas d'écriture de skills (AS36).
+skills:
+  creation_nudge_interval: 0
+  project_discovery: false
+
+# Pas de révision automatique (AS36).
+curator:
+  enabled: false
+
+auxiliary:
+  background_review:
+    enabled: false
+  # Pas de titre de session : un appel au modèle et une copie du début de la demande en moins (AS36).
+  title_generation:
+    enabled: false
+
+# Journaux limités aux avertissements et aux erreurs : ils ne citent pas les demandes (AS36).
+logging:
+  level: "WARNING"
+
+streaming:
+  enabled: false

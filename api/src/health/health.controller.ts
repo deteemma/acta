@@ -27,6 +27,7 @@ export class HealthController {
       webClientId: 'web',
       mobileClientId: 'mobile',
       powersyncUrl: this.config.offlineMobile ? `${this.config.publicUrl}/powersync` : null,
+      assistant: this.config.assistant !== null,
     };
   }
 }

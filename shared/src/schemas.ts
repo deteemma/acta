@@ -239,4 +239,6 @@ export interface PublicConfigDto {
   webClientId: string;
   mobileClientId: string;
   powersyncUrl: string | null;
+  /** Assistant installé (AS25) : faux, rien de l'assistant n'apparaît. */
+  assistant: boolean;
 }

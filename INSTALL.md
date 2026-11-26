@@ -114,6 +114,114 @@ bash /opt/socle/scripts/appliquer-realm.sh monappli /opt/applications/monappli/.
 Les boutons « Google » et « Microsoft » apparaissent sur la page de connexion.
 Un fournisseur dont l'identifiant reste vide est désactivé.
 
+## 7. Assistant (facultatif)
+
+L'assistant utilise une instance **Hermes Agent** réservée à l'application
+(service `assistant`, profil Compose `assistant`) et le modèle d'un conteneur
+**Ollama** déjà installé sur le serveur, hors de l'application (ADR-0022,
+ADR-0023). Sans adresse ou sans clé de Hermes, l'assistant n'apparaît pas et le
+reste de l'application fonctionne normalement.
+
+Ce que l'installation garantit :
+
+- Hermes n'a ni port publié, ni nom de domaine, ni accès à Internet, et ne
+  rejoint pas le réseau `socle`. Il est sur deux réseaux internes :
+  - `monappli_assistant` : l'API et Hermes, rien d'autre ;
+  - `monappli-assistant-modele` : Hermes et Ollama.
+- Sa configuration est `hermes/config.yaml` : aucun outil, ni mémoire, ni skill
+  écrit par Hermes, ni révision automatique, ni titre de session ; journaux
+  limités aux avertissements. `deployer.sh` la déploie avec la version.
+- Ses données sont en mémoire vive (`tmpfs`) : rien n'est écrit sur disque ni
+  sauvegardé. **Un redémarrage de Hermes efface ses travaux en cours** : les
+  demandes concernées deviennent « Échouée, assistant indisponible ».
+
+### 7.1 Prérequis
+
+- Ollama tourne dans un conteneur nommé `ollama`, avec le modèle `qwen3.5:9b` et
+  une taille de contexte d'au moins 64 000 tokens.
+- Mémoire libre : 2 Go pour Hermes (réglage `ASSISTANT_MEM_LIMIT`, qui inclut les
+  512 Mo de `ASSISTANT_TMPFS_SIZE`).
+
+### 7.2 Mise en service
+
+Dans `/opt/applications/monappli/.env` :
+
+```bash
+cd /opt/applications/monappli
+# Clé aléatoire de 48 caractères, jamais recopiée ailleurs que dans ce fichier
+echo "HERMES_API_KEY=$(openssl rand -hex 24)" >> .env
+```
+
+puis, avec un éditeur, compléter ou modifier :
+
+```
+COMPOSE_PROFILES=assistant            # ou mobile-hors-ligne,assistant
+HERMES_URL=http://assistant:8642
+OLLAMA_URL=http://ollama:11434
+```
+
+Déployer la version (§ 4), puis brancher Ollama sur le réseau interne de
+l'application et vérifier :
+
+```bash
+APPLICATIONS_DIR=/opt/applications ./deployer.sh monappli <version>
+docker network connect monappli-assistant-modele ollama
+docker compose exec assistant curl -s -o /dev/null -w "%{http_code}\n" http://ollama:11434/api/tags  # 200
+docker compose exec assistant curl -s -m 5 -o /dev/null -w "%{http_code}\n" https://example.com      # 000 : pas d'Internet
+docker compose exec api wget -qO- http://assistant:8642/health                                        # {"status": "ok"...}
+```
+
+Le branchement d'Ollama se garde après un redémarrage du serveur. Il est à
+refaire seulement si le réseau `monappli-assistant-modele` a été supprimé (par
+exemple après un `docker compose down`).
+
+### 7.3 Retirer l'assistant
+
+Vider `HERMES_URL` dans `.env`, retirer `assistant` de `COMPOSE_PROFILES`, puis :
+
+```bash
+docker compose stop assistant && docker compose rm -f assistant
+docker network disconnect monappli-assistant-modele ollama
+docker compose up -d api
+```
+
+### 7.4 Accès depuis le poste de développement
+
+Pour essayer l'assistant sur `https://monappli.localhost` avec l'instance Hermes
+du serveur, sans publier de port de Hermes : un tunnel SSH, ouvert depuis le
+poste, relie un port local au conteneur Hermes en passant par l'hôte du serveur.
+
+1. Dans le `.env` **local** (jamais versionné), ajouter :
+
+   ```
+   HERMES_URL=http://host.docker.internal:8642
+   HERMES_API_KEY=<la valeur de HERMES_API_KEY du .env du serveur>
+   ```
+
+   Ne pas ajouter `assistant` à `COMPOSE_PROFILES` en local : aucune instance
+   Hermes ne tourne sur le poste.
+
+2. Ouvrir le tunnel dans un terminal Git Bash, et le laisser ouvert :
+
+   ```bash
+   bash scripts/ouvrir-acces-assistant.sh vps   # « vps » : alias SSH du serveur
+   ```
+
+   Le script lit l'adresse du conteneur Hermes sur le serveur (elle change à
+   chaque redémarrage de Hermes : relancer alors le script).
+
+3. Redémarrer l'API locale : `docker compose up -d api`.
+
+4. Vérifier depuis le conteneur de l'API :
+
+   ```bash
+   docker compose exec api wget -qO- http://host.docker.internal:8642/health
+   ```
+
+Fermer le tunnel (Ctrl+C) coupe l'accès : les demandes restent alors « En
+attente, assistant momentanément indisponible ». Pour revenir à une application
+sans assistant, vider `HERMES_URL` dans le `.env` local et redémarrer l'API.
+
 ## Mettre à jour
 
 Pour chaque nouvelle version : `APPLICATIONS_DIR=/opt/applications ./deployer.sh monappli <version>`.

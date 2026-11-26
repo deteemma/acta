@@ -30,7 +30,11 @@ cd "$DOSSIER"
 lire_var() { grep -E "^$1=" .env | tail -n1 | cut -d= -f2- || true; }
 etape() { echo; echo "== $*"; }
 
-# Fichiers de déploiement (compose.yaml, powersync, realm) alignés sur la version.
+profil_actif() { [[ ",$(lire_var COMPOSE_PROFILES)," == *",$1,"* ]]; }
+empreinte_hermes() { sha256sum hermes/config.yaml 2>/dev/null | cut -d' ' -f1; }
+HERMES_AVANT="$(empreinte_hermes)"
+
+# Fichiers de déploiement (compose.yaml, powersync, realm, hermes) alignés sur la version.
 if [ "$VERSION" != "local" ] && [ -d .git ]; then
   etape "Alignement des fichiers sur l'étiquette v$VERSION"
   git fetch --tags --quiet
@@ -75,3 +79,22 @@ if [ "$ETAT" != "healthy" ]; then
   exit 1
 fi
 echo "• $(lire_var PUBLIC_URL) — version $VERSION en service"
+
+# Assistant (ADR-0022, ADR-0023) : Hermes lit sa configuration au démarrage ;
+# il ne redémarre que si elle a changé, car un redémarrage efface ses travaux.
+if profil_actif assistant; then
+  if [ "$(empreinte_hermes)" != "$HERMES_AVANT" ]; then
+    echo "• Configuration de Hermes modifiée : redémarrage de l'assistant"
+    docker compose restart assistant
+  fi
+  for _ in $(seq 1 60); do
+    ETAT="$(docker inspect --format '{{.State.Health.Status}}' "$(docker compose ps -q assistant)" 2>/dev/null || true)"
+    [ "$ETAT" = "healthy" ] && break
+    sleep 3
+  done
+  if [ "$ETAT" != "healthy" ]; then
+    echo "L'assistant ne répond pas (état : ${ETAT:-inconnu}). Journal : docker compose logs assistant" >&2
+    exit 1
+  fi
+  echo "• Assistant en service"
+fi

@@ -19,6 +19,7 @@ hérités par chaque application.
 | `mobile/` | Expo ; mode hors ligne PowerSync en option |
 | `keycloak/` | realm de l'application (`realm.json`) et comptes de test locaux |
 | `powersync/` | configuration PowerSync (profil `mobile-hors-ligne`) |
+| `hermes/` | configuration de l'instance Hermes de l'assistant (profil `assistant`, [INSTALL.md § 7](INSTALL.md#7-assistant-facultatif)) |
 | `scripts/` | test de bout en bout des permissions |
 | `deployer.sh` | déploiement : sauvegarde, migrations, démarrage |
 

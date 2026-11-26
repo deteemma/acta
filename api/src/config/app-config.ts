@@ -1,4 +1,5 @@
 // Le module ne connaît le socle que par ses variables d'environnement (ADR-0007).
+import { type AssistantConnection, assistantConnection } from '@app/shared';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -13,6 +14,9 @@ const envSchema = z.object({
   KEYCLOAK_ADMIN_CLIENT_SECRET: z.string().optional(),
   WEB_DIST_DIR: z.string().optional(),
   COMPOSE_PROFILES: z.string().default(''),
+  // Instance Hermes d'ACTA (AS35, ADR-0022) ; vides = assistant absent (AS25).
+  HERMES_URL: z.string().optional(),
+  HERMES_API_KEY: z.string().optional(),
 });
 
 /** Accès à l'API d'administration de Keycloak par le compte technique « api-admin ». */
@@ -35,6 +39,8 @@ export class AppConfig {
   readonly offlineMobile: boolean;
   /** Null tant que le secret du compte technique n'est pas dans .env : administration indisponible. */
   readonly keycloakAdmin: KeycloakAdminConfig | null;
+  /** Null : assistant non installé (AS25). */
+  readonly assistant: AssistantConnection | null;
 
   constructor(env: NodeJS.ProcessEnv = process.env) {
     const parsed = envSchema.parse(env);
@@ -50,6 +56,7 @@ export class AppConfig {
     this.keycloakAdmin = parsed.KEYCLOAK_ADMIN_CLIENT_SECRET
       ? keycloakAdminConfig(this.oidcJwksUrl, parsed.KEYCLOAK_ADMIN_CLIENT_SECRET)
       : null;
+    this.assistant = assistantConnection(parsed.HERMES_URL, parsed.HERMES_API_KEY);
   }
 }
 
