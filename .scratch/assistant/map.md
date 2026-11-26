@@ -34,17 +34,18 @@ Un cadrage décisionnel de l'**assistant** d'ACTA, qui fonctionne avec Hermes Ag
 
 - [Capacités d'intégration de Hermes Agent](issues/01-capacites-integration-hermes.md) : différé possible en interrogeant Hermes (pas de rappel, résultat gardé une heure), donc la file est côté ACTA ; pas de jeton par utilisateur ; aucun isolement entre utilisateurs (mémoire, historique et skills à couper) ; outils dangereux actifs par défaut ; réseau commun à créer ; contexte Ollama à porter à 64 000 tokens.
 - [Ce que vaut le modèle local sur des tâches types d'ACTA](issues/02-mesure-modele-local.md) : de 2 à 10 min par demande sans réflexion, de 20 à 25 min avec ; contexte de 4 600 tokens au plus, sans difficulté ; la qualité est la vraie limite. Faisables : faire le point, prochaines étapes, préparer un atelier, parties prenantes. Limites : Gherkin, technique BABOK, relire une page longue, cohérence sans réflexion. Infaisable sans réflexion : relire une page moyenne. La réflexion fait passer la cohérence de 3 à 5 contradictions trouvées sur 5. Les retards d'échéance sont à calculer par ACTA.
+- [Choix du premier lot](issues/06-choix-premier-lot.md) : 7 usages (relire une page en « relecture de cohérence », prochaines étapes, préparer un atelier, traçabilité et cohérence, Gherkin, faire le point, question libre sans données) ; mode de réponse rapide ou approfondie au choix du BA, avec avertissement ; délais maximaux de 20 et 60 minutes ; technique BABOK et parties prenantes reportées ; renforcement du serveur non ouvert.
 - [Valeur pour le BA des dix usages candidats](issues/03-valeur-des-usages.md) : usages 2 et 9 fusionnés en « faire le point », posé à la demande ; prioritaires : relire une page, prochaines étapes, préparer un atelier ; secondaires : traçabilité et cohérence, Gherkin, faire le point ; différables : technique BABOK, parties prenantes, question libre (risque fort).
 - [Cycle de vie d'une demande à l'assistant](issues/04-cycle-de-vie-demande.md) : demande isolée ouverte à tout membre, lecteur compris ; cinq statuts (En attente, En cours, Répondue, Échouée, Annulée) ; signal « Avis non lu » distinct de l'Alerte ; une demande non terminée par personne ; avis daté, jamais recalculé ; délai maximal paramétrable, pas de nouvelle tentative automatique ; masquage si l'auteur perd l'accès ; effacement définitif ; invisible pour l'administrateur.
 - [Comment l'assistant lit une initiative avec les droits de l'utilisateur](issues/05-lecture-avec-les-droits.md) : ADR 0022 accepté. ACTA assemble le contexte avec les droits de l'auteur, revérifiés au départ et à l'arrivée ; file et parallélisme réglable dans ACTA ; instance Hermes réservée (profil `assistant`), sans autre outil que nos skills, sans mémoire, sans Internet ni accès au réseau `socle` ; assistant facultatif.
 
 ## Zones floues
 
-- **Données fournies à l'assistant pour chaque usage du premier lot** : quelles pages, quels tickets, quelles exigences, quelle part du référentiel BABOK. ACTA les choisit et les assemble elle-même (ADR 0022) ; cela dépend du premier lot et de la taille de contexte mesurée. On y décidera aussi ce qui compte comme un élément lu modifié depuis l'avis.
-- **Aspect du panneau dans ACTA** : où l'on pose la question, où arrive la réponse, comment distinguer un avis d'une suggestion. Une maquette viendra après le choix du premier lot.
-- **Spécification du premier lot** (`spec.md`) : se rédige une fois le ticket « Choix du premier lot » résolu (les tickets 04 et 05 le sont).
-- **Renforcement du serveur** : à examiner seulement si les mesures du modèle local le justifient.
-- **Plus tard, hors premier lot** : l'assistant qui agit de lui-même (point périodique, relecture lancée à l'enregistrement), la version mobile, la messagerie, les questions qui portent sur plusieurs initiatives.
+- **Plus tard, hors premier lot** :
+  - l'assistant qui agit de lui-même (point périodique, relecture lancée à l'enregistrement) ;
+  - la version mobile, la messagerie, les questions qui portent sur plusieurs initiatives ;
+  - les usages reportés (technique BABOK, parties prenantes) et les données jointes à une question libre ;
+  - le renforcement du serveur, à examiner sur les retours d'usage du premier lot.
 
 ## Hors périmètre
 
