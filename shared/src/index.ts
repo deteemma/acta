@@ -2,6 +2,8 @@ export * from './actions.js';
 export * from './admin.js';
 export * from './alerts.js';
 export * from './assistant.js';
+export * from './assistant-context.js';
+export * from './assistant-requests.js';
 export * from './attachments.js';
 export * from './babok.js';
 export * from './comments.js';

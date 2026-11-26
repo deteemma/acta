@@ -2,6 +2,11 @@
 import type { ColumnType, Generated } from 'kysely';
 import type {
   AnalysisApproach,
+  AssistantCancellationReason,
+  AssistantFailureReason,
+  AssistantMode,
+  AssistantRequestStatus,
+  AssistantUsage,
   BackgroundSnapshot,
   InitiativeRole,
   LinkKind,
@@ -245,6 +250,35 @@ export interface CommentTable {
 export interface AppSettingsTable {
   id: ColumnType<boolean, never, never>;
   attachment_quota_mb: ColumnType<number, never, never>;
+  /** Paramètres de l'assistant (migration 0038, AS32). */
+  assistant_concurrency: ColumnType<number, never, never>;
+  assistant_quick_timeout_minutes: ColumnType<number, never, never>;
+  assistant_thorough_timeout_minutes: ColumnType<number, never, never>;
+  assistant_max_data_tokens: ColumnType<number, never, never>;
+}
+
+/**
+ * Demande à l'assistant (migration 0038) : privée à son auteur ; seul le
+ * traitement de fond la fait avancer, la base pose la date de fin.
+ */
+export interface AssistantRequestTable {
+  id: ColumnType<string, string, never>;
+  initiative_id: ColumnType<string, string, never>;
+  author_id: ColumnType<string, string | undefined, never>;
+  usage: ColumnType<AssistantUsage, AssistantUsage, never>;
+  element_ids: ColumnType<string[], string[] | undefined, never>;
+  question: ColumnType<string | null, string | null | undefined, never>;
+  mode: ColumnType<AssistantMode, AssistantMode, never>;
+  locale: ColumnType<Locale, Locale, never>;
+  status: ColumnType<AssistantRequestStatus, AssistantRequestStatus | undefined, AssistantRequestStatus>;
+  created_at: ColumnType<Date, never, never>;
+  read_at: ColumnType<Date | null, never, Date | string>;
+  finished_at: ColumnType<Date | null, never, never>;
+  timeout_minutes: ColumnType<number | null, never, number>;
+  hermes_run_id: ColumnType<string | null, never, string>;
+  advice: ColumnType<string | null, never, string>;
+  failure_reason: ColumnType<AssistantFailureReason | null, never, AssistantFailureReason>;
+  cancellation_reason: ColumnType<AssistantCancellationReason | null, never, AssistantCancellationReason>;
 }
 
 /** Pièce jointe d'un ticket ou d'une page (migration 0024) : auteur, dates et taille écrits par la base. */
@@ -506,6 +540,7 @@ export interface Database {
   agile_technique_horizon: AgileTechniqueHorizonTable;
   app_settings: AppSettingsTable;
   app_user: AppUserTable;
+  assistant_request: AssistantRequestTable;
   attachment: AttachmentTable;
   babok_knowledge_area: BabokKnowledgeAreaTable;
   babok_task: BabokTaskTable;

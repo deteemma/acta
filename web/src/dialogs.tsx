@@ -45,7 +45,9 @@ export type DialogContent =
   /** « Nouvelle page » ; avec `parentId`, « Sous-page » de cette page. */
   | { kind: 'createPage'; initiativeId: string; parentId?: string }
   /** Avec la langue de la validation de syntaxe (D15). */
-  | { kind: 'createScenario'; initiativeId: string; requirementId: string; language: Locale };
+  | { kind: 'createScenario'; initiativeId: string; requirementId: string; language: Locale }
+  /** « Demander à l'assistant » depuis l'initiative ou son tableau de bord (AS22). */
+  | { kind: 'askAssistant'; initiativeId: string };
 
 interface Entry {
   id: number;

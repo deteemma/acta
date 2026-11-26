@@ -1,5 +1,7 @@
 import type {
   AccountDto,
+  AssistantRequestDto,
+  CreateAssistantRequestInput,
   AttachmentDto,
   AttachmentQuotaDto,
   AttachmentQuotaInput,
@@ -311,6 +313,10 @@ export const api = {
     request<void>(`/initiatives/${id}/actions/${actionId}`, { method: 'DELETE' }),
   // Encart « Actions suggérées » (ticket 14).
   listSuggestedActions: (id: string) => request<SuggestedAction[]>(`/initiatives/${id}/suggested-actions`),
+  /** Mes demandes à l'assistant sur l'initiative, de la plus récente à la plus ancienne (AS9). */
+  listAssistantRequests: (id: string) => request<AssistantRequestDto[]>(`/initiatives/${id}/assistant-requests`),
+  createAssistantRequest: (id: string, input: CreateAssistantRequestInput) =>
+    request<AssistantRequestDto>(`/initiatives/${id}/assistant-requests`, { method: 'POST', body: JSON.stringify(input) }),
   dismissSuggestedAction: (id: string, key: string) =>
     request<void>(`/initiatives/${id}/suggested-actions/${encodeURIComponent(key)}/dismissal`, { method: 'PUT' }),
   // Parties prenantes (ticket 08).

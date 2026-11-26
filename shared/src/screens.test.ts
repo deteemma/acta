@@ -63,6 +63,11 @@ test('l’initiative a son adresse, et chacun de ses onglets ; l’onglet Aperç
   assert.deepEqual(parseScreenPath(`/initiatives/${ID}/overview`), { kind: 'initiative', initiativeId: ID, tab: 'overview' });
 });
 
+test('l’onglet Assistant de l’initiative a son adresse (AS22)', () => {
+  assert.equal(screenPath({ kind: 'initiative', initiativeId: ID, tab: 'assistant' }), `/initiatives/${ID}/assistant`);
+  assert.deepEqual(parseScreenPath(`/initiatives/${ID}/assistant`), { kind: 'initiative', initiativeId: ID, tab: 'assistant' });
+});
+
 test('le tableau de bord, l’équipe et les branches ont leur adresse, onglets compris', () => {
   const cases = [
     [{ kind: 'dashboard', initiativeId: ID, tab: 'tasks' }, `/initiatives/${ID}/dashboard`],

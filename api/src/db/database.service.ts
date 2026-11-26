@@ -42,6 +42,19 @@ export class DatabaseService implements OnModuleDestroy {
     });
   }
 
+  /**
+   * Transaction du traitement de fond de l'assistant (ADR-0022, point 3), sans
+   * utilisateur : elle lit la file et fait avancer les demandes (migration 0038).
+   * Aucune politique ne lui ouvre le contenu des initiatives : les données lues
+   * le sont par `asUser`, avec l'identité de l'auteur de la demande.
+   */
+  asAssistantWorker<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
+    return this.db.transaction().execute(async (tx) => {
+      await sql`SELECT set_config('app.is_assistant_worker', 'true', true)`.execute(tx);
+      return work(tx);
+    });
+  }
+
   async ping(): Promise<void> {
     await sql`SELECT 1`.execute(this.db);
   }

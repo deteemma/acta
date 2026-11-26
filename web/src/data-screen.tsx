@@ -31,6 +31,8 @@ type ScreenProps<T extends string> = {
   /** Info-bulle du titre (ex. nom anglais d'un élément du BABOK). */
   titleTooltip?: string;
   badges?: ReactNode;
+  /** Boutons de l'en-tête (ex. « Demander à l'assistant », AS22). */
+  actions?: ReactNode;
   /** Onglets de l'élément ; sans eux, ou avec un seul, pas de barre d'onglets. */
   tabs?: Tab<T>[];
   tab?: T;
@@ -69,6 +71,7 @@ export function ScreenLayout<T extends string>({
   title,
   titleTooltip,
   badges,
+  actions,
   tabs = [],
   tab,
   onTab,
@@ -117,6 +120,7 @@ export function ScreenLayout<T extends string>({
           {title}
         </h1>
         {badges && <div className="data-badges">{badges}</div>}
+        {actions && <div className="data-actions">{actions}</div>}
       </header>
       {tabs.length > 1 && (
         <div className="tabs" role="tablist" aria-label={t('dataScreen.tabs', { title })}>

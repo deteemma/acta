@@ -120,6 +120,16 @@ test('pages : propriétaire et contributeur écrivent ; lecteur et initiative ar
   assert.equal(can('reader', 'view', { archived: true }), true);
 });
 
+test('assistant : tout membre demande et voit ses demandes, lecteur et initiative archivée compris ; un non-membre rien (AS1, AS40)', () => {
+  for (const role of ['owner', 'contributor', 'reader'] as const) {
+    assert.equal(can(role, 'askAssistant'), true);
+    assert.equal(can(role, 'askAssistant', { archived: true }), true);
+    assert.equal(can(role, 'viewAssistantRequests', { archived: true }), true);
+  }
+  assert.equal(can(null, 'askAssistant'), false);
+  assert.equal(can(null, 'viewAssistantRequests'), false);
+});
+
 test('propriétaires et contributeurs écrivent les scénarios, tout membre les lit ; archivée : lecture seule (phase 3, D17)', () => {
   assert.equal(can('owner', 'editScenarios'), true);
   assert.equal(can('contributor', 'editScenarios'), true);

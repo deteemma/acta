@@ -31,6 +31,8 @@ import {
 import { Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { AskAssistantButton, AssistantRequests, useAssistantRequests } from './assistant';
+import { isAssistantInstalled } from './auth';
 import { DashboardTasks } from './dashboard-screen';
 import { DataScreen, type Tab } from './data-screen';
 import { EmptyState } from './empty-state';
@@ -127,6 +129,7 @@ export function InitiativeDataScreen({
   const [error, setError] = useState<UiError | null>(null);
   const { initiative, members, tree } = data;
   const initiativeId = initiative.id;
+  const assistantRequests = useAssistantRequests(initiativeId);
   const state = { archived: initiative.archivedAt != null };
   // Un scénario s'affiche dans son exigence : le fil d'Ariane va jusqu'à elle.
   const shownKey = screen.kind === 'scenario' ? treeNodeKey({ kind: 'requirement', id: screen.requirementId }) : screenNodeKey(screen);
@@ -140,6 +143,10 @@ export function InitiativeDataScreen({
 
   const tabsOf = <T extends string>(ids: readonly T[], prefix: string, counts: Partial<Record<T, number>> = {}): Tab<T>[] =>
     ids.map((id) => ({ id, label: t(`${prefix}.${id}` as MessageKey), ...(counts[id] !== undefined && { count: counts[id] }) }));
+  // Assistant : absent sans assistant installé (AS25).
+  const assistantInstalled = isAssistantInstalled();
+  const initiativeTabs = INITIATIVE_TABS.filter((tab) => tab !== 'assistant' || assistantInstalled);
+  const askAssistant = assistantInstalled && <AskAssistantButton initiativeId={initiativeId} />;
 
   const common = { crumbs, onCrumb: onSelectNode };
   // Tableau de bord, équipe et branches : « Initiative CRM », puis le libellé du nœud.
@@ -169,7 +176,11 @@ export function InitiativeDataScreen({
               {archivedBadge}
             </>
           }
-          tabs={tabsOf(INITIATIVE_TABS, 'initiativeTab', { members: members.length })}
+          actions={askAssistant}
+          tabs={tabsOf(initiativeTabs, 'initiativeTab', {
+            members: members.length,
+            ...(assistantRequests && { assistant: assistantRequests.length }),
+          })}
           tab={screen.tab}
           onTab={(tab) => onNavigate({ ...screen, tab })}
         >
@@ -201,6 +212,7 @@ export function InitiativeDataScreen({
           {(screen.tab === 'members' || screen.tab === 'designations') && (
             <TeamTab tab={screen.tab} data={data} onTeamChanged={onTeamChanged} onLeft={() => onInitiativeGone(initiativeId)} />
           )}
+          {screen.tab === 'assistant' && assistantInstalled && <AssistantRequests requests={assistantRequests} />}
           {screen.tab === 'settings' && (
             <>
               <InitiativeCode key={initiative.code} initiative={initiative} onSaved={onInitiativeChanged} />
@@ -217,6 +229,7 @@ export function InitiativeDataScreen({
         <DataScreen
           {...inInitiative}
           title={t('tree.dashboard')}
+          actions={askAssistant}
           tabs={tabsOf(DASHBOARD_TABS, 'dashboardTab')}
           tab={screen.tab}
           onTab={(tab) => onNavigate({ ...screen, tab })}

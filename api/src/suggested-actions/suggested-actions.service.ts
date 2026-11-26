@@ -24,10 +24,13 @@ export class SuggestedActionsService {
   ) {}
 
   list(userId: string, initiativeId: string): Promise<SuggestedAction[]> {
-    return this.database.asUser(userId, async (tx) => {
-      const babok = await this.babok.load(tx);
-      return suggestActions(babok, await loadContext(tx, initiativeId));
-    });
+    return this.database.asUser(userId, (tx) => this.listIn(tx, initiativeId));
+  }
+
+  /** Suggestions affichées, lues dans la transaction en cours (données lues par l'assistant, AS14). */
+  async listIn(tx: Tx, initiativeId: string): Promise<SuggestedAction[]> {
+    const babok = await this.babok.load(tx);
+    return suggestActions(babok, await loadContext(tx, initiativeId));
   }
 
   /** Vrai si l'encart propose cette suggestion : une Action ne se crée que depuis une suggestion affichée (G6). */

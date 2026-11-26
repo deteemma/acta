@@ -60,6 +60,16 @@ export const INITIATIVE_PERMISSIONS = {
   editScenarios: 'contributor',
   /** Activer ou désactiver l'Extension Agile sur l'initiative (Extension Agile, D11). */
   toggleAgileExtension: 'owner',
+  /**
+   * Poser une demande à l'assistant, initiative archivée comprise (AS1, AS40) ; il
+   * faut aussi un compte actif et l'assistant installé (vérifiés par l'API et la RLS).
+   */
+  askAssistant: 'reader',
+  /**
+   * Voir ses propres demandes à l'assistant (AS9, AS40) : seulement celles dont on
+   * est l'auteur, jamais celles des autres membres ; l'administrateur n'en voit aucune.
+   */
+  viewAssistantRequests: 'reader',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;
@@ -68,7 +78,15 @@ export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;
  * Une initiative archivée est en lecture seule : on peut seulement la désarchiver,
  * la supprimer ou la quitter (changeTeam, restreint au départ par checkTeamChange).
  */
-const ALLOWED_WHEN_ARCHIVED: readonly InitiativeAction[] = ['view', 'archive', 'delete', 'changeTeam'];
+const ALLOWED_WHEN_ARCHIVED: readonly InitiativeAction[] = [
+  'view',
+  'archive',
+  'delete',
+  'changeTeam',
+  // L'assistant lit l'initiative sans la modifier (AS1).
+  'askAssistant',
+  'viewAssistantRequests',
+];
 
 export function can(
   role: InitiativeRole | null | undefined,

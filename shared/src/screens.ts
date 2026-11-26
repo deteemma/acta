@@ -7,8 +7,11 @@
 // Un scénario n'a pas d'écran propre : son adresse ouvre l'onglet Scénarios de
 // son exigence, le scénario mis en évidence (N16).
 
-/** Onglets de l'initiative (N11) ; le premier est celui de l'adresse nue. */
-export const INITIATIVE_TABS = ['overview', 'members', 'designations', 'settings'] as const;
+/**
+ * Onglets de l'initiative (N11) ; le premier est celui de l'adresse nue.
+ * « Assistant » : les demandes de l'auteur sans élément choisi (AS22), absent sans assistant installé (AS25).
+ */
+export const INITIATIVE_TABS = ['overview', 'members', 'designations', 'settings', 'assistant'] as const;
 export type InitiativeTab = (typeof INITIATIVE_TABS)[number];
 /** Onglets du tableau de bord : Tâches BABOK, Actions suggérées. */
 export const DASHBOARD_TABS = ['tasks', 'suggested'] as const;

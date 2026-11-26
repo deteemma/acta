@@ -23,6 +23,11 @@ import { BabokController } from './babok/babok.controller.js';
 import { BabokService } from './babok/babok.service.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { OidcVerifier } from './auth/oidc-verifier.service.js';
+import { AssistantContextService } from './assistant/assistant-context.service.js';
+import { AssistantRequestsController } from './assistant/assistant-requests.controller.js';
+import { AssistantRequestsService } from './assistant/assistant-requests.service.js';
+import { AssistantWorker } from './assistant/assistant-worker.service.js';
+import { HermesClient } from './assistant/hermes-client.service.js';
 import { AppConfig } from './config/app-config.js';
 import { DatabaseService } from './db/database.service.js';
 import { HealthController } from './health/health.controller.js';
@@ -55,6 +60,7 @@ import { UsersService } from './users/users.service.js';
 @Module({
   controllers: [
     ActionsController,
+    AssistantRequestsController,
     LinksController,
     CommentsController,
     AttachmentsController,
@@ -106,6 +112,10 @@ import { UsersService } from './users/users.service.js';
     RequirementsService,
     ScenariosService,
     SuggestedActionsService,
+    HermesClient,
+    AssistantContextService,
+    AssistantRequestsService,
+    AssistantWorker,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })

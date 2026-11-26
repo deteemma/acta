@@ -16,6 +16,7 @@ import { PageTemplateScreen } from './admin-page-templates';
 import { AdminScreen } from './admin-screen';
 import { AlertsButton, AlertsScreen, useMyAlerts } from './alerts';
 import { api } from './api';
+import { AskAssistantDialog } from './assistant';
 import { BabokElementScreen, BabokScreen } from './babok-screens';
 import { DialogHost, DialogsProvider, SCREEN_TITLE_ID, ScreenForms, useDialogs } from './dialogs';
 import { EmptyState } from './empty-state';
@@ -593,6 +594,8 @@ function Shell({ user }: { user: User }) {
                     onClose={close}
                   />
                 );
+              case 'askAssistant':
+                return <AskAssistantDialog initiativeId={content.initiativeId} onClose={close} />;
             }
           }}
         />

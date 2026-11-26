@@ -4,6 +4,7 @@ import {
   type AdminRefusal,
   isActionRefusal,
   isAdminRefusal,
+  isAssistantRefusal,
   isAttachmentRefusal,
   isCommentRefusal,
   isLinkRefusal,
@@ -44,6 +45,8 @@ export function toUiError(error: unknown): UiError {
     if (isPageRefusal(error.refusal)) return { key: `page.refusal.${error.refusal}` };
     if (isPageRevisionRefusal(error.refusal)) return { key: `pageRevision.refusal.${error.refusal}` };
     if (isReferenceRefusal(error.refusal)) return { key: `reference.refusal.${error.refusal}` };
+    // `unfinished` nomme la demande en cours : son texte est composé par assistant.tsx.
+    if (isAssistantRefusal(error.refusal) && error.refusal !== 'unfinished') return { key: `assistant.refusal.${error.refusal}` };
     if (isRequirementRefusal(error.refusal)) return { key: `requirement.refusal.${error.refusal}` };
     if (isScenarioRefusal(error.refusal)) return { key: `scenario.refusal.${error.refusal}` };
     if (isRequirementStatusRefusal(error.refusal)) return { key: `requirementStatus.refusal.${error.refusal}` };
