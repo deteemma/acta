@@ -10,7 +10,8 @@ Règles : [spécification](../spec.md) AS25, AS35, AS36 ; [ADR-0022](../../../do
 
 - [ ] Service `assistant` de `compose.yaml`, profil Compose `assistant`, avec un `mem_limit` (AS35).
 - [ ] Réseau dédié API ↔ Hermes ; réseau interne Hermes ↔ Ollama, sans Internet ; Hermes hors du réseau `socle`, sans port publié (AS35).
-- [ ] Configuration de Hermes versionnée dans le dépôt et déployée par `deployer.sh` : aucun outil autorisé (liste explicite vide), mémoire, recherche dans l'historique, écriture de skills et révision automatique coupées, réglages issus du ticket 10 (AS36).
+- [ ] Configuration de Hermes versionnée dans le dépôt et déployée par `deployer.sh` : aucun outil autorisé (liste explicite vide), mémoire, recherche dans l'historique, écriture de skills et révision automatique coupées, réglages issus du ticket 10 (AS36) : titre de session coupé, journaux en `WARNING`. Point de départ : [`mesures/hermes/config.yaml`](../mesures/hermes/config.yaml), essayé sur le serveur.
+- [ ] Données de Hermes (`/opt/data`) en `tmpfs` dimensionné avec le `mem_limit` ; configuration fournie à chaque démarrage (ADR 0023 ; ticket 10, second essai).
 - [ ] Adresse et clé de Hermes par variables d'environnement ; clé aléatoire d'au moins 32 caractères (AS35, ADR 0007).
 - [ ] Données de Hermes hors des sauvegardes (AS36, ADR 0010).
 - [ ] Détection « assistant installé » côté API, exposée au web : sans adresse ou sans clé, l'assistant est absent (AS25).

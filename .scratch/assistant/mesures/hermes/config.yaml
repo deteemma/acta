@@ -1,0 +1,36 @@
+# Instance Hermes d'essai, configurée comme celle prévue pour ACTA (ticket 10, AS36).
+model:
+  default: "qwen3.5:9b"
+  provider: "custom"
+  base_url: "http://acta-essai-relais:11434/v1"
+  context_length: 65536
+  ollama_num_ctx: 65536
+
+# Liste explicite vide d'outils autorisés pour la plateforme API.
+platform_toolsets:
+  api_server: []
+
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+  nudge_interval: 0
+
+skills:
+  creation_nudge_interval: 0
+  project_discovery: false
+
+curator:
+  enabled: false
+
+auxiliary:
+  background_review:
+    enabled: false
+  title_generation:
+    enabled: false
+
+# Second essai : sans les lignes INFO qui citent le début de chaque demande.
+logging:
+  level: "WARNING"
+
+streaming:
+  enabled: false

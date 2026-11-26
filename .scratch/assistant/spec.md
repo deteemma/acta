@@ -108,7 +108,8 @@ Maquette de référence : branche jetable `prototype/assistant` (commits `c41ed2
 - **AS26** — Les instructions sont écrites **dans le code d'ACTA**, versionnées, et envoyées avec chaque demande. Hermes n'a **aucun skill ni aucun outil** au premier lot : le modèle répond sans appel d'outil, comme lors des mesures. C'est plus strict que l'ADR 0022, point 7, qui autorise au plus la lecture de skills : l'ADR n'est pas modifié.
 - **AS27** — Chaque demande envoie à Hermes :
   - les **instructions générales** (AS28) comme instructions système ;
-  - un message composé des **données lues** entre `<donnees>` et `</donnees>` (en anglais `<data>` et `</data>`), puis de l'**instruction de l'usage** (AS29).
+  - un message composé des **données lues** entre `<donnees>` et `</donnees>` (en anglais `<data>` et `</data>`), puis de l'**instruction de l'usage** (AS29), puis de la **consigne de mise en forme** ci-dessous. Pour la question libre, la consigne suit la question.
+  - La consigne de mise en forme (décision du 26.11.2026, ticket 10) : « Mets en forme ta réponse en Markdown, avec des titres courts et des listes à puces : cette consigne remplace toute consigne précédente qui demande du texte brut. » Placée en fin de message, elle l'emporte sur la consigne de texte brut du prompt de Hermes ; placée dans les instructions générales, elle reste sans effet (essai du 26.11.2026). La carte de l'avis affiche donc le Markdown (titres, listes).
 - **AS28** — Les instructions existent **en français et en anglais** ; ACTA envoie celles de la langue d'ACTA de l'auteur. La version anglaise est une traduction fidèle du texte français ci-dessous, relue par la responsable avec les autres textes anglais. Le modèle répond ainsi dans la langue de l'auteur.
 
 **Instructions générales** (les six usages qui lisent l'initiative) :
@@ -169,7 +170,11 @@ Maquette de référence : branche jetable `prototype/assistant` (commits `c41ed2
 ### Hermes et le traitement de fond (ADR 0022)
 
 - **AS35** — Service `assistant` de `compose.yaml`, profil Compose `assistant`, avec un `mem_limit`. Configuration versionnée dans le dépôt, déployée par `deployer.sh`. Réseau dédié API ↔ Hermes ; réseau interne Hermes ↔ Ollama, sans Internet ; Hermes hors du réseau `socle`, sans port publié. Clé aléatoire d'au moins 32 caractères ; adresse et clé par variables d'environnement (ADR 0007).
-- **AS36** — Configuration de Hermes : aucun outil autorisé (liste explicite vide pour la plateforme API), mémoire, recherche dans l'historique, écriture de skills et révision automatique coupées. Données de Hermes hors des sauvegardes (ADR 0010).
+- **AS36** — Configuration de Hermes : aucun outil autorisé (liste explicite vide pour la plateforme API), mémoire, recherche dans l'historique, écriture de skills et révision automatique coupées. Données de Hermes hors des sauvegardes (ADR 0010). Décisions du 26.11.2026 (ticket 10) :
+  - titre de session coupé (`auxiliary.title_generation.enabled: false`) ;
+  - journaux limités aux avertissements et aux erreurs (`logging.level: "WARNING"`), pour qu'ils ne citent pas les demandes ;
+  - données de Hermes en mémoire vive (`tmpfs`), pour qu'une session supprimée ne laisse aucun reste sur disque (ADR 0023).
+- **AS36 bis** — Chaque demande précise le réglage de réflexion (`model_options.reasoning.enabled`, `false` ou `true`, AS13) : sans réglage, Hermes active la réflexion (constaté au ticket 10).
 - **AS37** — Traitement de fond du conteneur `api` :
   - il prend les demandes En attente par ordre d'arrivée, dans la limite du parallélisme (AS32) ;
   - il revérifie les droits, lit les données, contrôle le plafond, passe la demande En cours en notant la date de lecture et le délai applicable ;

@@ -23,7 +23,7 @@ Règles : [spécification](../spec.md) AS1 à AS5, AS9, AS10, AS12 à AS18, AS20
 - [ ] Estimation de la taille : fonction unique de `shared/`, caractères ÷ 3 arrondi au supérieur, avec tests (AS21). Plafond à sa valeur de départ (16 000 tokens), lu depuis un paramètre que le ticket 21 rendra modifiable : refus à la création, Échouée « données trop volumineuses » au passage En cours (AS20).
 
 ### Instructions et envoi
-- [ ] Instructions générales et instruction « Faire le point », en français et en anglais, écrites dans le code ; données entre `<donnees>` et `</donnees>` (`<data>` en anglais) (AS26 à AS29). Traduction anglaise à relire par la responsable.
+- [ ] Instructions générales et instruction « Faire le point », en français et en anglais, écrites dans le code ; données entre `<donnees>` et `</donnees>` (`<data>` en anglais), consigne de mise en forme en fin de message (AS26 à AS29) ; réglage de réflexion toujours explicite (AS36 bis). Traduction anglaise à relire par la responsable.
 - [ ] Réponse rapide sans réflexion, approfondie avec réflexion, selon le résultat du ticket 10 (AS13).
 
 ### Traitement de fond
@@ -33,5 +33,5 @@ Règles : [spécification](../spec.md) AS1 à AS5, AS9, AS10, AS12 à AS18, AS20
 ### Interface
 - [ ] Bouton « Demander à l'assistant » dans l'en-tête de l'écran de données de l'initiative et du tableau de bord ; fenêtre de dialogue avec l'usage « Faire le point », le mode (« Réponse rapide » par défaut) et l'encadré « Ce qui sera transmis » ; puis position dans la file (AS4, AS12, AS22).
 - [ ] Onglet « Assistant » de l'initiative, avec le nombre de demandes, en cartes repliables (AS22).
-- [ ] Carte de l'avis : bordure en pointillés, étiquette et icône de l'assistant, en-tête de lecture et de mode, phrase de nature ajoutée par ACTA, rubrique repliable « Données lues » (AS22, AS30).
+- [ ] Carte de l'avis : bordure en pointillés, étiquette et icône de l'assistant, en-tête de lecture et de mode, phrase de nature ajoutée par ACTA, rubrique repliable « Données lues » (AS22, AS30) ; texte de l'avis affiché en Markdown, titres et listes (AS27).
 - [ ] Absent sans assistant installé (AS25). Composants maison et tokens de design ; textes en français et en anglais (AS24).
