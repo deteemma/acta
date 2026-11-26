@@ -1,0 +1,50 @@
+{"id":"10.1","name_fr":"Critères d’acceptation et d’évaluation","summary_fr":"Convenir à l'avance des conditions qu'une solution doit remplir pour être acceptée, ou des critères qui permettront de comparer plusieurs options."}
+{"id":"10.2","name_fr":"Gestion du Backlog","summary_fr":"Tenir une liste ordonnée des éléments de travail en attente, affinée et repriorisée régulièrement, dans laquelle on puise les prochains travaux."}
+{"id":"10.3","name_fr":"Balanced Scorecard","summary_fr":"Suivre la stratégie au moyen d'un petit ensemble d'objectifs et d'indicateurs répartis sur plusieurs axes, pas seulement financiers."}
+{"id":"10.4","name_fr":"Analyse comparative et analyse de marché","summary_fr":"Se comparer à d'autres organisations, et étudier clients, concurrents et tendances pour trouver des idées et repérer des écarts."}
+{"id":"10.5","name_fr":"Brainstorming","summary_fr":"Produire rapidement beaucoup d'idées en groupe, en réservant tout jugement au tri et à l'évaluation qui suivent."}
+{"id":"10.6","name_fr":"Analyse des capacités métier","summary_fr":"Décrire ce que l'organisation sait faire, indépendamment de la manière dont elle le fait, et évaluer chaque capacité pour cibler les améliorations."}
+{"id":"10.7","name_fr":"Étude d'opportunité (Business Case)","summary_fr":"Exposer pourquoi un changement vaut la peine : le besoin, les options étudiées, les coûts et bénéfices attendus, les risques et une recommandation."}
+{"id":"10.8","name_fr":"Business Model Canvas","summary_fr":"Montrer sur une seule page comment une organisation crée et délivre de la valeur : clients, offre, canaux, partenaires, ressources, coûts et revenus."}
+{"id":"10.9","name_fr":"Analyse des règles métier","summary_fr":"Repérer, formuler et organiser les règles qui guident les décisions et encadrent les comportements, séparément des processus qui les appliquent."}
+{"id":"10.10","name_fr":"Jeux collaboratifs","summary_fr":"Recourir à des exercices structurés et ludiques pour aider un groupe à partager ses points de vue, explorer un sujet et parvenir à une compréhension commune."}
+{"id":"10.11","name_fr":"Modélisation de concepts","summary_fr":"Représenter les notions clés du métier et leurs relations, dans le vocabulaire du métier, pour partager une même compréhension du domaine."}
+{"id":"10.12","name_fr":"Dictionnaire de données","summary_fr":"Recenser les éléments de données avec une description normalisée de chacun : signification, format, valeurs admises et autres caractéristiques."}
+{"id":"10.13","name_fr":"Diagrammes de flux de données","summary_fr":"Montrer d'où vient l'information, comment elle est transformée, où elle est conservée et où elle va."}
+{"id":"10.14","name_fr":"Exploration de données (Data Mining)","summary_fr":"Rechercher motifs, corrélations et anomalies dans de grands volumes de données pour éclairer les décisions ou détecter des problèmes."}
+{"id":"10.15","name_fr":"Modélisation des données","summary_fr":"Décrire l'information que manipule le métier sous forme d'entités, de leurs attributs et des relations qui les unissent."}
+{"id":"10.16","name_fr":"Analyse des décisions","summary_fr":"Structurer une décision en exposant les options, les critères, les incertitudes et les arbitrages, pour choisir en connaissance de cause."}
+{"id":"10.17","name_fr":"Modélisation des décisions","summary_fr":"Modéliser la manière dont une décision métier récurrente est prise : l'information nécessaire, les règles appliquées et le résultat produit."}
+{"id":"10.18","name_fr":"Analyse de documents","summary_fr":"Tirer l'information utile des documents existants : procédures, rapports, contrats, réglementation, écrans, spécifications antérieures."}
+{"id":"10.19","name_fr":"Estimation","summary_fr":"Prévoir effort, coût, durée ou bénéfice à partir de l'information disponible, en précisant les hypothèses et le degré de confiance."}
+{"id":"10.20","name_fr":"Analyse financière","summary_fr":"Évaluer le volet financier des options (coûts, bénéfices, rentabilité, délai de retour, flux de trésorerie) pour les comparer sur une base commune."}
+{"id":"10.21","name_fr":"Groupes de discussion (Focus Groups)","summary_fr":"Réunir un petit groupe choisi avec soin pour discuter d'un sujet ou réagir à un produit, sous la conduite d'un animateur."}
+{"id":"10.22","name_fr":"Décomposition fonctionnelle","summary_fr":"Découper un ensemble complexe (processus, fonction, périmètre) en parties plus petites, jusqu'à ce que chacune soit maîtrisable."}
+{"id":"10.23","name_fr":"Glossaire","summary_fr":"Définir une fois pour toutes les termes importants du domaine, pour que chacun les emploie dans le même sens."}
+{"id":"10.24","name_fr":"Analyse des interfaces","summary_fr":"Repérer les points où systèmes, personnes ou organisations échangent entre eux, et préciser ce qui y transite."}
+{"id":"10.25","name_fr":"Entretiens","summary_fr":"Recueillir de l'information par une conversation préparée avec une personne ou un petit groupe, à l'aide de questions prévues et de relances."}
+{"id":"10.26","name_fr":"Gestion des points de suivi","summary_fr":"Consigner les points ouverts (problèmes, questions, risques, actions, décisions) avec un responsable et un statut, et les suivre jusqu'à leur clôture."}
+{"id":"10.27","name_fr":"Retours d'expérience","summary_fr":"Revenir en équipe sur ce qui a bien marché et ce qui a moins bien marché, pour reproduire les réussites et ne pas répéter les erreurs."}
+{"id":"10.28","name_fr":"Mesures et Indicateurs clés de performance (KPIs)","summary_fr":"Définir des indicateurs mesurables, avec cibles et sources de données, pour suivre la progression vers un objectif."}
+{"id":"10.29","name_fr":"Mind Mapping","summary_fr":"Organiser visuellement des idées autour d'un sujet central, en branches de thèmes liés, pour explorer et structurer la réflexion."}
+{"id":"10.30","name_fr":"Analyse des exigences non fonctionnelles","summary_fr":"Préciser de façon mesurable les qualités attendues d'une solution (performances, sécurité, facilité d'utilisation, disponibilité…)."}
+{"id":"10.31","name_fr":"Observation","summary_fr":"Regarder les personnes faire leur travail réel, en retrait ou en y participant, pour comprendre comment il se fait vraiment."}
+{"id":"10.32","name_fr":"Modélisation de l'organisation","summary_fr":"Décrire les unités, les rôles, les liens hiérarchiques et les responsabilités d'une organisation ou des personnes concernées par un changement."}
+{"id":"10.33","name_fr":"Priorisation","summary_fr":"Classer des éléments les uns par rapport aux autres selon une méthode convenue (regroupement, classement, enveloppe de temps, négociation) et des critères explicites."}
+{"id":"10.34","name_fr":"Analyse des processus","summary_fr":"Examiner le fonctionnement d'un processus, y trouver lenteurs, gaspillages et points faibles, et repérer les possibilités d'amélioration."}
+{"id":"10.35","name_fr":"Modélisation des processus","summary_fr":"Représenter un enchaînement d'activités, avec qui fait quoi, les décisions et les flux, sous forme de texte ou de schéma."}
+{"id":"10.36","name_fr":"Prototypage","summary_fr":"Réaliser une version précoce et simplifiée d'une solution (croquis, maquette, modèle fonctionnel) pour explorer des idées et recueillir des avis."}
+{"id":"10.37","name_fr":"Revues","summary_fr":"Faire examiner des livrables par d'autres personnes, de façon formelle ou non, pour y déceler erreurs, manques et points à clarifier."}
+{"id":"10.38","name_fr":"Analyse et gestion des risques","summary_fr":"Repérer les événements incertains, en évaluer probabilité et impact, décider des réponses et continuer à les surveiller."}
+{"id":"10.39","name_fr":"Matrice des rôles et des autorisations","summary_fr":"Croiser rôles et activités ou données pour montrer qui a le droit de faire quoi."}
+{"id":"10.40","name_fr":"Analyse de la cause fondamentale","summary_fr":"Creuser sous les symptômes d'un problème pour en trouver les causes profondes, par exemple en demandant « pourquoi ? » à plusieurs reprises ou avec un diagramme de causes et effets."}
+{"id":"10.41","name_fr":"Modélisation du périmètre","summary_fr":"Tracer les limites de ce qui est dans le périmètre et hors du périmètre, et de ce qui l'entoure, pour un changement, une solution ou un travail d'analyse."}
+{"id":"10.42","name_fr":"Diagrammes de séquence","summary_fr":"Montrer les messages échangés au fil du temps entre participants ou parties d'un système, pour un scénario donné."}
+{"id":"10.43","name_fr":"Liste des parties prenantes, carte ou personas","summary_fr":"Recenser les parties prenantes, les situer selon leur influence et leur intérêt, ou décrire des utilisateurs types sous forme de personas, pour organiser le travail avec elles."}
+{"id":"10.44","name_fr":"Modélisation d’État","summary_fr":"Décrire les états successifs par lesquels un objet peut passer au cours de sa vie et les événements qui le font changer d'état."}
+{"id":"10.45","name_fr":"Sondage ou questionnaire","summary_fr":"Recueillir de l'information auprès de nombreuses personnes au moyen d'une série de questions écrites, fermées ou ouvertes."}
+{"id":"10.46","name_fr":"Analyse SWOT","summary_fr":"Résumer forces et faiblesses internes, opportunités et menaces externes autour d'un sujet, pour orienter la stratégie."}
+{"id":"10.47","name_fr":"Scénarios et cas d’utilisation","summary_fr":"Décrire pas à pas comment un acteur interagit avec une solution pour atteindre un but, y compris les variantes et les cas d'exception."}
+{"id":"10.48","name_fr":"Récits utilisateurs (User Stories)","summary_fr":"Exprimer brièvement un besoin du point de vue d'un utilisateur, avec la valeur attendue et les conditions d'acceptation."}
+{"id":"10.49","name_fr":"Évaluation des fournisseurs","summary_fr":"Évaluer si un fournisseur et son offre peuvent répondre aux besoins et aux engagements attendus, au-delà du seul produit."}
+{"id":"10.50","name_fr":"Ateliers de travail","summary_fr":"Réunir les parties prenantes lors d'une séance structurée et animée, pour produire ensemble un résultat défini."}
