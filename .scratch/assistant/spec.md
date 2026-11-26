@@ -202,18 +202,21 @@ Autres points :
 - La qualité est la vraie limite du modèle (ticket 02) : les mises en garde (AS30) ne sont pas facultatives.
 - Le contenu des pages est un document éditeur (ADR 0019) : il est transmis en texte lisible (titres, listes, tableaux), jamais en JSON brut, et c'est ce texte qui est compté (AS21).
 
-## Découpage proposé
+## Tickets
 
-À confirmer après validation de cette spécification :
+Découpage du 26.11.2026, en tranches verticales : le ticket 12 traverse toutes les couches avec un seul usage, les suivants ajoutent un usage ou une fonction.
 
-1. Vérifications sur Hermes (points de vigilance 1 à 5).
-2. Service `assistant`, réseaux, configuration de Hermes, détection « assistant installé ».
-3. Demande à l'assistant : table, statuts, permissions et RLS, tests de rôles.
-4. Données lues : assemblage par usage, faits calculés, estimation, plafond, textes « Transmis / Non transmis ».
-5. Instructions des usages en français et en anglais, et envoi à Hermes.
-6. Traitement de fond : file, parallélisme, délais, annulation, indisponibilité, reprise, suppression des sessions.
-7. Fenêtre de dialogue et boutons « Demander à l'assistant ».
-8. Onglet « Assistant » de l'élément, carte de l'avis, signal de changement.
-9. Fil de l'assistant de l'initiative et effacement.
-10. Avis non lu : compteur global et menu, signaux sur l'initiative.
-11. Onglet « Assistant » de l'administration : paramètres et chiffres.
+| Ticket | Bloqué par |
+|---|---|
+| [10 — Vérifications sur Hermes](issues/10-verifications-sur-hermes.md) | — |
+| [11 — Instance Hermes d'ACTA](issues/11-instance-hermes-d-acta.md) | 10 |
+| [12 — Faire le point, de bout en bout](issues/12-faire-le-point-de-bout-en-bout.md) | 11 |
+| [13 — Annulation, échecs et reprise](issues/13-annulation-echecs-et-reprise.md) | 12 |
+| [14 — Prochaines étapes et question libre](issues/14-prochaines-etapes-et-question-libre.md) | 12 |
+| [15 — Relire une page et traçabilité](issues/15-relire-une-page-et-tracabilite.md) | 12 |
+| [16 — Préparer un atelier](issues/16-preparer-un-atelier.md) | 12 |
+| [17 — Brouillon de scénarios Gherkin](issues/17-brouillon-de-scenarios-gherkin.md) | 12 |
+| [18 — Signal de changement](issues/18-signal-de-changement.md) | 12 |
+| [19 — Fil de l'assistant et effacement](issues/19-fil-de-l-assistant-et-effacement.md) | 14 |
+| [20 — Avis non lu](issues/20-avis-non-lu.md) | 12 |
+| [21 — Administration de l'assistant](issues/21-administration-de-l-assistant.md) | 13 |
