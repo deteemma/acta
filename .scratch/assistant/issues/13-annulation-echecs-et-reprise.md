@@ -4,7 +4,7 @@
 
 **Blocked by:** 12 — Faire le point, de bout en bout
 
-**Status:** ready-for-human (réalisé, en attente de validation par la responsable fonctionnelle)
+**Status:** done (validé par la responsable fonctionnelle le 27.11.2026)
 
 Règles : [spécification](../spec.md) AS5 à AS8, AS12, AS37 à AS39. Détail au [ticket 04](04-cycle-de-vie-demande.md) ; textes au [ticket 08](08-maquette-du-panneau.md).
 
