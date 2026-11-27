@@ -15,7 +15,13 @@ import { AppConfig } from '../config/app-config.js';
 import { AssistantAvailability } from './assistant-availability.js';
 import { AssistantContextService } from './assistant-context.service.js';
 import { type AssistantQueue, DatabaseAssistantQueue, type RunningRequest } from './assistant-queue.service.js';
-import { HermesClient, type HermesPort, HermesUnreachableError, releaseHermesWork } from './hermes-client.service.js';
+import {
+  HermesClient,
+  type HermesPort,
+  HermesRefusedError,
+  HermesUnreachableError,
+  releaseHermesWork,
+} from './hermes-client.service.js';
 
 /**
  * Intervalle entre deux passages : bien en deçà de l'heure au-delà de laquelle
@@ -143,6 +149,14 @@ export class AssistantWorker implements OnApplicationBootstrap, OnApplicationShu
       try {
         runId = await this.hermes.startRun(body, request.id);
       } catch (error) {
+        if (error instanceof HermesRefusedError) {
+          // Hermes refuse l'envoi : Échouée, la file continue (décision du 27.11.2026).
+          this.logger.warn(`assistant : envoi refusé, ${error.message}`);
+          this.availability.markReachable();
+          await this.queue.fail(request.id, 'noAnswer');
+          await releaseHermesWork(this.hermes, request.id, null);
+          continue;
+        }
         if (!(error instanceof HermesUnreachableError)) throw error;
         // Hermes injoignable avant l'envoi : la demande reste En attente (AS38).
         this.logger.warn(`assistant injoignable : ${error.message}`);

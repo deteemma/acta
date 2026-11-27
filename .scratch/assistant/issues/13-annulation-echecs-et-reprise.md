@@ -35,3 +35,9 @@ Règles : [spécification](../spec.md) AS5 à AS8, AS12, AS37 à AS39. Détail a
 **Questions à la responsable fonctionnelle.**
 1. **Hermes refuse l'envoi** (clé refusée, demande jugée invalide : réponse 4xx). Aujourd'hui, ce refus est traité comme « injoignable ». La demande reste alors En attente avec « momentanément indisponible ». Elle est renvoyée toutes les 10 s et bloque la file. Faut-il plutôt la passer Échouée « l'assistant n'a pas pu répondre » ?
 2. **Hermes injoignable au moment d'arrêter un travail** (annulation, délai dépassé, perte d'accès). La demande est bien Annulée ou Échouée dans ACTA, mais l'arrêt et la suppression de la session ne sont pas retentés. Le travail peut finir chez Hermes, et la session y reste jusqu'au prochain redémarrage de Hermes (données en mémoire vive, ADR 0023). Faut-il retenter l'arrêt ?
+3. **Traduction anglaise** des quatre nouveaux textes (`assistant.unavailable`, `assistant.cancel`, `assistant.cancelConfirm`, `assistant.askAgain`) : à relire.
+
+**Réponses de la responsable (27.11.2026).**
+1. Oui : un refus de Hermes à l'envoi (réponse 4xx) rend la demande Échouée « l'assistant n'a pas pu répondre », sans nouvel envoi ; la file continue. Fait, avec un test.
+2. Non : l'arrêt n'est pas retenté.
+3. Traduction anglaise acceptée.

@@ -5,6 +5,13 @@ import { AppConfig } from '../config/app-config.js';
 /** Hermes ne répond pas (réseau, redémarrage, erreur du serveur) : rien n'a pu être envoyé ou lu. */
 export class HermesUnreachableError extends Error {}
 
+/**
+ * Hermes refuse l'envoi (réponse 4xx : clé refusée, demande jugée invalide) : la
+ * demande devient Échouée « l'assistant n'a pas pu répondre », sans nouvel envoi
+ * (décision de la responsable du 27.11.2026, ticket 13).
+ */
+export class HermesRefusedError extends Error {}
+
 /** Ce dont ACTA se sert chez Hermes. */
 export type HermesPort = Pick<HermesClient, 'startRun' | 'getRun' | 'stopRun' | 'deleteSession'>;
 
@@ -36,6 +43,7 @@ export class HermesClient {
    */
   async startRun(body: HermesRunRequest, idempotencyKey: string): Promise<string> {
     const response = await this.call('POST', '/v1/runs', { body, headers: { 'Idempotency-Key': idempotencyKey } });
+    if (response.status >= 400 && response.status < 500) throw new HermesRefusedError(`POST /v1/runs : ${response.status}`);
     if (!response.ok) throw new HermesUnreachableError(`POST /v1/runs : ${response.status}`);
     const created = (await response.json()) as { run_id?: unknown; id?: unknown };
     const runId = typeof created.run_id === 'string' ? created.run_id : created.id;

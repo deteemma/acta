@@ -19,7 +19,12 @@ import { AssistantAvailability } from './assistant-availability.js';
 import type { AuthorAccess, ReadResult } from './assistant-context.service.js';
 import type { AssistantQueue, PendingRequest, RunningRequest } from './assistant-queue.service.js';
 import { AssistantWorker, type AssistantReader } from './assistant-worker.service.js';
-import { type HermesPort, HermesUnreachableError, releaseHermesWork } from './hermes-client.service.js';
+import {
+  type HermesPort,
+  HermesRefusedError,
+  HermesUnreachableError,
+  releaseHermesWork,
+} from './hermes-client.service.js';
 
 interface StoredRequest {
   id: string;
@@ -125,8 +130,12 @@ class FakeHermes implements HermesPort {
   /** Appelé pendant l'envoi, avant que la demande passe En cours. */
   onStart: (() => void) | undefined;
 
+  /** Hermes refuse l'envoi (réponse 4xx). */
+  refuses = false;
+
   async startRun(body: HermesRunRequest, idempotencyKey: string): Promise<string> {
     if (!this.reachable) throw new HermesUnreachableError('injoignable');
+    if (this.refuses) throw new HermesRefusedError('POST /v1/runs : 400');
     this.started.push({ body, idempotencyKey });
     const runId = `run-${idempotencyKey}`;
     this.runs.set(runId, { status: 'running' });
@@ -231,6 +240,27 @@ describe('Hermes injoignable avant l’envoi (AS38)', () => {
 
     assert.equal(queue.get('r1').status, 'running');
     assert.equal(availability.isUnreachable, true);
+  });
+});
+
+describe('Hermes refuse l’envoi (décision de la responsable du 27.11.2026)', () => {
+  test('Échouée « l’assistant n’a pas pu répondre », sans nouvel envoi ni blocage de la file', async () => {
+    queue.add({ id: 'r1' });
+    queue.add({ id: 'r2' });
+    hermes.refuses = true;
+
+    await tick();
+
+    assert.equal(queue.get('r1').status, 'failed');
+    assert.equal(queue.get('r1').failureReason, 'noAnswer');
+    assert.deepEqual(hermes.deletedSessions, [session('r1')]);
+    assert.equal(availability.isUnreachable, false);
+
+    hermes.refuses = false;
+    await tick(minutesLater(1));
+
+    assert.equal(queue.get('r1').status, 'failed');
+    assert.equal(queue.get('r2').status, 'running');
   });
 });
 
