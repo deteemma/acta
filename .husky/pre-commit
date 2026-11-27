@@ -18,4 +18,6 @@ step "lint et RLS" pnpm lint
 step "types" pnpm typecheck
 step "tests de shared" pnpm --filter @app/shared test
 step "tests du web" pnpm --filter web test
+step "build de l'API" pnpm --filter api build
+step "tests de l'API" pnpm --filter api test
 rm -f "$log"

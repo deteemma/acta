@@ -6,6 +6,8 @@ import {
   type AssistantMode,
   type AssistantRequestDto,
   ASSISTANT_MODES,
+  canAskAgain,
+  canCancel,
   DEFAULT_ASSISTANT_MODE,
   isFinalStatus,
   type Locale,
@@ -129,11 +131,20 @@ function Transmitted({ title, initiallyOpen }: { title: MessageKey; initiallyOpe
 }
 
 /** Fenêtre de la demande (AS12, AS22) : usage, mode, encadré, envoi, puis position dans la file. */
-export function AskAssistantDialog({ initiativeId, onClose }: { initiativeId: string; onClose: () => void }) {
+export function AskAssistantDialog({
+  initiativeId,
+  initialMode = DEFAULT_ASSISTANT_MODE,
+  onClose,
+}: {
+  initiativeId: string;
+  /** Mode repris par « Reposer la question », modifiable avant l'envoi (AS7, AS12). */
+  initialMode?: AssistantMode;
+  onClose: () => void;
+}) {
   const { t, locale } = useI18n();
   // Un seul usage proposé pour l'instant (Faire le point) : son choix viendra avec les suivants.
   const [usage] = useState<OfferedAssistantUsage>(OFFERED_ASSISTANT_USAGES[0]);
-  const [mode, setMode] = useState<AssistantMode>(DEFAULT_ASSISTANT_MODE);
+  const [mode, setMode] = useState<AssistantMode>(initialMode);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<UiError | null>(null);
   const [sent, setSent] = useState<AssistantRequestDto | null>(null);
@@ -259,8 +270,63 @@ function RequestCard({ request, initiallyOpen }: { request: AssistantRequestDto;
       <div className="assistant-request-body">
         <RequestProgress request={request} />
         {request.status === 'answered' && request.advice && <AdviceCard request={request} advice={request.advice} />}
+        {canCancel(request.status) && <CancelRequest request={request} />}
+        {canAskAgain(request.status) && <AskAgain request={request} />}
       </div>
     </details>
+  );
+}
+
+/** « Annuler la demande », après confirmation (AS6, ticket 08). */
+function CancelRequest({ request }: { request: AssistantRequestDto }) {
+  const { t } = useI18n();
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<UiError | null>(null);
+  const confirmId = `assistant-cancel-${request.id}`;
+
+  async function cancel() {
+    try {
+      await api.cancelAssistantRequest(request.initiativeId, request.id);
+      requested.dispatchEvent(new Event('requested'));
+    } catch (e) {
+      setConfirming(false);
+      setError(toUiError(e));
+    }
+  }
+
+  return (
+    <div className="section-buttons">
+      {confirming ? (
+        <div role="alertdialog" aria-labelledby={confirmId} className="confirm">
+          <p id={confirmId}>{t('assistant.cancelConfirm')}</p>
+          <button type="button" autoFocus onClick={() => setConfirming(false)}>
+            {t('common.no')}
+          </button>{' '}
+          <button type="button" className="danger" onClick={() => void cancel()}>
+            {t('common.yes')}
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setConfirming(true)}>
+          {t('assistant.cancel')}
+        </button>
+      )}
+      <ErrorMessage error={error} />
+    </div>
+  );
+}
+
+/** « Reposer la question » : une nouvelle demande, même usage et même mode, modifiables (AS7, AS12). */
+function AskAgain({ request }: { request: AssistantRequestDto }) {
+  const { t } = useI18n();
+  const { open } = useDialogs();
+  return (
+    <div className="section-buttons">
+      <button type="button" onClick={() => open({ kind: 'askAssistant', initiativeId: request.initiativeId, mode: request.mode })}>
+        <Sparkles aria-hidden="true" />
+        {t('assistant.askAgain')}
+      </button>
+    </div>
   );
 }
 
@@ -272,6 +338,7 @@ function RequestProgress({ request }: { request: AssistantRequestDto }) {
       return (
         <>
           {request.queueAhead != null && <p>{queuePositionMessage(locale, request.queueAhead)}</p>}
+          {request.assistantUnavailable && <p className="assistant-warning">{t('assistant.unavailable')}</p>}
           <p className="muted">{t('assistant.waitingLeave')}</p>
         </>
       );

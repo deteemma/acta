@@ -1,5 +1,5 @@
-// Demandes à l'assistant (carte « assistant », ticket 12 ; spécification AS1, AS3,
-// AS9, AS40). alice propriétaire, bruno contributeur, chloé lectrice ; admin non membre.
+// Demandes à l'assistant (carte « assistant », tickets 12 et 13 ; spécification AS1,
+// AS3, AS6, AS9, AS40). alice propriétaire, bruno contributeur, chloé lectrice ; admin non membre.
 // Aucune demande n'est créée par l'API : le traitement de fond l'enverrait à
 // l'instance Hermes. Les créations se font en base, dans des transactions annulées.
 import { admin, alice, assert, bruno, call, check, chloe, code, env, pg } from './commun.mjs';
@@ -25,6 +25,11 @@ if (installed) {
   await check('admin (non-membre) ne lit ni ne pose aucune demande : 404 (AS9, AS40)', async () => {
     assert.equal((await call(admin, 'GET', requests())).status, 404);
     assert.equal((await call(admin, 'POST', requests(), { usage: 'status_review', mode: 'quick', locale: 'fr' })).status, 404);
+  });
+  await check('annuler une demande inconnue : 404 ; admin (non-membre) : 404 (AS6, AS40)', async () => {
+    const unknown = `${requests()}/00000000-0000-4000-8000-000000000000/cancel`;
+    assert.equal((await call(chloe, 'POST', unknown)).status, 404);
+    assert.equal((await call(admin, 'POST', unknown)).status, 404);
   });
   await check('usage pas encore proposé, mode ou langue inconnus : 400', async () => {
     assert.equal((await call(chloe, 'POST', requests(), { usage: 'next_steps', mode: 'quick', locale: 'fr' })).status, 400);
@@ -146,7 +151,7 @@ await check('l’auteur ne fait pas avancer sa demande ; le traitement de fond, 
   inTransaction(async (as) => {
     const id = (await as(chloe, insert, [asInitiativeId])).rows[0].id;
     const update = (user, set, options) => as(user, `UPDATE assistant_request SET ${set} WHERE id = $1`, [id], options);
-    assert.equal((await update(chloe, `status = 'answered', advice = 'x', read_at = now()`)).rowCount, 0);
+    await rejects(update(chloe, `status = 'answered', advice = 'x', read_at = now()`), /row-level security|traitement de fond/);
     await rejects(update(null, `status = 'running'`, { worker: true }), /assistant_request_state/);
     await rejects(update(null, `mode = 'thorough'`, { worker: true }), /ne se modifie pas/);
     await update(null, `status = 'running', read_at = now(), timeout_minutes = 20, hermes_run_id = 'run_x'`, { worker: true });
@@ -155,6 +160,45 @@ await check('l’auteur ne fait pas avancer sa demande ; le traitement de fond, 
     const { rows } = await as(chloe, 'SELECT status, finished_at FROM assistant_request WHERE id = $1', [id]);
     assert.equal(rows[0].status, 'answered');
     assert.ok(rows[0].finished_at, 'la base pose la date de fin');
+  }),
+);
+const cancelByAuthor = `UPDATE assistant_request SET status = 'cancelled', cancellation_reason = 'byAuthor' WHERE id = $1`;
+await check('l’auteur annule sa demande En attente ou En cours, initiative archivée comprise (AS6, AS40)', () =>
+  inTransaction(async (as) => {
+    const pending = (await as(chloe, insert, [asInitiativeId])).rows[0].id;
+    assert.equal((await as(chloe, cancelByAuthor, [pending])).rowCount, 1);
+    const running = (await as(chloe, insert, [asInitiativeId])).rows[0].id;
+    await as(null, `UPDATE assistant_request SET status = 'running', read_at = now(), timeout_minutes = 20,
+      hermes_run_id = 'run_x' WHERE id = $1`, [running], { worker: true });
+    assert.equal((await as(chloe, cancelByAuthor, [running])).rowCount, 1);
+    const { rows } = await as(chloe, 'SELECT status, cancellation_reason, hermes_run_id, finished_at FROM assistant_request WHERE id = $1', [running]);
+    assert.equal(rows[0].status, 'cancelled');
+    assert.equal(rows[0].hermes_run_id, 'run_x', 'le travail reste connu pour l’arrêter chez Hermes');
+    assert.ok(rows[0].finished_at);
+  }),
+);
+await check('ni un autre membre, ni l’administrateur, ni l’auteur parti n’annulent la demande (AS9, AS40)', () =>
+  inTransaction(async (as) => {
+    const id = (await as(chloe, insert, [asInitiativeId])).rows[0].id;
+    assert.equal((await as(alice, cancelByAuthor, [id])).rowCount, 0, 'la propriétaire');
+    assert.equal((await as(bruno, cancelByAuthor, [id])).rowCount, 0, 'un autre membre');
+    assert.equal((await as(admin, cancelByAuthor, [id], { admin: true })).rowCount, 0, 'l’administrateur');
+    // Initiative archivée : seule chloé peut la quitter (migration 0006).
+    const left = await as(chloe, 'DELETE FROM initiative_member WHERE initiative_id = $1 AND user_id = $2', [asInitiativeId, chloe.sub]);
+    assert.equal(left.rowCount, 1, 'chloé quitte l’initiative');
+    assert.equal((await as(chloe, cancelByAuthor, [id])).rowCount, 0, 'l’auteur parti');
+  }),
+);
+await check('l’auteur annule « par vous » seulement, sans toucher au travail, et pas une demande terminée (AS2, AS6)', () =>
+  inTransaction(async (as) => {
+    const id = (await as(chloe, insert, [asInitiativeId])).rows[0].id;
+    const update = (set) => as(chloe, `UPDATE assistant_request SET ${set} WHERE id = $1`, [id]);
+    await rejects(update(`status = 'cancelled', cancellation_reason = 'accessLost'`), /row-level security/);
+    await as(null, `UPDATE assistant_request SET status = 'running', read_at = now(), timeout_minutes = 20,
+      hermes_run_id = 'run_x' WHERE id = $1`, [id], { worker: true });
+    await rejects(update(`status = 'cancelled', cancellation_reason = 'byAuthor', hermes_run_id = 'run_y'`), /traitement de fond/);
+    await as(null, `UPDATE assistant_request SET status = 'answered', advice = 'Avis' WHERE id = $1`, [id], { worker: true });
+    await rejects(update(`status = 'cancelled', cancellation_reason = 'byAuthor'`), /passage de statut refusé/);
   }),
 );
 await check('l’initiative supprimée emporte ses demandes (AS9)', () =>

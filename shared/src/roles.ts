@@ -70,6 +70,11 @@ export const INITIATIVE_PERMISSIONS = {
    * est l'auteur, jamais celles des autres membres ; l'administrateur n'en voit aucune.
    */
   viewAssistantRequests: 'reader',
+  /**
+   * Annuler sa propre demande non terminée (AS6, AS40) : seulement l'auteur ; la
+   * base refuse toute autre demande (migration 0039).
+   */
+  cancelAssistantRequest: 'reader',
 } as const satisfies Record<string, InitiativeRole>;
 
 export type InitiativeAction = keyof typeof INITIATIVE_PERMISSIONS;
@@ -86,6 +91,7 @@ const ALLOWED_WHEN_ARCHIVED: readonly InitiativeAction[] = [
   // L'assistant lit l'initiative sans la modifier (AS1).
   'askAssistant',
   'viewAssistantRequests',
+  'cancelAssistantRequest',
 ];
 
 export function can(

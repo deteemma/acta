@@ -35,6 +35,25 @@ export type AssistantRequestStatus = (typeof ASSISTANT_REQUEST_STATUSES)[number]
 export const isFinalStatus = (status: AssistantRequestStatus): boolean =>
   status === 'answered' || status === 'failed' || status === 'cancelled';
 
+/** Statuts non terminés : En attente et En cours (AS2, AS3). */
+export const UNFINISHED_STATUSES = ['pending', 'running'] as const satisfies readonly AssistantRequestStatus[];
+
+/** L'auteur annule sa demande tant qu'elle n'est pas terminée (AS6). */
+export const canCancel = (status: AssistantRequestStatus): boolean => !isFinalStatus(status);
+
+/**
+ * « Assistant momentanément indisponible : votre demande partira dès son retour. » :
+ * sur une demande En attente, tant que Hermes est injoignable (AS38).
+ */
+export const showsAssistantUnavailable = (status: AssistantRequestStatus, hermesUnreachable: boolean): boolean =>
+  status === 'pending' && hermesUnreachable;
+
+/**
+ * « Reposer la question » : sur une demande Échouée, une nouvelle demande, avec
+ * le même usage et le même mode, modifiables avant l'envoi (AS7, AS12).
+ */
+export const canAskAgain = (status: AssistantRequestStatus): boolean => status === 'failed';
+
 /**
  * Les six raisons d'échec (AS7) : délai dépassé ; assistant indisponible ;
  * l'assistant n'a pas pu répondre ; données trop volumineuses ; l'élément choisi
@@ -84,6 +103,11 @@ export interface AssistantRequestDto {
   cancellationReason: AssistantCancellationReason | null;
   /** En attente : nombre de demandes arrivées avant elle (AS4) ; null sinon. */
   queueAhead: number | null;
+  /**
+   * En attente alors que Hermes est injoignable : « Assistant momentanément
+   * indisponible : votre demande partira dès son retour. » (AS38) ; faux sinon.
+   */
+  assistantUnavailable: boolean;
 }
 
 /**

@@ -317,6 +317,9 @@ export const api = {
   listAssistantRequests: (id: string) => request<AssistantRequestDto[]>(`/initiatives/${id}/assistant-requests`),
   createAssistantRequest: (id: string, input: CreateAssistantRequestInput) =>
     request<AssistantRequestDto>(`/initiatives/${id}/assistant-requests`, { method: 'POST', body: JSON.stringify(input) }),
+  /** Annuler sa demande non terminée (AS6) ; une demande déjà terminée revient telle quelle. */
+  cancelAssistantRequest: (id: string, requestId: string) =>
+    request<AssistantRequestDto>(`/initiatives/${id}/assistant-requests/${requestId}/cancel`, { method: 'POST' }),
   dismissSuggestedAction: (id: string, key: string) =>
     request<void>(`/initiatives/${id}/suggested-actions/${encodeURIComponent(key)}/dismissal`, { method: 'PUT' }),
   // Parties prenantes (ticket 08).

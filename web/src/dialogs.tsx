@@ -18,6 +18,7 @@ import {
 } from 'react';
 import {
   type AnalysisObjectRef,
+  type AssistantMode,
   type GuardedForm,
   hasDirtyForm,
   leavePanels,
@@ -46,8 +47,11 @@ export type DialogContent =
   | { kind: 'createPage'; initiativeId: string; parentId?: string }
   /** Avec la langue de la validation de syntaxe (D15). */
   | { kind: 'createScenario'; initiativeId: string; requirementId: string; language: Locale }
-  /** « Demander à l'assistant » depuis l'initiative ou son tableau de bord (AS22). */
-  | { kind: 'askAssistant'; initiativeId: string };
+  /**
+   * « Demander à l'assistant » depuis l'initiative ou son tableau de bord (AS22) ;
+   * avec `mode`, « Reposer la question » d'une demande Échouée, mode repris (AS7, AS12).
+   */
+  | { kind: 'askAssistant'; initiativeId: string; mode?: AssistantMode };
 
 interface Entry {
   id: number;

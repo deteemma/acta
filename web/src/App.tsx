@@ -595,7 +595,7 @@ function Shell({ user }: { user: User }) {
                   />
                 );
               case 'askAssistant':
-                return <AskAssistantDialog initiativeId={content.initiativeId} onClose={close} />;
+                return <AskAssistantDialog initiativeId={content.initiativeId} initialMode={content.mode} onClose={close} />;
             }
           }}
         />

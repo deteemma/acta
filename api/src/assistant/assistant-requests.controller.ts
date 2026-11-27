@@ -43,6 +43,18 @@ export class AssistantRequestsController {
     return this.requests.create(user.id, initiativeId, body);
   }
 
+  /** Annuler sa demande non terminée (AS6) ; seul l'auteur la voit, donc l'annule (AS9). */
+  @Post(':requestId/cancel')
+  @RequireInitiativeRole('cancelAssistantRequest')
+  cancel(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('initiativeId', ParseUUIDPipe) initiativeId: string,
+    @Param('requestId', ParseUUIDPipe) requestId: string,
+  ): Promise<AssistantRequestDto> {
+    this.requireInstalled();
+    return this.requests.cancel(user.id, initiativeId, requestId);
+  }
+
   private requireInstalled(): void {
     if (!this.config.assistant) throw new NotFoundException();
   }

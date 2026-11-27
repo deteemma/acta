@@ -1,9 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { HermesRun, HermesRunRequest } from '@app/shared';
+import { type HermesRun, type HermesRunRequest, hermesSessionId } from '@app/shared';
 import { AppConfig } from '../config/app-config.js';
 
 /** Hermes ne répond pas (réseau, redémarrage, erreur du serveur) : rien n'a pu être envoyé ou lu. */
 export class HermesUnreachableError extends Error {}
+
+/** Ce dont ACTA se sert chez Hermes. */
+export type HermesPort = Pick<HermesClient, 'startRun' | 'getRun' | 'stopRun' | 'deleteSession'>;
+
+/**
+ * Arrête le travail d'une demande chez Hermes s'il a été envoyé, puis supprime
+ * sa session : rien ne reste chez Hermes après un échec ou une annulation (AS6, AS37).
+ */
+export async function releaseHermesWork(hermes: HermesPort, requestId: string, runId: string | null): Promise<void> {
+  if (runId) await hermes.stopRun(runId);
+  await hermes.deleteSession(hermesSessionId(requestId));
+}
 
 /** Délai d'un appel à Hermes : il répond tout de suite, le travail se suit par interrogation. */
 const CALL_TIMEOUT_MS = 30_000;

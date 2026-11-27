@@ -1,6 +1,15 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  canCancel,
+  showsAssistantUnavailable,
   type AssistantRequestDto,
   type AssistantRequestStatus,
   type AssistantSettings,
@@ -13,7 +22,9 @@ import { type Selectable, sql } from 'kysely';
 import { DatabaseService, type Tx } from '../db/database.service.js';
 import { isConstraintViolation } from '../db/pg-errors.js';
 import type { AssistantRequestTable } from '../db/schema.js';
+import { AssistantAvailability } from './assistant-availability.js';
 import { AssistantContextService } from './assistant-context.service.js';
+import { HermesClient, type HermesPort, releaseHermesWork } from './hermes-client.service.js';
 
 /** Paramètres de l'assistant en vigueur (AS32), lisibles par tous (migration 0038). */
 export async function loadAssistantSettings(tx: Tx): Promise<AssistantSettings> {
@@ -43,6 +54,8 @@ export class AssistantRequestsService {
   constructor(
     private readonly database: DatabaseService,
     private readonly data: AssistantContextService,
+    private readonly availability: AssistantAvailability,
+    @Inject(HermesClient) private readonly hermes: HermesPort,
   ) {}
 
   list(userId: string, initiativeId: string): Promise<AssistantRequestDto[]> {
@@ -54,8 +67,39 @@ export class AssistantRequestsService {
         .where('author_id', '=', userId)
         .orderBy('created_at', 'desc')
         .execute();
-      return Promise.all(rows.map((row) => toDto(tx, row)));
+      return Promise.all(rows.map((row) => toDto(tx, row, this.availability.isUnreachable)));
     });
+  }
+
+  /**
+   * Annulation par l'auteur tant que la demande n'est pas terminée (AS6) : le
+   * travail s'arrête chez Hermes et sa session est supprimée, sans avis partiel.
+   * Une demande déjà terminée est rendue telle quelle (son avis vient d'arriver).
+   */
+  async cancel(userId: string, initiativeId: string, requestId: string): Promise<AssistantRequestDto> {
+    const { dto, runId, cancelled } = await this.database.asUser(userId, async (tx) => {
+      const found = await tx
+        .selectFrom('assistant_request')
+        .selectAll()
+        .where('id', '=', requestId)
+        .where('initiative_id', '=', initiativeId)
+        .where('author_id', '=', userId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!found) throw new NotFoundException();
+      if (!canCancel(found.status)) return { dto: await toDto(tx, found, this.availability.isUnreachable), runId: null, cancelled: false };
+      const row = await tx
+        .updateTable('assistant_request')
+        .set({ status: 'cancelled', cancellation_reason: 'byAuthor' })
+        .where('id', '=', requestId)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      return { dto: await toDto(tx, row, this.availability.isUnreachable), runId: row.hermes_run_id, cancelled: true };
+    });
+    // Après la validation : la demande ne peut plus passer En cours ni recevoir d'avis.
+    // L'auteur n'attend pas Hermes ; ses refus sont journalisés par le client.
+    if (cancelled) void releaseHermesWork(this.hermes, requestId, runId);
+    return dto;
   }
 
   async create(userId: string, initiativeId: string, { usage, mode, locale }: CreateAssistantRequest): Promise<AssistantRequestDto> {
@@ -76,7 +120,7 @@ export class AssistantRequestsService {
           .values({ id: randomUUID(), initiative_id: initiativeId, author_id: userId, usage, mode, locale })
           .returningAll()
           .executeTakeFirstOrThrow();
-        return await toDto(tx, row);
+        return await toDto(tx, row, this.availability.isUnreachable);
       } catch (error) {
         // Deux demandes envoyées en même temps : la seconde est refusée (AS3).
         if (isConstraintViolation(error, 'assistant_request_one_unfinished')) {
@@ -103,7 +147,12 @@ async function unfinishedRefusal(tx: Tx): Promise<ConflictException | null> {
   return new ConflictException(body);
 }
 
-async function toDto(tx: Tx, row: Selectable<AssistantRequestTable>): Promise<AssistantRequestDto> {
+/** `hermesUnreachable` : Hermes injoignable au dernier appel du traitement de fond (AS38). */
+async function toDto(
+  tx: Tx,
+  row: Selectable<AssistantRequestTable>,
+  hermesUnreachable: boolean,
+): Promise<AssistantRequestDto> {
   let queueAhead: number | null = null;
   if (row.status === 'pending') {
     const { rows } = await sql<{ ahead: number | null }>`SELECT assistant_queue_ahead(${row.id}::uuid) AS ahead`.execute(tx);
@@ -123,5 +172,6 @@ async function toDto(tx: Tx, row: Selectable<AssistantRequestTable>): Promise<As
     failureReason: row.failure_reason,
     cancellationReason: row.cancellation_reason,
     queueAhead,
+    assistantUnavailable: showsAssistantUnavailable(row.status, hermesUnreachable),
   };
 }

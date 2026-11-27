@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   ASSISTANT_SETTINGS_DEFAULTS,
   applicableTimeoutMinutes,
+  canCancel,
+  canAskAgain,
   estimateTokens,
   exceedsDataLimit,
   freeSlots,
@@ -10,7 +12,25 @@ import {
   isTimedOut,
   queuePositionMessage,
   runOutcome,
+  showsAssistantUnavailable,
 } from './assistant-requests.js';
+
+test('annulation par l’auteur tant que la demande n’est pas terminée (AS6)', () => {
+  assert.equal(canCancel('pending'), true);
+  assert.equal(canCancel('running'), true);
+  for (const status of ['answered', 'failed', 'cancelled'] as const) assert.equal(canCancel(status), false);
+});
+
+test('« Assistant momentanément indisponible » sur une demande En attente seulement (AS38)', () => {
+  assert.equal(showsAssistantUnavailable('pending', true), true);
+  assert.equal(showsAssistantUnavailable('pending', false), false);
+  assert.equal(showsAssistantUnavailable('running', true), false);
+});
+
+test('« Reposer la question » sur une demande Échouée seulement (AS7)', () => {
+  assert.equal(canAskAgain('failed'), true);
+  for (const status of ['pending', 'running', 'answered', 'cancelled'] as const) assert.equal(canAskAgain(status), false);
+});
 
 test('travail Hermes pas encore fini : la demande reste En cours', () => {
   for (const status of ['started', 'queued', 'running', 'stopping']) {

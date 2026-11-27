@@ -23,7 +23,9 @@ import { BabokController } from './babok/babok.controller.js';
 import { BabokService } from './babok/babok.service.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { OidcVerifier } from './auth/oidc-verifier.service.js';
+import { AssistantAvailability } from './assistant/assistant-availability.js';
 import { AssistantContextService } from './assistant/assistant-context.service.js';
+import { DatabaseAssistantQueue } from './assistant/assistant-queue.service.js';
 import { AssistantRequestsController } from './assistant/assistant-requests.controller.js';
 import { AssistantRequestsService } from './assistant/assistant-requests.service.js';
 import { AssistantWorker } from './assistant/assistant-worker.service.js';
@@ -115,6 +117,8 @@ import { UsersService } from './users/users.service.js';
     HermesClient,
     AssistantContextService,
     AssistantRequestsService,
+    AssistantAvailability,
+    DatabaseAssistantQueue,
     AssistantWorker,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
