@@ -1,6 +1,6 @@
 # ADR-0024 — File de l'assistant : position et demande non terminée, hors appartenance
 
-- **Statut** : proposé (ticket 12 de la carte « assistant », en attente de la validation de la responsable fonctionnelle)
+- **Statut** : accepté (validé par la responsable fonctionnelle le 27.11.2026)
 - **Date** : 2026-11-26
 
 ## Contexte

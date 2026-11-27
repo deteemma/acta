@@ -4,7 +4,7 @@
 
 **Blocked by:** 11 — Instance Hermes d'ACTA
 
-**Status:** ready-for-human (à valider par la responsable fonctionnelle sur acta.localhost)
+**Status:** done (validé par la responsable fonctionnelle le 27.11.2026)
 
 Règles : [spécification](../spec.md) AS1 à AS5, AS9, AS10, AS12 à AS18, AS20, AS21, AS22, AS24 à AS28, AS29 (Faire le point), AS30, AS31, AS37, AS40. Détail dans les tickets [04](04-cycle-de-vie-demande.md), [06](06-choix-premier-lot.md), [07](07-donnees-par-usage.md) et [08](08-maquette-du-panneau.md) ; textes de l'interface au ticket 08.
 
@@ -77,4 +77,9 @@ Règles : [spécification](../spec.md) AS1 à AS5, AS9, AS10, AS12 à AS18, AS20
 2. **[ADR-0024](../../../docs/adr/0024-file-de-l-assistant-hors-appartenance.md), proposé** : la position dans la file compte les demandes de toute l'application, et le refus « demande non terminée » nomme une demande peut-être posée sur une initiative quittée. L'ADR 0016 demande un nouvel ADR pour un tel comptage. À valider.
 3. **Traduction anglaise** des textes et des instructions (`shared/src/i18n.ts`, bloc `en`, clés `assistant…`) : à relire (AS28).
 
-**À savoir pour la suite.** Une initiative supprimée pendant qu'une de ses demandes est En cours emporte la demande, mais la session Hermes n'est pas supprimée : elle disparaît au prochain redémarrage de Hermes (données en mémoire vive, ADR 0023). À traiter avec le ticket 13 ou 19.
+**Réponses de la responsable (27.11.2026).**
+1. La référence n'est pas nécessaire : nom, rôles, influence et intérêt suffisent.
+2. ADR-0024 accepté.
+3. Traduction anglaise relue et acceptée.
+
+**À savoir pour la suite.** Une initiative supprimée pendant qu'une de ses demandes est En cours emporte la demande, mais la session Hermes n'est pas supprimée : elle disparaît au prochain redémarrage de Hermes (données en mémoire vive, ADR 0023). Cas rare : pas d’action pour l’instant (décision de la responsable du 27.11.2026).
